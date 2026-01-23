@@ -63,27 +63,55 @@ class SkillGenerator:
         readme = analysis.get('readme', {})
 
         # 提取安装命令
-        installation = readme.get('sections', {}).get('Installation', 'pip install ' + repo_info['name'].split('/')[1])
+        installation = readme.get('sections', {}).get(
+            'Installing',
+            readme.get('sections', {}).get(
+                'Installation',
+                f"pip install {repo_info['name'].split('/')[1]}"
+            )
+        )
 
-        # 提取使用示例
-        usage = readme.get('sections', {}).get('Usage', 'See README for usage')
+        # 提取使用示例 - 优先使用第一个代码示例
+        usage = readme.get('sections', {}).get('Usage', '')
+        if not usage and readme.get('examples'):
+            # 使用第一个代码示例
+            first_example = readme['examples'][0][1] if readme['examples'] else ''
+            usage = f"```{readme['examples'][0][0]}\n{first_example}\n```" if first_example else 'See README for usage'
+        elif not usage:
+            usage = 'See README for usage'
 
-        # 提取功能列表
+        # 提取功能列表 - 尝试多个可能的章节
         features = []
-        features_section = readme.get('sections', {}).get('Features', '')
-        if features_section:
-            features = [line.strip().lstrip('- ')
-                       for line in features_section.split('\n')
-                       if line.strip().startswith('-')]
+        for section_name in ['Features', 'What Rich Does', 'Highlights', 'Key Features', 'Overview']:
+            features_section = readme.get('sections', {}).get(section_name, '')
+            if features_section:
+                # 提取列表项
+                features = [line.strip().lstrip('-*# ')
+                           for line in features_section.split('\n')
+                           if line.strip().startswith(('-', '*', '*')) and len(line.strip()) > 2]
+                if features:
+                    break
+
+        # 如果还是没有功能列表,尝试从代码示例中提取
+        if not features and readme.get('examples'):
+            features = [
+                f"Code examples in {readme['examples'][0][0] if readme['examples'] else 'text'}",
+                f"See {len(readme.get('examples', []))} examples in README",
+            ]
 
         if not features:
-            features = ['Feature 1', 'Feature 2', 'Feature 3']  # 默认
+            features = [f"Visit {repo_info['url']} for features"]  # 默认
+
+        # 改进描述
+        description = readme.get('description', '').strip()
+        if not description or len(description) < 10:
+            description = repo_info.get('description', '')
 
         return {
             'skill_name': repo_info['name'].replace('/', '-'),
-            'description': readme.get('description', repo_info.get('description', '')),
+            'description': description,
             'readme_title': readme.get('title', repo_info['name']),
-            'readme_description': readme.get('description', ''),
+            'readme_description': description,
             'installation_command': installation,
             'usage_example': usage,
             'features': features[:5],  # 最多 5 个功能
@@ -93,7 +121,8 @@ class SkillGenerator:
                 "Automate workflows",
                 "Integrate into projects"
             ],
-            'cli_example': f"{repo_info['name'].split('/')[1]} --help"
+            'cli_example': f"{repo_info['name'].split('/')[1]} --help",
+            'repo_url': repo_info.get('url', '')
         }
 
     def generate_skill_md(self, repo_info: Dict, analysis: Dict) -> Path:

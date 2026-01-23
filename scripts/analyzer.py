@@ -52,8 +52,12 @@ class RepoAnalyzer:
             if section_name:  # 确保章节名不为空
                 sections[section_name] = section_content
 
-        # 提取第一段作为描述
-        description_match = re.search(r'^#\s+.+$\n\n(.+?)(?:\n\n|\Z)', content, re.DOTALL)
+        # 提取第一段作为描述(改进模式,支持多种格式)
+        description_match = re.search(
+            r'^#\s+.+?\n+(.+?)(?=\n\n|\n#|\Z)',
+            content,
+            re.DOTALL
+        )
         description = description_match.group(1).strip() if description_match else ""
 
         # 提取代码示例

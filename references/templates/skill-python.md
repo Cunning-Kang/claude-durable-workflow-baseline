@@ -32,6 +32,13 @@ description: {{ description }} 使用此技能来{{ use_cases }}
 - {{ scenario }}
 {% endfor %}
 
+{% if repo_url %}
+## 资源链接
+
+- GitHub 仓库: [{{ repo_url }}]({{ repo_url }})
+- 文档和示例: 详见仓库 README
+{% endif %}
+
 ## 高级功能
 
 详见 [高级功能文档](references/advanced.md)

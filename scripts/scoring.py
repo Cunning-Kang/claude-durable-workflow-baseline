@@ -1,5 +1,5 @@
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 
@@ -33,7 +33,12 @@ def calculate_repo_score(repo: RepoInfo) -> float:
     stars_score = min(math.log(repo.stars + 1) * 3, 30)
 
     # 更新时间分数 (25%)
-    days_since_update = (datetime.now() - repo.updated_at).days
+    # 确保 updated_at 是 offset-naive 或都转换为 offset-aware
+    now = datetime.now(timezone.utc)
+    updated_at = repo.updated_at
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    days_since_update = (now - updated_at).days
     if days_since_update <= 30:
         update_score = 25
     elif days_since_update <= 90:
