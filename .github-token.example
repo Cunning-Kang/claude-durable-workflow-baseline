@@ -1,0 +1,4 @@
+# GitHub Personal Access Token
+# 获取方式: https://github.com/settings/tokens
+# 需要的权限: repo (full control)
+# 将此文件复制为 .github-token 并粘贴您的 token
