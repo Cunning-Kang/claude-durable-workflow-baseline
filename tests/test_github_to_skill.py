@@ -62,3 +62,62 @@ def test_format_candidates():
     assert '[1]' in formatted
     assert 'test/repo1' in formatted
     assert '85.5' in formatted
+
+
+def test_select_candidate_non_interactive():
+    """测试非交互式选择"""
+    gts = GitHubToSkill()
+
+    candidates = [
+        {
+            'name': 'test/repo1',
+            'description': 'Test repo 1',
+            'stars': 1000,
+        },
+        {
+            'name': 'test/repo2',
+            'description': 'Test repo 2',
+            'stars': 500,
+        }
+    ]
+
+    # 非交互模式应该返回第一个
+    selected = gts.select_candidate(candidates, interactive=False)
+    assert selected['name'] == 'test/repo1'
+
+
+def test_select_candidate_single():
+    """测试单个候选时自动选择"""
+    gts = GitHubToSkill()
+
+    candidates = [
+        {
+            'name': 'test/repo1',
+            'description': 'Test repo 1',
+            'stars': 1000,
+        }
+    ]
+
+    # 即使交互模式,单个候选也应该自动选择
+    selected = gts.select_candidate(candidates, interactive=True)
+    assert selected['name'] == 'test/repo1'
+
+
+def test_cleanup_clone(temp_output):
+    """测试清理克隆目录"""
+    from unittest.mock import patch
+
+    gts = GitHubToSkill(output_dir=temp_output)
+
+    # 创建测试目录
+    test_dir = Path(temp_output) / "test_clone"
+    test_dir.mkdir()
+    (test_dir / "test.txt").write_text("test")
+
+    assert test_dir.exists()
+
+    # 清理
+    gts._cleanup_clone(test_dir)
+
+    assert not test_dir.exists()
+

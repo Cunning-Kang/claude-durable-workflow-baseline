@@ -130,7 +130,96 @@ class GitHubToSkill:
             print(f"克隆失败: {e}")
             return False
 
-    def run(self, user_query: str) -> Optional[Path]:
+    def _cleanup_clone(self, clone_dir: Path):
+        """
+        清理克隆的仓库
+
+        Args:
+            clone_dir: 克隆目录
+        """
+        try:
+            if clone_dir.exists():
+                import shutil
+                shutil.rmtree(clone_dir)
+                print(f"已清理临时仓库: {clone_dir}")
+        except Exception as e:
+            print(f"警告: 清理临时仓库失败: {e}")
+
+    def _validate_generated_skill(self, skill_dir: Path):
+        """
+        验证生成的 skill
+
+        Args:
+            skill_dir: skill 目录
+        """
+        try:
+            # 导入验证模块
+            import subprocess
+
+            # 运行验证脚本
+            result = subprocess.run(
+                ['python', 'scripts/validate_skill.py', str(skill_dir)],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            # 打印验证结果
+            if result.stdout:
+                for line in result.stdout.strip().split('\n'):
+                    if line:
+                        print(f"  {line}")
+
+            # 检查退出码
+            if result.returncode == 10:
+                print("⚠️  Skill 验证失败,但已生成")
+            elif result.returncode != 0:
+                print(f"⚠️  验证脚本错误: {result.stderr}")
+
+        except Exception as e:
+            print(f"⚠️  无法运行验证脚本: {e}")
+
+    def select_candidate(self, candidates: List[Dict], interactive: bool = True) -> Dict:
+        """
+        从候选工具中选择一个
+
+        Args:
+            candidates: 候选工具列表
+            interactive: 是否交互式选择
+
+        Returns:
+            选中的工具信息
+        """
+        if not interactive or len(candidates) == 1:
+            # 非交互模式或只有一个候选,直接返回第一个
+            selected = candidates[0]
+            print(f"\n已选择: {selected['name']}")
+            return selected
+
+        # 交互式选择
+        while True:
+            try:
+                choice = input("\n请输入数字 (1-{}) 选择工具,或 0 取消: ".format(len(candidates)))
+                choice = choice.strip()
+
+                if choice == '0':
+                    print("操作已取消")
+                    return None
+
+                index = int(choice) - 1
+                if 0 <= index < len(candidates):
+                    selected = candidates[index]
+                    print(f"\n已选择: {selected['name']}")
+                    return selected
+                else:
+                    print(f"❌ 请输入 1-{len(candidates)} 之间的数字")
+            except ValueError:
+                print("❌ 请输入有效的数字")
+            except KeyboardInterrupt:
+                print("\n\n操作已取消")
+                return None
+
+    def run(self, user_query: str, interactive: bool = True) -> Optional[Path]:
         """
         执行完整流程
 
@@ -156,12 +245,12 @@ class GitHubToSkill:
         # 3. 展示候选
         print(self.format_candidates(candidates))
 
-        # TODO: 在实际使用中,这里需要等待用户输入
-        # 为了演示,选择第一个
-        selected = candidates[0]
-        print(f"\n已选择: {selected['name']}")
+        # 4. 选择工具
+        selected = self.select_candidate(candidates, interactive=interactive)
+        if not selected:
+            return None
 
-        # 4. 克隆仓库
+        # 5. 克隆仓库
         repo_url = selected['url']
         clone_dir = self.output_dir / "cloned_repo"
 
@@ -170,16 +259,24 @@ class GitHubToSkill:
             print("克隆失败")
             return None
 
-        # 5. 分析仓库
-        print("分析仓库...")
-        analyzer = RepoAnalyzer(str(clone_dir))
-        analysis = analyzer.analyze()
+        try:
+            # 6. 分析仓库
+            print("分析仓库...")
+            analyzer = RepoAnalyzer(str(clone_dir))
+            analysis = analyzer.analyze()
 
-        # 6. 生成 skill
-        print("生成 skill...")
-        skill_dir = self.generator.generate(selected, analysis)
+            # 7. 生成 skill
+            print("生成 skill...")
+            skill_dir = self.generator.generate(selected, analysis)
 
-        print(f"\n✅ Skill 已生成: {skill_dir}")
-        print(f"   SKILL.md: {skill_dir / 'SKILL.md'}")
+            print(f"\n✅ Skill 已生成: {skill_dir}")
+            print(f"   SKILL.md: {skill_dir / 'SKILL.md'}")
 
-        return skill_dir
+            # 8. 验证 skill
+            print("验证 skill 质量...")
+            self._validate_generated_skill(skill_dir)
+
+            return skill_dir
+        finally:
+            # 8. 清理临时仓库
+            self._cleanup_clone(clone_dir)
