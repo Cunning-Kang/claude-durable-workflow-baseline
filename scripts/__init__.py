@@ -1,3 +1,0 @@
-"""GitHub to Skill - 自动化 skill 生成系统"""
-
-__version__ = "1.0.0"
