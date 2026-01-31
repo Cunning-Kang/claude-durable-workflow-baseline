@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import subprocess
 from pathlib import Path
 from task_manager import TaskManager
 
@@ -75,6 +76,68 @@ def cmd_show_task(args):
     print(f"\n{task['content']}")
 
 
+def cmd_start_task(args):
+    """启动任务（创建/切换 worktree）"""
+    tm = get_task_manager()
+    task = tm.get_task(args.task_id)
+
+    if not task:
+        print(f"Error: Task {args.task_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    # 从任务文件中提取分支名，如果没有则从标题生成
+    import re
+    branch_match = re.search(r'branch:\s*(\S+)', task['content'])
+    if branch_match:
+        branch_name = branch_match.group(1)
+        if branch_name == 'null':
+            branch_name = None
+    else:
+        branch_name = None
+
+    if not branch_name:
+        # 从标题生成分支名
+        branch_name = tm._slugify(task['title'])
+
+    worktree_path = f".worktrees/{branch_name}"
+
+    # 检查 worktree 是否已存在
+    worktree_full = Path(worktree_path)
+    if worktree_full.exists():
+        print(f"✓ Worktree already exists: {worktree_path}")
+        print(f"  Switching to existing worktree...")
+    else:
+        # 创建 worktree
+        print(f"Creating worktree: {worktree_path}")
+        try:
+            result = subprocess.run(
+                ["git", "worktree", "add", worktree_path, "-b", branch_name],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(f"✓ Created worktree: {worktree_path}")
+            print(f"✓ Created branch: {branch_name}")
+        except subprocess.CalledProcessError as e:
+            print(f"Error creating worktree: {e.stderr}", file=sys.stderr)
+            sys.exit(1)
+
+    # 更新任务状态
+    tm.update_task(
+        args.task_id,
+        status="In Progress",
+        worktree=worktree_path,
+        branch=branch_name
+    )
+
+    print(f"\n✓ Task {args.task_id} is now In Progress")
+    print(f"\nNext steps:")
+    print(f"  1. cd {worktree_path}")
+    print(f"  2. Review the Execution Order in the task file")
+    print(f"  3. Start implementing!")
+
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="task-flow - Task management system")
@@ -92,6 +155,10 @@ def main():
     parser_show = subparsers.add_parser("show-task", help="Show task details")
     parser_show.add_argument("task_id", help="Task ID (e.g., TASK-001)")
 
+    # start-task
+    parser_start = subparsers.add_parser("start-task", help="Start working on a task")
+    parser_start.add_argument("task_id", help="Task ID (e.g., TASK-001)")
+
     args = parser.parse_args()
 
     if args.command == "create-task":
@@ -100,6 +167,8 @@ def main():
         cmd_list_tasks(args)
     elif args.command == "show-task":
         cmd_show_task(args)
+    elif args.command == "start-task":
+        cmd_start_task(args)
     else:
         parser.print_help()
 
