@@ -137,6 +137,60 @@ def cmd_start_task(args):
     print(f"  3. Start implementing!")
 
 
+def cmd_update_task(args):
+    """更新任务"""
+    tm = get_task_manager()
+    task = tm.get_task(args.task_id)
+
+    if not task:
+        print(f"Error: Task {args.task_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    # 更新字段
+    updates = {}
+    if args.status:
+        updates["status"] = args.status
+    if args.step is not None:
+        updates["current_step"] = args.step
+
+    if updates:
+        tm.update_task(args.task_id, **updates)
+        print(f"✓ Updated task {args.task_id}")
+
+    # 添加备注
+    if args.note:
+        tm.add_task_note(args.task_id, args.note)
+        print(f"✓ Added note to task {args.task_id}")
+
+
+def cmd_complete_task(args):
+    """完成任务"""
+    tm = get_task_manager()
+    task = tm.get_task(args.task_id)
+
+    if not task:
+        print(f"Error: Task {args.task_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    # 完成任务（标记为 Done 并归档）
+    tm.complete_task(args.task_id)
+
+    print(f"✓ Task {args.task_id} marked as Done")
+    print(f"✓ Task file archived to docs/tasks/completed/")
+
+    if not args.no_cleanup:
+        print(f"\nNext steps:")
+        print(f"  1. Review the work in the worktree")
+        print(f"  2. Run tests to verify everything works")
+        print(f"  3. Choose merge strategy:")
+        print(f"     - Merge locally: git merge <branch>")
+        print(f"     - Create PR: gh pr create")
+        print(f"  4. Clean up worktree when done:")
+        print(f"     git worktree remove .worktrees/<branch>")
+    else:
+        print(f"\nNote: Worktree cleanup skipped (--no-cleanup flag)")
+
+
 
 def main():
     """主函数"""
@@ -159,6 +213,18 @@ def main():
     parser_start = subparsers.add_parser("start-task", help="Start working on a task")
     parser_start.add_argument("task_id", help="Task ID (e.g., TASK-001)")
 
+    # update-task
+    parser_update = subparsers.add_parser("update-task", help="Update task status or add notes")
+    parser_update.add_argument("task_id", help="Task ID (e.g., TASK-001)")
+    parser_update.add_argument("--status", help="Update status (e.g., 'In Progress', 'Done')")
+    parser_update.add_argument("--step", type=int, help="Update current step number")
+    parser_update.add_argument("--note", help="Add a note to the task")
+
+    # complete-task
+    parser_complete = subparsers.add_parser("complete-task", help="Mark task as complete and archive")
+    parser_complete.add_argument("task_id", help="Task ID (e.g., TASK-001)")
+    parser_complete.add_argument("--no-cleanup", action="store_true", help="Skip worktree cleanup prompt")
+
     args = parser.parse_args()
 
     if args.command == "create-task":
@@ -169,6 +235,10 @@ def main():
         cmd_show_task(args)
     elif args.command == "start-task":
         cmd_start_task(args)
+    elif args.command == "update-task":
+        cmd_update_task(args)
+    elif args.command == "complete-task":
+        cmd_complete_task(args)
     else:
         parser.print_help()
 

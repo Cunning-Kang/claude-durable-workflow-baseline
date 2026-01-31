@@ -202,3 +202,68 @@ completed_at: null
         content = re.sub(r"^updated_at:\s*.+$", f"updated_at: {now}", content, flags=re.MULTILINE)
 
         task_file.write_text(content)
+
+    def add_task_note(self, task_id: str, note: str):
+        """在任务的 Notes section 添加备注"""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        task_file = Path(task["file"])
+        content = task_file.read_text()
+
+        # 找到 Notes section 并添加备注
+        # 在 "### 9. Notes" 之后的 "- <上下文..." 之前添加
+        notes_marker = "### 9. Notes（备注）"
+        if notes_marker in content:
+            # 在 "- <上下文..." 之前插入
+            placeholder = "- <上下文、决策、外部参考链接等>"
+            if placeholder in content:
+                note_entry = f"- {note}\n{placeholder}"
+                content = content.replace(placeholder, note_entry)
+            else:
+                # 如果没有 placeholder，在 section 后添加
+                content = content.replace(
+                    notes_marker,
+                    f"{notes_marker}\n- {note}"
+                )
+        else:
+            # 如果没有 Notes section，追加到文件末尾
+            content += f"\n\n### Notes\n- {note}\n"
+
+        task_file.write_text(content)
+
+    def complete_task(self, task_id: str):
+        """完成任务（标记为 Done 并归档）"""
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        task_file = Path(task["file"])
+        filename = task_file.name
+
+        # 更新任务状态
+        now = datetime.now().strftime("%Y-%m-%d")
+        self.update_task(
+            task_id,
+            status="Done",
+            completed_at=now
+        )
+
+        # 创建 completed 目录
+        completed_dir = self.tasks_dir / "completed"
+        completed_dir.mkdir(exist_ok=True)
+
+        # 移动任务文件到 completed/
+        new_path = completed_dir / filename
+        task_file.rename(new_path)
+
+        # 更新 _index.json
+        index = self._read_index()
+        if "completed_tasks" not in index:
+            index["completed_tasks"] = {}
+        index["completed_tasks"][task_id] = {
+            "completed_at": now,
+            "file": str(new_path.relative_to(self.tasks_dir.parent))
+        }
+        self._write_index(index)
