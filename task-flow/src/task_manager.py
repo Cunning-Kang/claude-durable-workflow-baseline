@@ -60,6 +60,11 @@ class TaskManager:
         now = datetime.now().strftime("%Y-%m-%d")
         relative_path = f"docs/tasks/{filename}"
 
+        # 自动检测 CI 命令
+        from ci_detector import detect_ci_command
+        project_root = Path.cwd()
+        ci_command = detect_ci_command(project_root)
+
         return f"""---
 id: {task_id}
 title: {title}
@@ -97,7 +102,7 @@ completed_at: null
 - 代码路径：
 - 外部依赖与版本：
 - 统一质量入口：
-  - `# 请配置 CI 命令`
+  - `{ci_command}`
 - 兼容性要求：
 - 禁止事项：
 
@@ -113,7 +118,7 @@ completed_at: null
 
 ### 6. Quality Gates（质量检查）
 ```bash
-# 请配置 CI 命令
+{ci_command}
 ```
 
 ### 7. Risks & Rollback（风险与回滚）
