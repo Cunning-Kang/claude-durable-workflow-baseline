@@ -43,3 +43,10 @@ worktrees/
 
 # Logs
 *.log
+
+# Claude Code
+.claude/
+
+# Backlog artifacts
+backlog/tasks/
+backlog/drafts/
