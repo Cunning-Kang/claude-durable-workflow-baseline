@@ -7,11 +7,8 @@ from execution_engine import (
     ExecutionController,
     DependencyResolver,
     TaskDispatcher,
-    TaskExecutor,
     SubagentPool,
-    SubagentResult,
-    ExecutionEngine,
-    ExecutorResult
+    ExecutionEngine
 )
 
 
@@ -52,20 +49,6 @@ class TestModuleExports:
         from execution_engine import ExecutionEngine as ImportedExecutionEngine
         assert ImportedExecutionEngine is ExecutionEngine
 
-    def test_task_executor_is_exported(self):
-        """Test TaskExecutor can be imported from execution_engine."""
-        from execution_engine import TaskExecutor as ImportedTaskExecutor
-        assert ImportedTaskExecutor is TaskExecutor
-
-    def test_subagent_result_is_exported(self):
-        """Test SubagentResult can be imported from execution_engine."""
-        from execution_engine import SubagentResult as ImportedSubagentResult
-        assert ImportedSubagentResult is SubagentResult
-
-    def test_executor_result_is_exported(self):
-        """Test ExecutorResult can be imported from execution_engine."""
-        from execution_engine import ExecutorResult as ImportedExecutorResult
-        assert ImportedExecutorResult is ExecutorResult
 
     def test_all_exports_in___all__(self):
         """Test all exported components are listed in __all__."""
@@ -75,11 +58,8 @@ class TestModuleExports:
             "ExecutionController",
             "DependencyResolver",
             "TaskDispatcher",
-            "TaskExecutor",
             "SubagentPool",
-            "SubagentResult",
-            "ExecutionEngine",
-            "ExecutorResult"
+            "ExecutionEngine"
         ]
         assert set(execution_engine.__all__) == set(expected_exports)
 
@@ -90,22 +70,16 @@ class TestModuleExports:
             ExecutionController,
             DependencyResolver,
             TaskDispatcher,
-            TaskExecutor,
             SubagentPool,
-            SubagentResult,
-            ExecutionEngine,
-            ExecutorResult
+            ExecutionEngine
         )
         # If we get here without ImportError, the test passes
         assert StateTracker is not None
         assert ExecutionController is not None
         assert DependencyResolver is not None
         assert TaskDispatcher is not None
-        assert TaskExecutor is not None
         assert SubagentPool is not None
-        assert SubagentResult is not None
         assert ExecutionEngine is not None
-        assert ExecutorResult is not None
 
 
 class TestTaskToDictConversion:
