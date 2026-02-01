@@ -1,154 +1,179 @@
-# Task-Flow + Superpowers Integration Implementation Plan
+# Task-Flow + Superpowers Integration Implementation Plan (Executable)
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** 构建完整的 LLM 友好任务自动化系统，实现 task-flow（任务持久化）与 superpowers（工作流编排）的松耦合集成，支持从 Plan Packet → 计划生成 → 分批执行 → 状态持久化 → 回滚/恢复 的闭环。
+**Goal:** 在不依赖外部服务的前提下，把 task-flow（任务持久化/协议）与 superpowers（工作流编排）通过文件系统协议松耦合起来，并实现一个可测试、可演进的 Execution Engine：从计划生成 → 依赖解析 → 分批执行（可替换为真实 subagent）→ 状态持久化 → 错误恢复/合并回收 的闭环。
 
 **Architecture:**
-- **Layer 1（持久化）**：task-flow 负责任务 CRUD、Plan Packet 存储、YAML frontmatter 作为协议边界
-- **Layer 2（编排）**：superpowers skills 负责任务级别编排（brainstorming / writing-plans / executing-plans / worktrees）
-- **Layer 3（执行）**：Execution Engine 负责“把计划执行起来”，通过可测试的抽象（TaskDispatcher / SubagentPool）连接到真实子代理执行（后续阶段）
+- **Layer 1（持久化/协议边界）**：`docs/tasks/*.md` YAML frontmatter 是系统契约；`TaskManager` 仅负责 CRUD、索引与字段更新。
+- **Layer 2（编排）**：superpowers skills 决定“何时做什么”（brainstorming/writing-plans/executing-plans/worktrees），不把业务逻辑塞进 CLI。
+- **Layer 3（执行）**：Execution Engine 只做“把 plan 变成执行结果”：`DependencyResolver` 选 ready → `TaskDispatcher` 分派 → `SubagentPool` 执行（当前 stub，未来替换为真实 subagent）→ `StateTracker` 写回 frontmatter。
 
 **Tech Stack:**
 - Python 3.10（mise）
-- pytest（使用 `task-flow/pytest.ini`，其中 `pythonpath = src`）
+- pytest（必须用 `task-flow/pytest.ini`，其中 `pythonpath = src`）
 - YAML frontmatter（任务文件协议）
 - Git worktree（隔离开发）
 
 ---
 
-## 当前进度（截至 2026-02-01）
+## 0. 关键事实（执行前必须理解）
 
-本计划最初版本在 Task 5-65 处为“简化占位”，无法直接被 executing-plans 按步骤执行；且历史实现存在“全局 skills 路径 vs repo 路径”双源写入。现已完成一次基线收敛：
+### 0.1 单一事实来源（Source of Truth）策略
 
-### 已完成（在 repo 中可复现）
+历史上曾在两个位置直接读写：
+- repo：`/Users/cunning/Workspaces/heavy/skills-creation/task-flow/`
+- 全局 skills：`/Users/cunning/.claude/skills/task-flow/`
 
-**Plan Generator**
-- analyzer / project_scanner / task_breakdown / path_inference / plan_builder 已实现，并有对应测试。
+**本计划强制要求：**
+1) **开发与测试只在 repo/worktree 内进行**（即 `skills-creation/` 下的 worktree）
+2) **全局 skills 只作为“部署目标”**（用 rsync 从 repo 同步过去）
 
-**Execution Engine（核心组件）**
-- ExecutionController / DependencyResolver / StateTracker / ExecutionEngine 已实现并有测试。
+### 0.2 质量入口（唯一可信）
 
-**task-flow（持久化与工具链）**
-- cli / task_manager 及 git_operations / merge_oracle / task_state_machine / error_recovery 已实现，并包含 unit + e2e 测试。
-
-### 当前可用的质量入口
-
-- **推荐全量验证命令（在 repo 根目录）**：
-  - `pytest -q -c task-flow/pytest.ini`
-
----
-
-## 本次补全的 Implementation Plan（可执行版本）
-
-> 本段开始，所有任务都按“可执行的最小步骤”编排，满足 executing-plans 所需粒度：
-> - 每个 Task 包含：写 failing test → 运行确认 RED → 写最小实现 → 运行确认 GREEN → 必要重构 → 提交
-
-### Task 0: 基线收敛（全局 skills ↔ repo）
-
-**Goal:** 让 `task-flow/` 与 `/Users/cunning/.claude/skills/task-flow/` 在代码与测试层面一致，避免“双源漂移”。
-
-**Files:**
-- Modify: `.gitignore`（确保 `.worktrees/` 被忽略）
-- Sync: `task-flow/`（从全局 skills 合并补全到 repo）
-
-**Step 1: 预览差异（dry-run）**
-
-Run:
-```bash
-rsync -avn --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='.git/' --exclude='.DS_Store' \
-  "/Users/cunning/.claude/skills/task-flow/" \
-  "task-flow/" | sed -n '1,200p'
-```
-Expected: 输出将新增/覆盖的文件清单（不删除 repo 现有额外文件）。
-
-**Step 2: 执行合并补全同步**
-
-Run:
-```bash
-rsync -av --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='.git/' --exclude='.DS_Store' \
-  "/Users/cunning/.claude/skills/task-flow/" \
-  "task-flow/"
-```
-Expected: 同步完成。
-
-**Step 3: 全量测试验证**
-
-Run:
+在 repo 根目录运行：
 ```bash
 pytest -q -c task-flow/pytest.ini
 ```
-Expected: PASS（允许少量 skip，但不得失败）。
 
-**Step 4: 提交基线收敛**
+不要用 `pytest -q`（会遇到 import path/collect 差异）。
+
+---
+
+## 1. 当前代码库现状（截至本计划编写时）
+
+### 1.1 task-flow 核心
+- `task-flow/src/task_manager.py`：任务文件 CRUD + frontmatter 字段更新 + 归档
+- `task-flow/src/cli.py`：create/list/show/start/update/complete 入口
+- `task-flow/src/git_operations.py`：git 操作抽象（worktree/cleanup/push 等）
+- `task-flow/src/merge_oracle.py`：冲突风险检测 + smart merge（面向任务文件）
+- `task-flow/src/task_state_machine.py`：状态机（To Do/In Progress/Done/Blocked/Cancelled）
+- `task-flow/src/error_recovery.py`：重试与统计
+
+### 1.2 Plan Generator
+- `task-flow/src/plan_generator/*`：可从 Plan Packet / 项目扫描生成计划产物（现有测试覆盖）
+
+### 1.3 Execution Engine（已存在但需要“闭环接线”）
+- `task-flow/src/execution_engine/controller.py`：批处理/检查点逻辑（当前为模拟执行）
+- `task-flow/src/execution_engine/dependency_resolver.py`：ready tasks + cycle detection
+- `task-flow/src/execution_engine/state_tracker.py`：执行状态写回 frontmatter
+- `task-flow/src/execution_engine/engine.py`：当前仅做 ready 选择 + 标记 IN_PROGRESS（需要升级为闭环）
+
+此外：
+- `task-flow/src/execution_engine/task_dispatcher.py`：存在（分派并更新 TaskStatus）
+- `task-flow/src/execution_engine/subagent_pool/pool.py`：存在（最小可用 stub，执行 callable）
+
+---
+
+## 2. Implementation Plan（严格可执行，按 TDD 拆成“咬一口大小”步骤）
+
+> 执行本计划时：
+> - 每个 Task 结束都要 commit
+> - 每个 Task 的每一步都能在 2-5 分钟内完成
+> - 严格 RED→GREEN→REFACTOR
+
+### Task 1: 基线与环境校验（在 worktree 中开始前）
+
+**Files:**
+- Modify: `.gitignore`（必要时）
+
+**Step 1: 确认 worktree 目录存在且被忽略**
 
 Run:
 ```bash
-git add task-flow/
-git commit -m "chore(task-flow): sync repo with global skill implementation"
+ls -d .worktrees 2>/dev/null || mkdir -p .worktrees
+
+git check-ignore -v .worktrees/ || true
+```
+Expected:
+- `.worktrees/` 存在
+- `git check-ignore -v` 能输出来源规则（例如 `.gitignore:...:.worktrees/`）
+
+**Step 2: 创建/进入开发 worktree（如果尚未建立）**
+
+Run:
+```bash
+git worktree add ".worktrees/feat-execution-engine-remaining" -b "feat/execution-engine-remaining"
+```
+Expected: worktree 创建成功。
+
+**Step 3: worktree 基线测试**
+
+Run:
+```bash
+cd .worktrees/feat-execution-engine-remaining
+pytest -q -c task-flow/pytest.ini
+```
+Expected: PASS。
+
+**Step 4: Commit（仅当 Task 1 有改动）**
+
+Run:
+```bash
+git add .gitignore
+git commit -m "chore: ignore worktree directories"
 ```
 
 ---
 
-### Task 1: 建立 Execution Engine 的“执行闭环”接口（把 Dispatcher/Pool 接入 Engine）
+### Task 2: ExecutionEngine 执行闭环（把 Dispatcher + Pool + StateTracker 接入 Engine）
 
-**Goal:** 让 `ExecutionEngine.execute_next_batch()` 不再只做状态标记，而是：
-- 通过 `DependencyResolver` 获取 ready tasks
-- 通过 `TaskDispatcher` 分派给执行器
-- 通过 `SubagentPool`（当前为本地 callable 执行占位）运行任务
-- 通过 `StateTracker` 持久化任务执行状态（running/completed/failed + timestamps/duration）
+**Goal:** 让 `ExecutionEngine.execute_next_batch()` 真正执行 ready tasks：
+- 依赖解析（ready selection）
+- 分派执行（dispatcher）
+- 执行抽象（pool，当前 stub）
+- 状态持久化（state_tracker）
 
-**Design Notes（约束）**
-- 当前阶段不做真实 Claude subagent 调用；使用 `SubagentPool.submit()` 执行本地 callable
-- 任务执行的“callable”从何而来：先用简单策略（例如 task.metadata["callable"] 或注入 executor_factory），保持可测试
-- 不做 CLI 集成（放到后续 Task）
+**关键设计约束（必须遵守）**
+- 当前阶段不调用真实 Claude subagent；只用本地 callable（通过依赖注入/metadata）
+- 不修改 CLI 行为（CLI 接入放到后续 Task）
+- 最小化对现有测试的破坏：新增测试为主，必要时小范围调整
 
 **Files:**
-- Create: `task-flow/src/execution_engine/task_dispatcher.py`（若尚未存在）
-- Create: `task-flow/src/execution_engine/subagent_pool/pool.py`（若尚未存在）
 - Modify: `task-flow/src/execution_engine/engine.py`
-- Modify: `task-flow/src/execution_engine/__init__.py`（导出新增组件，按现有测试要求更新/扩展）
-- Test: `task-flow/tests/execution_engine/test_engine_execution_loop.py`（新增）
+- Test (Create): `task-flow/tests/execution_engine/test_engine_execution_loop.py`
 
-#### Step 1: 写 failing test（ExecutionEngine 闭环）
+#### Step 1: 写 failing test（闭环最小行为）
 
-File: `task-flow/tests/execution_engine/test_engine_execution_loop.py`
+Create file: `task-flow/tests/execution_engine/test_engine_execution_loop.py`
 
 ```python
-import pytest
+from __future__ import annotations
+
 from pathlib import Path
 
 from plan_generator.types import ExecutionPlan, Task, TaskStatus
 
 
-def test_engine_executes_ready_tasks_and_updates_state(tmp_path: Path):
-    """Engine should dispatch + execute ready tasks and update Task + StateTracker."""
+def test_engine_executes_ready_tasks_and_updates_frontmatter(tmp_path: Path):
+    """Engine should execute ready tasks and persist execution_state to task files."""
     from execution_engine.engine import ExecutionEngine
 
-    tasks = [
-        Task(id="1", title="T1", description="D1"),
-        Task(id="2", title="T2", description="D2", dependencies=["1"]),
-    ]
-    plan = ExecutionPlan(tasks=tasks)
+    # Task 2 depends on Task 1
+    t1 = Task(id="1", title="T1", description="D1", metadata={"callable": lambda: "ok"})
+    t2 = Task(id="2", title="T2", description="D2", dependencies=["1"], metadata={"callable": lambda: "ok"})
+    plan = ExecutionPlan(tasks=[t1, t2])
 
-    # Prepare task files for state tracking
+    # Create task files for StateTracker
     for tid in ["1", "2"]:
         (tmp_path / f"{tid}.md").write_text("---\nexecution_state: {}\n---\n")
 
     engine = ExecutionEngine(plan, tmp_path)
 
-    # Execute first batch: only task 1 is ready
     r1 = engine.execute_next_batch()
     assert r1["tasks_executed"] == 1
-    assert tasks[0].status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
-    assert tasks[1].status == TaskStatus.PENDING
+    assert t1.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
+    assert t2.status == TaskStatus.PENDING
 
-    # If task 1 completed, task 2 becomes ready and can run
-    if tasks[0].status == TaskStatus.COMPLETED:
+    # If t1 completed, t2 becomes ready
+    if t1.status == TaskStatus.COMPLETED:
         r2 = engine.execute_next_batch()
         assert r2["tasks_executed"] == 1
-        assert tasks[1].status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
+        assert t2.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
 ```
+
+> 说明：本测试强制定义“callable 来源”= `Task.metadata["callable"]`。
+> 如果未来你决定改成 executor_factory 注入，那么这个测试就是我们必须更新的契约。
 
 #### Step 2: 运行测试确认 RED
 
@@ -156,21 +181,28 @@ Run:
 ```bash
 pytest -q -c task-flow/pytest.ini task-flow/tests/execution_engine/test_engine_execution_loop.py
 ```
-Expected: FAIL（Engine 目前未接入 dispatcher/pool，不会真的把 task 推到 completed/failed）。
+Expected: FAIL（Engine 尚未真正执行任务/写回状态）。
 
-#### Step 3: 最小实现（Engine 接入 dispatcher/pool）
+#### Step 3: 最小实现（Engine 执行闭环）
 
-Modify: `task-flow/src/execution_engine/engine.py`
+Modify file: `task-flow/src/execution_engine/engine.py`
 
-实现要点：
-- `ExecutionEngine.__init__` 增加 dispatcher/pool 初始化（可 lazy）
-- `execute_next_batch`：
-  - sync resolver
-  - ready_ids
-  - 交给 dispatcher 执行 batch，并根据 executor 结果更新 TaskStatus
-  - 对每个任务：start_task/complete_task 或记录 failed
+实现要点（最小可测）：
+1) `execute_next_batch()` 选 ready tasks（保持现状的 resolver 同步与筛选）
+2) 为 batch 中每个 task：
+   - 用 `StateTracker(task_file).start_task(task.id, task.title)` 写 running
+   - 取 `callable = task.metadata.get("callable")`
+   - 若 callable 不存在：将 task 标记 FAILED（并写回 state）
+   - 否则用 `SubagentPool.submit(task.id, callable)` 执行
+   - 根据 result.ok 更新 TaskStatus（COMPLETED/FAILED）
+   - 对 COMPLETED 调 `complete_task`
+   - 对 FAILED 用 `update_execution_state({"status": "failed", "error": ...})`（如果不想扩展 StateTracker API，就直接用 update_execution_state）
+3) 返回统计 dict：
+   - `tasks_executed` = 实际 dispatch 数
+   - `batch_size` = 同上
+   - `total_completed` = plan 中 COMPLETED 数
 
-> 注意：先实现“最小可测闭环”，不要提前做真实 subagent。
+> 切记：不要引入新的抽象层（YAGNI）。先让测试绿。
 
 #### Step 4: 运行测试确认 GREEN
 
@@ -178,7 +210,7 @@ Run:
 ```bash
 pytest -q -c task-flow/pytest.ini task-flow/tests/execution_engine/test_engine_execution_loop.py
 ```
-Expected: PASS
+Expected: PASS。
 
 #### Step 5: 全量回归
 
@@ -186,40 +218,102 @@ Run:
 ```bash
 pytest -q -c task-flow/pytest.ini
 ```
-Expected: PASS
+Expected: PASS。
 
-#### Step 6: 提交
+#### Step 6: Commit
 
 Run:
 ```bash
-git add task-flow/src/execution_engine/ task-flow/tests/execution_engine/
-git commit -m "feat(execution-engine): wire dispatcher and pool into engine"
+git add task-flow/src/execution_engine/engine.py task-flow/tests/execution_engine/test_engine_execution_loop.py
+
+git commit -m "$(cat <<'EOF'
+feat(execution-engine): execute ready tasks via pool and persist state
+
+Wire ExecutionEngine to run ready tasks using SubagentPool callables and persist execution_state through StateTracker.
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
 ```
 
 ---
 
-### Task 2: 扩展 StateTracker 支持失败状态（可选）
+### Task 3: 导出与接口整理（仅在需要时）
 
-如果闭环测试需要记录失败状态到 frontmatter（status: failed / error），再做此任务。
+**Goal:** 保持导入方式清晰一致，不破坏既有 `test_exports_and_types.py` 的约束。
+
+**Files:**
+- Modify (Optional): `task-flow/src/execution_engine/__init__.py`
+- Test (Optional): `task-flow/tests/execution_engine/test_exports_and_types.py`
+
+**Step 1: 如果需要导出新组件（TaskDispatcher/SubagentPool），先写 failing test**
+
+在 `test_exports_and_types.py` 中新增断言（先 FAIL）。
+
+**Step 2: 实现导出**
+
+在 `execution_engine/__init__.py` 中加入 export，并同步更新 test 的 expected __all__。
+
+**Step 3: 全量回归 + Commit**
 
 ---
 
-### Task 3: CLI/TaskManager 接入（可选，后续里程碑）
+### Task 4（可选里程碑）: CLI 接入 ExecutionEngine 的“执行下一批”命令
 
-保持为可选：在 Engine 闭环稳定后再引入用户接口。
+> 仅当你决定把 ExecutionEngine 暴露为 CLI 子命令时执行。
+
+**Files:**
+- Modify: `task-flow/src/cli.py`
+- Test: `task-flow/tests/test_cli.py`
+
+目标：新增一个 `execute-next-batch TASK-XXX` 或 `run TASK-XXX` 命令（具体命名先在 brainstorming 阶段定）。
 
 ---
 
-## Worktree 工作流（强制）
+### Task 5: 部署同步（repo → 全局 skills）
 
-- 在 main 完成“基线收敛提交”后，再在 worktree 分支继续开发。
-- 每次实现前运行：`pytest -q -c task-flow/pytest.ini` 确认基线干净。
+**Goal:** 把已验证通过的 repo 版本同步到 `/Users/cunning/.claude/skills/task-flow/` 供 Claude Code 实际调用。
+
+**Step 1: 预览（dry-run）**
+
+Run:
+```bash
+rsync -avn --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='.git/' --exclude='.DS_Store' \
+  "task-flow/" \
+  "/Users/cunning/.claude/skills/task-flow/" | sed -n '1,200p'
+```
+Expected: 只看到预期的新增/覆盖文件。
+
+**Step 2: 同步**
+
+Run:
+```bash
+rsync -av --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='.git/' --exclude='.DS_Store' \
+  "task-flow/" \
+  "/Users/cunning/.claude/skills/task-flow/"
+```
+
+**Step 3: 在全局 skills 目录跑一次关键测试（可选）**
+
+Run:
+```bash
+cd /Users/cunning/.claude/skills/task-flow
+pytest -q
+```
+Expected: PASS（如果环境差异导致失败，必须先回到 repo 查清原因再处理）。
 
 ---
 
-## Risks & Rollback
+## 3. 执行交接（选择一种方式执行本计划）
 
-- Risk: 全局 skills 与 repo 双源漂移
-  - Rollback: 以本 Task 0 的“基线收敛提交”为锚点；后续所有改动必须先进入 repo，再按部署节奏同步到全局 skills。
-- Risk: Engine 闭环引入过度抽象
-  - Rollback: 保持 dispatcher/pool 为最小接口；真实 subagent 执行放到后续里程碑。
+Plan complete and saved to `docs/plans/2026-02-01-task-flow-superpowers-integration.md`.
+
+Two execution options:
+
+1) **Subagent-Driven（本会话）**
+- 使用 `@superpowers:subagent-driven-development`
+- 每个 Task 用独立 subagent 实现，主线程 review、确保 TDD 与提交节奏
+
+2) **Parallel Session（新会话）**
+- 在 worktree 中开启新会话
+- 使用 `@superpowers:executing-plans` 按 Task 批次执行并在 checkpoint 汇报
