@@ -317,3 +317,159 @@ Two execution options:
 2) **Parallel Session（新会话）**
 - 在 worktree 中开启新会话
 - 使用 `@superpowers:executing-plans` 按 Task 批次执行并在 checkpoint 汇报
+
+---
+
+## 4. Execution State 写回规范（默认版）
+
+## 1. 目标与范围
+**目标**
+定义 `execution_state` 在任务文件 frontmatter 中的语义、字段与写入时机，并澄清 `StateTracker`、`ExecutionEngine`、`ExecutionController` 的职责边界与 `TaskStatus` 的关系。
+
+**非目标**
+- 不定义 CLI 行为或命令行接口
+- 不扩展新的状态字段或引入新依赖
+- 不调整现有代码实现（仅说明现状与约束）
+
+---
+
+## 2. 参与组件与职责
+- **StateTracker**：读写任务文件 YAML frontmatter，持久化 `execution_state`。
+  参考：`task-flow/src/execution_engine/state_tracker.py:23-198`
+
+- **ExecutionController**：负责批次大小与检查点策略，仅在内存中更新 `Task.status`，不写文件。
+  参考：`task-flow/src/execution_engine/controller.py:7-125`
+
+- **ExecutionEngine**：协调依赖解析与批次选择；当前实现只在任务已为 `COMPLETED` 时调用 `StateTracker.complete_task`，不调用 `start_task`。
+  参考：`task-flow/src/execution_engine/engine.py:103-157`
+
+- **TaskStatus**：执行计划内任务状态枚举（`pending/in_progress/completed/failed/skipped`）。
+  参考：`task-flow/src/plan_generator/types.py:8-15`
+
+---
+
+## 3. `execution_state` 字段语义
+
+> **默认字段范围：完整列出所有已出现/已实现字段。**
+> **状态字段只使用 `execution_state.status`，不使用 `execution_status`。**
+
+### 3.1 核心字段
+| 字段 | 类型 | 写入者 | 写入时机 | 说明 |
+|---|---|---|---|---|
+| `status` | string | `StateTracker` 或调用方 | `start_task/complete_task/update_execution_state` | 约定值：`running/completed/failed` |
+| `started_at` | ISO 8601 string | `start_task` | 任务开始时 | 由 `datetime.now().isoformat()` 写入 |
+| `completed_at` | ISO 8601 string | `complete_task` | 任务完成时 | 若无 `started_at` 也会写入 |
+| `duration` | number \| null | `complete_task` | 任务完成时 | 秒数；解析失败时为 `None` |
+| `task_id` | string | `start_task` | 任务开始时 | 标识任务 |
+| `task_title` | string | `start_task` | 任务开始时 | 任务标题 |
+
+### 3.2 进度与统计字段（默认补全）
+由 `get_state` 在读取时补默认值：
+`current_step`, `total_steps`, `completed_tasks`, `failed_tasks`
+参考：`task-flow/src/execution_engine/state_tracker.py:146-179`
+
+### 3.3 扩展字段
+`update_execution_state` 允许写入任意键值（例如 `error`）。
+参考：`task-flow/src/execution_engine/state_tracker.py:181-198`
+
+---
+
+## 4. 写入时机与更新规则
+
+### 4.1 `start_task(task_id, title)`
+- 写入 `status = "running"`、`started_at`、`task_id`、`task_title`
+- 清理 `completed_at` 和 `duration`（用于重启场景）
+- 参考：`task-flow/src/execution_engine/state_tracker.py:81-105`
+
+### 4.2 `complete_task(task_id)`
+- 写入 `status = "completed"`
+- 计算并写入 `completed_at` 与 `duration`
+- 若没有 `started_at`，则 `duration = 0`
+- 参考：`task-flow/src/execution_engine/state_tracker.py:108-143`
+
+### 4.3 `update_execution_state(state: dict)`
+- 合并写入 `execution_state` 任意字段
+- 用于进度更新与错误信息
+- 参考：`task-flow/src/execution_engine/state_tracker.py:181-198`
+
+### 4.4 文件不存在或 frontmatter 异常
+- 任务文件不存在：不写入
+- YAML 解析异常或无 frontmatter：不写入
+- 参考：`task-flow/src/execution_engine/state_tracker.py:35-79`
+
+---
+
+## 5. `execution_state.status` 与 `TaskStatus` 的关系
+
+- **`TaskStatus`** 是执行计划内的**工作流状态**，驱动依赖解析与批次执行。
+  参考：`task-flow/src/plan_generator/types.py:8-15`
+
+- **`execution_state.status`** 是任务文件里持久化的**执行运行状态**（运行态/完成态/失败态）。
+
+- **二者不自动同步**：
+  当前 `ExecutionEngine.execute_next_batch` 只会在 `task.status == COMPLETED` 时写回 `execution_state` 完成态。
+  参考：`task-flow/src/execution_engine/engine.py:103-157`
+
+**推荐映射（由调用方自行决定）：**
+- `running` ↔ `TaskStatus.IN_PROGRESS`
+- `completed` ↔ `TaskStatus.COMPLETED`
+- `failed` ↔ `TaskStatus.FAILED`
+
+---
+
+## 6. `error` 字段语义（默认）
+- `error` 为可选字符串，用于记录失败原因
+- 不区分来源（例如 callable 缺失 / 执行异常），由调用方写入
+- 写入方式：`update_execution_state({"status": "failed", "error": "..."})`
+
+---
+
+## 7. 示例 frontmatter（默认）
+
+**运行态示例**
+```yaml
+---
+execution_state:
+  status: "running"
+  started_at: "2026-02-01T12:00:00.000000"
+  task_id: "1"
+  task_title: "T1"
+  current_step: 0
+  total_steps: 0
+  completed_tasks: []
+  failed_tasks: []
+---
+```
+
+**完成态示例**
+```yaml
+---
+execution_state:
+  status: "completed"
+  started_at: "2026-02-01T12:00:00.000000"
+  completed_at: "2026-02-01T12:05:30.000000"
+  duration: 330.0
+  task_id: "1"
+  task_title: "T1"
+  current_step: 3
+  total_steps: 3
+  completed_tasks: ["1"]
+  failed_tasks: []
+---
+```
+
+---
+
+## 8. 约束与已知行为
+- 不会创建新文件；文件缺失时不写入
+- 仅支持标准 YAML frontmatter（按 `---` 分隔）
+- 解析或保存失败会静默跳过
+  参考：`task-flow/src/execution_engine/state_tracker.py:35-79`
+
+---
+
+## 9. 参考实现（源码位置）
+- `StateTracker`：`task-flow/src/execution_engine/state_tracker.py:23-198`
+- `ExecutionController`：`task-flow/src/execution_engine/controller.py:7-125`
+- `ExecutionEngine.execute_next_batch`：`task-flow/src/execution_engine/engine.py:103-157`
+- `TaskStatus`：`task-flow/src/plan_generator/types.py:8-15`
