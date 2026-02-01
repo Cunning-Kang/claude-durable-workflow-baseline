@@ -5,7 +5,13 @@ from plan_generator.types import Task, ExecutionPlan, TaskStatus
 from execution_engine import (
     StateTracker,
     ExecutionController,
-    DependencyResolver
+    DependencyResolver,
+    TaskDispatcher,
+    TaskExecutor,
+    SubagentPool,
+    SubagentResult,
+    ExecutionEngine,
+    ExecutorResult
 )
 
 
@@ -31,10 +37,50 @@ class TestModuleExports:
         )
         assert ImportedDependencyResolver is DependencyResolver
 
+    def test_task_dispatcher_is_exported(self):
+        """Test TaskDispatcher can be imported from execution_engine."""
+        from execution_engine import TaskDispatcher as ImportedTaskDispatcher
+        assert ImportedTaskDispatcher is TaskDispatcher
+
+    def test_subagent_pool_is_exported(self):
+        """Test SubagentPool can be imported from execution_engine."""
+        from execution_engine import SubagentPool as ImportedSubagentPool
+        assert ImportedSubagentPool is SubagentPool
+
+    def test_execution_engine_is_exported(self):
+        """Test ExecutionEngine can be imported from execution_engine."""
+        from execution_engine import ExecutionEngine as ImportedExecutionEngine
+        assert ImportedExecutionEngine is ExecutionEngine
+
+    def test_task_executor_is_exported(self):
+        """Test TaskExecutor can be imported from execution_engine."""
+        from execution_engine import TaskExecutor as ImportedTaskExecutor
+        assert ImportedTaskExecutor is TaskExecutor
+
+    def test_subagent_result_is_exported(self):
+        """Test SubagentResult can be imported from execution_engine."""
+        from execution_engine import SubagentResult as ImportedSubagentResult
+        assert ImportedSubagentResult is SubagentResult
+
+    def test_executor_result_is_exported(self):
+        """Test ExecutorResult can be imported from execution_engine."""
+        from execution_engine import ExecutorResult as ImportedExecutorResult
+        assert ImportedExecutorResult is ExecutorResult
+
     def test_all_exports_in___all__(self):
         """Test all exported components are listed in __all__."""
         import execution_engine
-        expected_exports = ["StateTracker", "ExecutionController", "DependencyResolver"]
+        expected_exports = [
+            "StateTracker",
+            "ExecutionController",
+            "DependencyResolver",
+            "TaskDispatcher",
+            "TaskExecutor",
+            "SubagentPool",
+            "SubagentResult",
+            "ExecutionEngine",
+            "ExecutorResult"
+        ]
         assert set(execution_engine.__all__) == set(expected_exports)
 
     def test_can_import_all_components_simultaneously(self):
@@ -42,12 +88,24 @@ class TestModuleExports:
         from execution_engine import (
             StateTracker,
             ExecutionController,
-            DependencyResolver
+            DependencyResolver,
+            TaskDispatcher,
+            TaskExecutor,
+            SubagentPool,
+            SubagentResult,
+            ExecutionEngine,
+            ExecutorResult
         )
         # If we get here without ImportError, the test passes
         assert StateTracker is not None
         assert ExecutionController is not None
         assert DependencyResolver is not None
+        assert TaskDispatcher is not None
+        assert TaskExecutor is not None
+        assert SubagentPool is not None
+        assert SubagentResult is not None
+        assert ExecutionEngine is not None
+        assert ExecutorResult is not None
 
 
 class TestTaskToDictConversion:
