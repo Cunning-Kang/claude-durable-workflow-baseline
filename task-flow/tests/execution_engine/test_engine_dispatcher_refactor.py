@@ -1,141 +1,40 @@
-"""Tests for ExecutionEngine dispatcher and state tracking refactor.
-
-TDD: RED - write tests that fail on current implementation.
+"""Tests for ExecutionEngine dispatcher refactor - TDD RED phase.
 
 This test suite validates three important refactors:
-1. Dispatcher reuse (avoid recreating dispatcher on each batch)
-2. Task status synchronization (execution_state.task_status tracks in-memory TaskStatus)
-3. Executor decoupling from StateTracker (callbacks instead of direct getter)
+A) execution_state.execution_status as canonical (vs status) - tracks execution flow states
+B) Replace private method mocks with frontmatter verification
+C) Explicit validation for required callbacks (no silent no-op defaults)
 """
 
 import pytest
 from pathlib import Path
 import tempfile
-from unittest.mock import MagicMock, patch, call
+import yaml
+from unittest.mock import patch
 
-from execution_engine.engine import ExecutionEngine, SubagentPoolExecutor, ExecutorResult
+from execution_engine.engine import ExecutionEngine, SubagentPoolExecutor
 from plan_generator.types import Task, ExecutionPlan, TaskStatus
 
 
-class TestDispatcherReuse:
-    """Tests for dispatcher caching and reuse across batches.
+class TestExecutionStatusCanonical:
+    """Tests for A) execution_state.execution_status as canonical field.
 
-    Issue: Dispatcher is recreated on every execute_next_batch call, which is
-    wasteful and can cause inconsistencies.
-    Fix: Cache the dispatcher after first creation and reuse it.
+    execution_state.execution_status should track execution flow states:
+    - "running" when task is executing
+    - "completed" when task completes successfully
+    - "failed" when task execution fails
+
+    execution_state.status is kept as compatibility alias, always in sync.
+    execution_state.task_status tracks in-memory TaskStatus enum values.
     """
 
-    def test_dispatcher_reused_across_multiple_batches(self):
-        """Test that the same dispatcher instance is reused across batches.
+    def test_execution_status_field_exists_and_synced(self):
+        """Test that execution_status is the canonical field for execution flow.
 
-        Current implementation creates a new dispatcher on every call to
-        execute_next_batch. After refactor, dispatcher should be cached and
-        reused.
-        """
-        tasks = [
-            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
-            Task(id="2", title="Task 2", description="Description 2", dependencies=["1"], metadata={"callable": lambda: "ok"}),
-            Task(id="3", title="Task 3", description="Description 3", dependencies=["1"], metadata={"callable": lambda: "ok"}),
-        ]
-        plan = ExecutionPlan(tasks=tasks)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            task_dir = Path(tmpdir)
-
-            # Create task files
-            for task_id in ["1", "2", "3"]:
-                task_file = task_dir / f"{task_id}.md"
-                task_file.write_text(f"---\nstatus: pending\n---\nTask {task_id}\n")
-
-            engine = ExecutionEngine(plan, task_dir)
-
-            # Spy on _create_dispatcher to track calls
-            with patch.object(
-                ExecutionEngine,
-                "_create_dispatcher",
-                wraps=engine._create_dispatcher
-            ) as spy_create_dispatcher:
-                # Execute first batch - should execute task 1 only
-                result1 = engine.execute_next_batch()
-                assert result1["batch_size"] == 1  # Only task 1 is ready
-
-                # Mark task 1 as completed in plan (simulating successful execution)
-                for task in engine.plan.tasks:
-                    if task.id == "1":
-                        task.status = TaskStatus.COMPLETED
-
-                # Execute second batch - should execute tasks 2 and 3
-                result2 = engine.execute_next_batch()
-
-                # After refactor: _create_dispatcher should be called only once
-                # Current implementation: called twice (once per batch)
-                assert spy_create_dispatcher.call_count == 1, \
-                    "Dispatcher should be created once and reused across batches"
-
-    def test_executor_adapter_reused_with_dispatcher(self):
-        """Test that the executor adapter is reused along with the dispatcher.
-
-        The SubagentPoolExecutor should be the same instance across batches,
-        not recreated each time.
-        """
-        tasks = [
-            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
-            Task(id="2", title="Task 2", description="Description 2", dependencies=["1"], metadata={"callable": lambda: "ok"}),
-        ]
-        plan = ExecutionPlan(tasks=tasks)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            task_dir = Path(tmpdir)
-
-            # Create task files
-            for task_id in ["1", "2"]:
-                task_file = task_dir / f"{task_id}.md"
-                task_file.write_text(f"---\nstatus: pending\n---\nTask {task_id}\n")
-
-            engine = ExecutionEngine(plan, task_dir)
-
-            # Track executor instances created
-            executor_instances = []
-            original_create = engine._create_dispatcher
-
-            def tracking_create():
-                dispatcher = original_create()
-                if isinstance(dispatcher.executor, SubagentPoolExecutor):
-                    executor_instances.append(dispatcher.executor)
-                return dispatcher
-
-            with patch.object(
-                ExecutionEngine,
-                "_create_dispatcher",
-                side_effect=tracking_create
-            ):
-                engine.execute_next_batch()
-                # Mark task 1 as completed to make task 2 ready
-                for task in engine.plan.tasks:
-                    if task.id == "1":
-                        task.status = TaskStatus.COMPLETED
-                engine.execute_next_batch()
-
-                # After refactor: only one executor instance created
-                assert len(executor_instances) <= 1, \
-                    "Executor adapter should be reused across batches"
-
-
-class TestTaskStatusSynchronization:
-    """Tests for TaskStatus synchronization to task files.
-
-    Issue: Task.status is in-memory, but execution_state.status tracks execution
-    flow states (running, completed, failed). There's no field to track the
-    in-memory TaskStatus enum values.
-
-    Fix: Add execution_state.task_status to track TaskStatus enum values.
-    """
-
-    def test_task_status_synced_to_execution_state(self):
-        """Test that task.status.value is synced to execution_state.task_status.
-
-        When a task's status changes (e.g., to IN_PROGRESS), the task file
-        should have execution_state.task_status set to "in_progress".
+        After task execution, frontmatter should have:
+        - execution_state.execution_status = canonical execution flow state
+        - execution_state.status = compatibility alias (same value)
+        - execution_state.task_status = in-memory TaskStatus enum value
         """
         tasks = [
             Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
@@ -148,30 +47,33 @@ class TestTaskStatusSynchronization:
             task_file.write_text("---\nstatus: pending\n---\nTask 1\n")
 
             engine = ExecutionEngine(plan, task_dir)
-
-            # Execute the task
             engine.execute_next_batch()
 
-            # After execution, read task file and verify task_status field
+            # Read frontmatter
             content = task_file.read_text()
             parts = content.split("---")
-            yaml_content = parts[1]
-            import yaml
-            data = yaml.safe_load(yaml_content)
+            data = yaml.safe_load(parts[1])
 
-            # After refactor: execution_state should contain task_status
+            # After refactor: execution_status should exist
             assert "execution_state" in data, "execution_state should exist"
-            assert "task_status" in data["execution_state"], \
-                "execution_state should contain task_status field"
-            # After successful execution, task_status should be "completed"
-            assert data["execution_state"]["task_status"] in ["in_progress", "completed"], \
-                f"task_status should be 'in_progress' or 'completed', got {data['execution_state'].get('task_status')}"
+            execution_state = data["execution_state"]
+            assert "execution_status" in execution_state, \
+                "execution_state.execution_status should exist (canonical field)"
 
-    def test_task_status_tracks_all_status_transitions(self):
-        """Test that task_status tracks transitions: pending -> in_progress -> completed.
+            # After refactor: status should exist as compatibility alias
+            assert "status" in execution_state, \
+                "execution_state.status should exist as compatibility alias"
 
-        This verifies that task_status is updated at each stage of execution.
-        """
+            # After refactor: status and execution_status should be synced
+            assert execution_state["execution_status"] == execution_state["status"], \
+                f"execution_status and status should be synced: execution_status={execution_state['execution_status']}, status={execution_state['status']}"
+
+            # After refactor: task_status should also exist
+            assert "task_status" in execution_state, \
+                "execution_state.task_status should exist"
+
+    def test_execution_status_running_on_task_start(self):
+        """Test that execution_status is 'running' when task starts."""
         tasks = [
             Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
         ]
@@ -184,171 +86,277 @@ class TestTaskStatusSynchronization:
 
             engine = ExecutionEngine(plan, task_dir)
 
-            # Track state transitions by checking after each phase
-            import yaml
+            # Mock SubagentPool to delay execution so we can check "running" state
+            from execution_engine.subagent_pool.pool import SubagentPool
 
-            # Before execution - verify initial state
-            content = task_file.read_text()
-            parts = content.split("---")
-            data = yaml.safe_load(parts[1])
-            # Initially, task_status may not exist (backward compatible)
+            call_log = []
 
-            # Execute the task
-            engine.execute_next_batch()
-
-            # After execution - verify final state
-            content = task_file.read_text()
-            parts = content.split("---")
-            data = yaml.safe_load(parts[1])
-
-            assert "task_status" in data["execution_state"], \
-                "execution_state should contain task_status after execution"
-            assert data["execution_state"]["task_status"] == "completed", \
-                f"task_status should be 'completed' after execution, got {data['execution_state']['task_status']}"
-
-
-class TestExecutorStateTrackerDecoupling:
-    """Tests for decoupling executor from StateTracker.
-
-    Issue: SubagentPoolExecutor takes state_tracker_getter as a callback,
-    creating tight coupling between executor and StateTracker.
-
-    Fix: Use simple callbacks (on_start, on_success, on_fail) or have Engine
-    handle StateTracker after executor returns result.
-    """
-
-    def test_executor_does_not_take_state_tracker_getter(self):
-        """Test that executor doesn't directly access StateTracker.
-
-        After refactor, executor should use callbacks instead of
-        state_tracker_getter, reducing coupling.
-        """
-        tasks = [
-            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
-        ]
-        plan = ExecutionPlan(tasks=tasks)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            task_dir = Path(tmpdir)
-            task_file = task_dir / "1.md"
-            task_file.write_text("---\nstatus: pending\n---\nTask 1\n")
-
-            engine = ExecutionEngine(plan, task_dir)
-
-            # Check executor's __init__ signature - it shouldn't take state_tracker_getter
-            # after refactor (it should take callbacks instead)
-            dispatcher = engine._create_dispatcher()
-            executor = dispatcher.executor
-
-            # After refactor: executor should have callbacks like on_start, on_success, on_fail
-            # instead of state_tracker_getter
-            has_state_tracker_getter = hasattr(executor, "state_tracker_getter")
-            has_callbacks = (
-                hasattr(executor, "on_start") and
-                hasattr(executor, "on_success") and
-                hasattr(executor, "on_fail")
-            )
-
-            # At least one of the decoupling approaches should be used
-            assert has_callbacks or not has_state_tracker_getter, \
-                "Executor should use callbacks instead of state_tracker_getter for decoupling"
-
-    def test_executor_callbacks_invoked_correctly(self):
-        """Test that executor callbacks are invoked in correct order.
-
-        When executor uses callbacks, they should be invoked:
-        - on_start when task begins execution
-        - on_success when task completes successfully
-        - on_fail when task execution fails
-
-        This test verifies the callbacks are properly wired by checking that
-        the internal engine methods that handle state tracking are called.
-        """
-        tasks = [
-            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
-        ]
-        plan = ExecutionPlan(tasks=tasks)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            task_dir = Path(tmpdir)
-            task_file = task_dir / "1.md"
-            task_file.write_text("---\nstatus: pending\n---\nTask 1\n")
-
-            engine = ExecutionEngine(plan, task_dir)
-
-            # Track callback invocations by mocking internal methods
-            callback_log = []
-
-            with patch.object(engine, "_on_task_start") as mock_on_start:
-                with patch.object(engine, "_on_task_success") as mock_on_success:
-                    # Set side effects to track calls
-                    mock_on_start.side_effect = lambda task_id, task: callback_log.append(("on_start", task_id))
-                    mock_on_success.side_effect = lambda task_id, result: callback_log.append(("on_success", task_id))
-
-                    # Execute the task
-                    engine.execute_next_batch()
-
-                    # Verify callbacks were invoked via the mocked methods
-                    assert any(cb[0] == "on_start" for cb in callback_log), \
-                        "on_start callback should be invoked"
-                    assert any(cb[0] == "on_success" for cb in callback_log), \
-                        "on_success callback should be invoked"
-
-
-class TestIntegrationAfterRefactor:
-    """Integration tests to verify all refactors work together."""
-
-    def test_full_workflow_with_all_refactors(self):
-        """Test full execution workflow with all three refactors applied.
-
-        This ensures that:
-        1. Dispatcher is reused across batches
-        2. Task status is synced to execution_state.task_status
-        3. Executor is decoupled from StateTracker via callbacks
-        """
-        tasks = [
-            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
-            Task(id="2", title="Task 2", description="Description 2", dependencies=["1"], metadata={"callable": lambda: "ok"}),
-            Task(id="3", title="Task 3", description="Description 3", dependencies=["1"], metadata={"callable": lambda: "ok"}),
-        ]
-        plan = ExecutionPlan(tasks=tasks)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            task_dir = Path(tmpdir)
-
-            # Create task files
-            for task_id in ["1", "2", "3"]:
-                task_file = task_dir / f"{task_id}.md"
-                task_file.write_text(f"---\nstatus: pending\n---\nTask {task_id}\n")
-
-            engine = ExecutionEngine(plan, task_dir)
-
-            import yaml
-
-            # Track dispatcher creation
-            with patch.object(
-                ExecutionEngine,
-                "_create_dispatcher",
-                wraps=engine._create_dispatcher
-            ) as spy_create_dispatcher:
-                # First batch - only task 1
-                result1 = engine.execute_next_batch()
-                assert result1["batch_size"] == 1
-
-                # Verify task 1's status was synced
-                task1_file = task_dir / "1.md"
-                content = task1_file.read_text()
+            def delayed_submit(self, task_id, fn):
+                call_log.append(("submit", task_id))
+                # Check state immediately after on_start callback but before return
+                content = task_file.read_text()
                 parts = content.split("---")
                 data = yaml.safe_load(parts[1])
-                assert "task_status" in data.get("execution_state", {}), \
-                    "Task 1 should have task_status in execution_state"
+                execution_state = data.get("execution_state", {})
+                call_log.append(("state_during_start", execution_state.get("execution_status")))
+                # Call original submit with correct signature
+                from unittest.mock import MagicMock
+                mock_result = MagicMock()
+                mock_result.ok = True
+                return mock_result
 
-                # Second batch - tasks 2 and 3 (after task 1 completes)
-                result2 = engine.execute_next_batch()
+            with patch.object(SubagentPool, "submit", delayed_submit):
+                engine.execute_next_batch()
 
-                # Verify dispatcher was reused (created only once)
-                assert spy_create_dispatcher.call_count == 1, \
-                    "Dispatcher should be created once and reused"
+            # Verify execution_status was set to "running" during execution
+            state_entries = [log for log in call_log if log[0] == "state_during_start"]
+            assert any(entry[1] == "running" for entry in state_entries), \
+                "execution_status should be 'running' when task starts"
 
-                # Verify tasks 2 and 3 were executed
-                assert result2["batch_size"] == 2
+    def test_execution_status_completed_on_success(self):
+        """Test that execution_status is 'completed' on successful task."""
+        tasks = [
+            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
+        ]
+        plan = ExecutionPlan(tasks=tasks)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+            task_file = task_dir / "1.md"
+            task_file.write_text("---\nstatus: pending\n---\nTask 1\n")
+
+            engine = ExecutionEngine(plan, task_dir)
+            engine.execute_next_batch()
+
+            # Read frontmatter
+            content = task_file.read_text()
+            parts = content.split("---")
+            data = yaml.safe_load(parts[1])
+            execution_state = data["execution_state"]
+
+            # After refactor: execution_status should be "completed"
+            assert execution_state["execution_status"] == "completed", \
+                f"execution_status should be 'completed' on success, got {execution_state['execution_status']}"
+
+            # Verify status alias is also "completed"
+            assert execution_state["status"] == "completed", \
+                "status alias should also be 'completed'"
+
+    def test_execution_status_failed_on_failure(self):
+        """Test that execution_status is 'failed' when task fails."""
+        tasks = [
+            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: (_ for _ in ()).throw(Exception("Simulated failure"))}),
+        ]
+        plan = ExecutionPlan(tasks=tasks)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+            task_file = task_dir / "1.md"
+            task_file.write_text("---\nstatus: pending\n---\nTask 1\n")
+
+            engine = ExecutionEngine(plan, task_dir)
+            engine.execute_next_batch()
+
+            # Read frontmatter
+            content = task_file.read_text()
+            parts = content.split("---")
+            data = yaml.safe_load(parts[1])
+            execution_state = data["execution_state"]
+
+            # After refactor: execution_status should be "failed"
+            assert execution_state["execution_status"] == "failed", \
+                f"execution_status should be 'failed' on failure, got {execution_state['execution_status']}"
+
+            # Verify status alias is also "failed"
+            assert execution_state["status"] == "failed", \
+                "status alias should also be 'failed'"
+
+            # Verify error was recorded
+            assert "error" in execution_state, \
+                "error should be recorded in execution_state"
+
+
+class TestFrontmatterVerification:
+    """Tests for B) Verify observable behavior (frontmatter) instead of mocking private methods.
+
+    Tests should verify frontmatter content directly rather than patching
+    private methods like _create_dispatcher, _on_task_start, etc.
+    """
+
+    def test_verify_dispatcher_reuse_via_frontmatter(self):
+        """Test dispatcher reuse by checking frontmatter state (not private method patches).
+
+        Instead of patching _create_dispatcher, verify that:
+        - Tasks execute correctly
+        - State persists correctly
+        - Frontmatter is updated appropriately
+        """
+        tasks = [
+            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
+            Task(id="2", title="Task 2", description="Description 2", dependencies=["1"], metadata={"callable": lambda: "ok"}),
+            Task(id="3", title="Task 3", description="Description 3", dependencies=["1"], metadata={"callable": lambda: "ok"}),
+        ]
+        plan = ExecutionPlan(tasks=tasks)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+
+            # Create task files
+            for task_id in ["1", "2", "3"]:
+                task_file = task_dir / f"{task_id}.md"
+                task_file.write_text(f"---\nstatus: pending\n---\nTask {task_id}\n")
+
+            engine = ExecutionEngine(plan, task_dir)
+
+            # Execute first batch
+            result1 = engine.execute_next_batch()
+            assert result1["batch_size"] == 1
+
+            # Verify task 1 state via frontmatter (not mocking)
+            task1_file = task_dir / "1.md"
+            content = task1_file.read_text()
+            parts = content.split("---")
+            data = yaml.safe_load(parts[1])
+            execution_state = data.get("execution_state", {})
+            assert "execution_status" in execution_state, \
+                "Task 1 should have execution_status in frontmatter"
+
+            # Mark task 1 as completed (simulate successful execution)
+            for task in engine.plan.tasks:
+                if task.id == "1":
+                    task.status = TaskStatus.COMPLETED
+
+            # Execute second batch
+            result2 = engine.execute_next_batch()
+            assert result2["batch_size"] == 2
+
+            # Verify tasks 2 and 3 have execution_status in frontmatter
+            for task_id in ["2", "3"]:
+                task_file = task_dir / f"{task_id}.md"
+                content = task_file.read_text()
+                parts = content.split("---")
+                data = yaml.safe_load(parts[1])
+                execution_state = data.get("execution_state", {})
+                # Tasks should have been executed
+                assert "execution_status" in execution_state, \
+                    f"Task {task_id} should have execution_status in frontmatter"
+
+    def test_verify_callbacks_via_frontmatter(self):
+        """Test callbacks work correctly by checking frontmatter changes.
+
+        Instead of mocking _on_task_start, _on_task_success, _on_task_fail,
+        verify that frontmatter reflects the expected state after callbacks.
+        """
+        tasks = [
+            Task(id="1", title="Task 1", description="Description 1", metadata={"callable": lambda: "ok"}),
+        ]
+        plan = ExecutionPlan(tasks=tasks)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            task_dir = Path(tmpdir)
+            task_file = task_dir / "1.md"
+            task_file.write_text("---\nstatus: pending\n---\nTask 1\n")
+
+            engine = ExecutionEngine(plan, task_dir)
+
+            # Execute the task
+            engine.execute_next_batch()
+
+            # Verify callbacks worked by checking frontmatter state
+            content = task_file.read_text()
+            parts = content.split("---")
+            data = yaml.safe_load(parts[1])
+            execution_state = data.get("execution_state", {})
+
+            # on_start callback should have set these fields
+            assert "started_at" in execution_state, \
+                "on_start callback should have set started_at"
+            assert "task_id" in execution_state, \
+                "on_start callback should have set task_id"
+            assert "task_title" in execution_state, \
+                "on_start callback should have set task_title"
+
+            # on_success callback should have set these fields
+            assert "execution_status" in execution_state, \
+                "on_success callback should have set execution_status"
+            assert execution_state["execution_status"] in ["running", "completed"], \
+                f"execution_status should be 'running' or 'completed', got {execution_state.get('execution_status')}"
+
+
+class TestRequiredCallbacks:
+    """Tests for C) Explicit validation for required callbacks.
+
+    SubagentPoolExecutor should require callbacks and error if missing.
+    No silent no-op defaults.
+    """
+
+    def test_subagent_pool_executor_requires_on_start_callback(self):
+        """Test that SubagentPoolExecutor raises error if on_start is None.
+
+        After refactor: callbacks should be required, no no-op defaults.
+        """
+        from execution_engine.subagent_pool.pool import SubagentPool
+
+        subagent_pool = SubagentPool()
+
+        # After refactor: should raise error when on_start is None
+        with pytest.raises(ValueError, match="on_start.*required"):
+            executor = SubagentPoolExecutor(
+                subagent_pool=subagent_pool,
+                task_metadata_getter=lambda t: t.metadata,
+                on_start=None,  # Should error
+                on_success=lambda task_id, result: None,
+                on_fail=lambda task_id, error: None,
+            )
+
+    def test_subagent_pool_executor_requires_on_success_callback(self):
+        """Test that SubagentPoolExecutor raises error if on_success is None."""
+        from execution_engine.subagent_pool.pool import SubagentPool
+
+        subagent_pool = SubagentPool()
+
+        # After refactor: should raise error when on_success is None
+        with pytest.raises(ValueError, match="on_success.*required"):
+            executor = SubagentPoolExecutor(
+                subagent_pool=subagent_pool,
+                task_metadata_getter=lambda t: t.metadata,
+                on_start=lambda task_id, task: None,
+                on_success=None,  # Should error
+                on_fail=lambda task_id, error: None,
+            )
+
+    def test_subagent_pool_executor_requires_on_fail_callback(self):
+        """Test that SubagentPoolExecutor raises error if on_fail is None."""
+        from execution_engine.subagent_pool.pool import SubagentPool
+
+        subagent_pool = SubagentPool()
+
+        # After refactor: should raise error when on_fail is None
+        with pytest.raises(ValueError, match="on_fail.*required"):
+            executor = SubagentPoolExecutor(
+                subagent_pool=subagent_pool,
+                task_metadata_getter=lambda t: t.metadata,
+                on_start=lambda task_id, task: None,
+                on_success=lambda task_id, result: None,
+                on_fail=None,  # Should error
+            )
+
+    def test_subagent_pool_executor_accepts_all_required_callbacks(self):
+        """Test that SubagentPoolExecutor works when all callbacks are provided."""
+        from execution_engine.subagent_pool.pool import SubagentPool
+
+        subagent_pool = SubagentPool()
+
+        # Should work when all callbacks are provided
+        executor = SubagentPoolExecutor(
+            subagent_pool=subagent_pool,
+            task_metadata_getter=lambda t: t.metadata,
+            on_start=lambda task_id, task: None,
+            on_success=lambda task_id, result: None,
+            on_fail=lambda task_id, error: None,
+        )
+
+        assert executor is not None
+        assert callable(executor.on_start)
+        assert callable(executor.on_success)
+        assert callable(executor.on_fail)

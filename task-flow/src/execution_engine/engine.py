@@ -38,24 +38,34 @@ class SubagentPoolExecutor:
         self,
         subagent_pool: SubagentPool,
         task_metadata_getter: callable,  # callable(task) -> dict
-        on_start: callable = None,        # callable(task_id, task) -> None
-        on_success: callable = None,      # callable(task_id, result) -> None
-        on_fail: callable = None,         # callable(task_id, error) -> None
+        on_start: callable,              # callable(task_id, task) -> None (required)
+        on_success: callable,            # callable(task_id, result) -> None (required)
+        on_fail: callable,               # callable(task_id, error) -> None (required)
     ):
         """Initialize executor adapter.
 
         Args:
             subagent_pool: The SubagentPool for executing callables
             task_metadata_getter: Function to get metadata from a Task
-            on_start: Callback when task starts execution
-            on_success: Callback when task completes successfully
-            on_fail: Callback when task execution fails
+            on_start: Callback when task starts execution (required)
+            on_success: Callback when task completes successfully (required)
+            on_fail: Callback when task execution fails (required)
+
+        Raises:
+            ValueError: If any of the required callbacks is None
         """
+        if on_start is None:
+            raise ValueError("on_start callback is required")
+        if on_success is None:
+            raise ValueError("on_success callback is required")
+        if on_fail is None:
+            raise ValueError("on_fail callback is required")
+
         self.subagent_pool = subagent_pool
         self.task_metadata_getter = task_metadata_getter
-        self.on_start = on_start or (lambda task_id, task: None)
-        self.on_success = on_success or (lambda task_id, result: None)
-        self.on_fail = on_fail or (lambda task_id, error: None)
+        self.on_start = on_start
+        self.on_success = on_success
+        self.on_fail = on_fail
 
     def run(self, task: Task) -> ExecutorResult:
         """Execute a task and return result with status.

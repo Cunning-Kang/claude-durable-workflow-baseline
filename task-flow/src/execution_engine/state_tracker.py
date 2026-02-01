@@ -93,6 +93,9 @@ class StateTracker:
             frontmatter["execution_state"] = {}
 
         # Update state
+        # execution_status is the canonical field for execution flow state
+        frontmatter["execution_state"]["execution_status"] = "running"
+        # status is kept as compatibility alias (synced with execution_status)
         frontmatter["execution_state"]["status"] = "running"
         frontmatter["execution_state"]["started_at"] = datetime.now().isoformat()
         frontmatter["execution_state"]["task_id"] = task_id
@@ -141,6 +144,9 @@ class StateTracker:
             frontmatter["execution_state"]["completed_at"] = datetime.now().isoformat()
             frontmatter["execution_state"]["duration"] = 0
 
+        # execution_status is canonical field for execution flow state
+        frontmatter["execution_state"]["execution_status"] = "completed"
+        # status is kept as compatibility alias (synced with execution_status)
         frontmatter["execution_state"]["status"] = "completed"
         # Track in-memory TaskStatus enum value
         frontmatter["execution_state"]["task_status"] = task_status
@@ -203,6 +209,11 @@ class StateTracker:
         # Update task_status if provided
         if task_status is not None:
             frontmatter["execution_state"]["task_status"] = task_status
+
+        # If state contains "status", also sync it to "execution_status"
+        # This ensures backward compatibility with code that uses "status"
+        if "status" in state:
+            frontmatter["execution_state"]["execution_status"] = state["status"]
 
         # Save to file
         self._save_frontmatter(frontmatter)
