@@ -102,6 +102,10 @@ class ProjectScanner:
         """
         entry_points = []
 
+        # 如果项目目录不存在，返回空列表
+        if not self.project_root.exists():
+            return entry_points
+
         for pattern in self.ENTRY_POINT_PATTERNS:
             path = self.project_root / pattern
             if path.exists() and path.is_file():
@@ -117,6 +121,10 @@ class ProjectScanner:
         Returns:
             测试框架名称（pytest, jest, go, mocha, jasmine, unittest, unknown）
         """
+        # 如果项目目录不存在，返回 unknown
+        if not self.project_root.exists():
+            return "unknown"
+
         # 检查每种测试框架的指示器
         for framework, indicators in self.TEST_FRAMEWORK_INDICATORS.items():
             for indicator in indicators:
