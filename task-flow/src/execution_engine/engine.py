@@ -104,10 +104,11 @@ class ExecutionEngine:
         """Execute the next batch of ready tasks.
 
         This method:
-        1. Gets ready tasks from DependencyResolver
-        2. Filters plan tasks to only those that are ready
-        3. Marks ready tasks as IN_PROGRESS up to batch_size
-        4. Tracks state for each executed task
+        1. Updates resolver with latest task states
+        2. Gets ready tasks from DependencyResolver
+        3. Filters plan tasks to only those that are ready
+        4. Marks ready tasks as IN_PROGRESS up to batch_size
+        5. Tracks state for each executed task
 
         Returns:
             Dictionary containing execution statistics:
@@ -115,10 +116,10 @@ class ExecutionEngine:
             - tasks_executed: Number of tasks marked for execution
             - total_completed: Total number of completed tasks
         """
-        # Keep DependencyResolver in sync with latest plan state
+        # Step 1: Update resolver with latest task states
         self._update_resolver_tasks()
 
-        # Step 1: Get ready tasks from DependencyResolver
+        # Step 2: Get ready tasks from DependencyResolver
         ready_ids = self.resolver.get_ready_tasks()
 
         # Step 2: Filter plan tasks to ready tasks
@@ -143,9 +144,6 @@ class ExecutionEngine:
             if task.status == TaskStatus.COMPLETED:
                 tracker = self.state_trackers[task.id]
                 tracker.complete_task(task.id)
-
-        # Step 5: Update resolver to reflect status changes
-        self._update_resolver_tasks()
 
         # Calculate statistics
         completed_tasks = [
