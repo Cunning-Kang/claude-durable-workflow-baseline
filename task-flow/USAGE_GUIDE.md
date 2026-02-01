@@ -113,7 +113,26 @@ Next steps:
 python ~/.claude/skills/task-flow/src/cli.py update-task TASK-001 --step 2 --note "创建了 Comment 模型，包含用户、内容、时间戳字段"
 ```
 
-#### 5. 完成任务
+#### 5. 执行下一批（Execution Engine）
+
+**你说**：
+```
+"执行 TASK-001 的下一批"
+```
+
+**Claude 执行**：
+```bash
+python ~/.claude/skills/task-flow/src/cli.py execute-next-batch TASK-001
+```
+
+**前置条件**：任务文件 frontmatter 中需包含 `plan_file` 和 `execution_config`。
+
+**输出**：
+```json
+{"batch_size": 1, "tasks_executed": 1, "total_completed": 1}
+```
+
+#### 6. 完成任务
 
 **你说**：
 ```

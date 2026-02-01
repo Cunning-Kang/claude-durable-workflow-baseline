@@ -3,8 +3,14 @@
 import sys
 import argparse
 import subprocess
+import json
 from pathlib import Path
+from typing import Any, Dict, List
+
+import yaml
 from task_manager import TaskManager
+from execution_engine import ExecutionEngine, StateTracker
+from plan_generator.types import ExecutionPlan, Task, TaskStatus
 
 
 def find_project_root() -> Path:
@@ -163,6 +169,84 @@ def cmd_update_task(args):
         print(f"✓ Added note to task {args.task_id}")
 
 
+def _load_frontmatter(task_file: Path) -> Dict[str, Any]:
+    content = task_file.read_text()
+    parts = content.split("---")
+    if len(parts) < 3:
+        return {}
+    yaml_content = parts[1].strip()
+    return yaml.safe_load(yaml_content) or {}
+
+
+def _build_execution_plan(plan_data: Dict[str, Any]) -> ExecutionPlan:
+    tasks_data = plan_data.get("tasks", [])
+    tasks: List[Task] = []
+    for task in tasks_data:
+        task_status = TaskStatus.PENDING
+        if "status" in task:
+            try:
+                task_status = TaskStatus(task["status"])
+            except ValueError:
+                task_status = TaskStatus.PENDING
+        tasks.append(
+            Task(
+                id=task["id"],
+                title=task.get("title", ""),
+                description=task.get("description", ""),
+                status=task_status,
+                dependencies=task.get("dependencies", []) or [],
+                metadata=task.get("metadata", {}) or {},
+            )
+        )
+    return ExecutionPlan(tasks=tasks, metadata=plan_data.get("metadata", {}) or {})
+
+
+def _load_plan_file(plan_path: Path) -> Dict[str, Any]:
+    if not plan_path.exists():
+        raise FileNotFoundError(f"Plan file not found: {plan_path}")
+    return yaml.safe_load(plan_path.read_text()) or {}
+
+
+def cmd_execute_next_batch(args):
+    """执行下一批 ready tasks"""
+    tm = get_task_manager()
+    task = tm.get_task(args.task_id)
+
+    if not task:
+        print(f"Error: Task {args.task_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    task_file = Path(task["file"])
+    frontmatter = _load_frontmatter(task_file)
+    plan_file_value = frontmatter.get("plan_file")
+    if not plan_file_value:
+        print("Error: plan_file is required for execute-next-batch", file=sys.stderr)
+        sys.exit(1)
+
+    plan_path = Path(plan_file_value)
+    if not plan_path.is_absolute():
+        plan_path = find_project_root() / plan_path
+
+    plan_data = _load_plan_file(plan_path)
+    plan = _build_execution_plan(plan_data)
+
+    execution_config = frontmatter.get("execution_config", {}) or {}
+    batch_size = execution_config.get("batch_size")
+    auto_continue = execution_config.get("auto_continue")
+    checkpoint_interval = execution_config.get("checkpoint_interval")
+
+    engine = ExecutionEngine(plan, task_file.parent)
+    if batch_size is not None:
+        engine.controller.batch_size = batch_size
+    if auto_continue is not None:
+        engine.controller.auto_continue = auto_continue
+    if checkpoint_interval is not None:
+        engine.controller.checkpoint_interval = checkpoint_interval
+
+    stats = engine.execute_next_batch()
+    print(json.dumps(stats))
+
+
 def cmd_complete_task(args):
     """完成任务"""
     tm = get_task_manager()
@@ -220,6 +304,13 @@ def main():
     parser_update.add_argument("--step", type=int, help="Update current step number")
     parser_update.add_argument("--note", help="Add a note to the task")
 
+    # execute-next-batch
+    parser_execute = subparsers.add_parser(
+        "execute-next-batch",
+        help="Execute next batch of ready tasks"
+    )
+    parser_execute.add_argument("task_id", help="Task ID (e.g., TASK-001)")
+
     # complete-task
     parser_complete = subparsers.add_parser("complete-task", help="Mark task as complete and archive")
     parser_complete.add_argument("task_id", help="Task ID (e.g., TASK-001)")
@@ -237,6 +328,8 @@ def main():
         cmd_start_task(args)
     elif args.command == "update-task":
         cmd_update_task(args)
+    elif args.command == "execute-next-batch":
+        cmd_execute_next_batch(args)
     elif args.command == "complete-task":
         cmd_complete_task(args)
     else:

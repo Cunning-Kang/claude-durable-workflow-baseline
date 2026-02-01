@@ -180,3 +180,80 @@ class TestShowTaskCommand:
 
         assert result.returncode != 0
         assert "not found" in (result.stdout + result.stderr).lower()
+
+
+class TestExecuteNextBatchCommand:
+    """测试 execute-next-batch 命令"""
+
+    @pytest.fixture
+    def project_dir(self, tmp_path):
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+        (project / "docs" / "plans").mkdir(parents=True)
+
+        plan_file = project / "docs" / "plans" / "execution-plan.yaml"
+        plan_file.write_text(
+            """tasks:
+- id: TASK-001
+  title: Step 1
+  description: First step
+- id: TASK-002
+  title: Step 2
+  description: Second step
+  dependencies:
+    - TASK-001
+"""
+        )
+
+        task_file = project / "docs" / "tasks" / "TASK-001-test-task.md"
+        task_file.write_text(
+            """---
+id: TASK-001
+title: "Test Task"
+status: "To Do"
+created_at: 2026-02-01
+updated_at: 2026-02-01
+execution_mode: "executing-plans"
+plan_file: "docs/plans/execution-plan.yaml"
+execution_config:
+  batch_size: 1
+  auto_continue: false
+  checkpoint_interval: 3
+execution_state: {}
+---
+"""
+        )
+
+        return project, task_file
+
+    def test_execute_next_batch_command_in_help(self, cli_env, tmp_path):
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "--help"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        assert "execute-next-batch" in result.stdout
+
+    def test_execute_next_batch_runs_engine(self, cli_env, project_dir):
+        project, task_file = project_dir
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-next-batch", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        stats = json.loads(result.stdout)
+        assert stats["tasks_executed"] == 1
