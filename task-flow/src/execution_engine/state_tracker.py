@@ -78,12 +78,13 @@ class StateTracker:
             # Handle errors gracefully
             pass
 
-    def start_task(self, task_id: str, title: str) -> None:
+    def start_task(self, task_id: str, title: str, task_status: str = "in_progress") -> None:
         """Mark task as running
 
         Args:
             task_id: Task identifier
             title: Task title
+            task_status: The TaskStatus value (e.g., "in_progress", "completed", "failed")
         """
         frontmatter = self._load_frontmatter()
 
@@ -96,6 +97,8 @@ class StateTracker:
         frontmatter["execution_state"]["started_at"] = datetime.now().isoformat()
         frontmatter["execution_state"]["task_id"] = task_id
         frontmatter["execution_state"]["task_title"] = title
+        # Track in-memory TaskStatus enum value
+        frontmatter["execution_state"]["task_status"] = task_status
 
         # Clear completion fields if restarting
         frontmatter["execution_state"].pop("completed_at", None)
@@ -105,11 +108,12 @@ class StateTracker:
         self._save_frontmatter(frontmatter)
         self._cache = None  # Clear cache
 
-    def complete_task(self, task_id: str) -> None:
+    def complete_task(self, task_id: str, task_status: str = "completed") -> None:
         """Mark task as completed and calculate duration
 
         Args:
             task_id: Task identifier
+            task_status: The TaskStatus value (e.g., "completed", "failed")
         """
         frontmatter = self._load_frontmatter()
 
@@ -138,6 +142,8 @@ class StateTracker:
             frontmatter["execution_state"]["duration"] = 0
 
         frontmatter["execution_state"]["status"] = "completed"
+        # Track in-memory TaskStatus enum value
+        frontmatter["execution_state"]["task_status"] = task_status
 
         # Save to file
         self._save_frontmatter(frontmatter)
@@ -178,11 +184,12 @@ class StateTracker:
         self._cache = execution_state
         return execution_state
 
-    def update_execution_state(self, state: Dict[str, Any]) -> None:
+    def update_execution_state(self, state: Dict[str, Any], task_status: str = None) -> None:
         """Update execution state in YAML frontmatter
 
         Args:
             state: Dict containing state updates
+            task_status: Optional TaskStatus value to track in execution_state.task_status
         """
         frontmatter = self._load_frontmatter()
 
@@ -192,6 +199,10 @@ class StateTracker:
 
         # Merge updates
         frontmatter["execution_state"].update(state)
+
+        # Update task_status if provided
+        if task_status is not None:
+            frontmatter["execution_state"]["task_status"] = task_status
 
         # Save to file
         self._save_frontmatter(frontmatter)
