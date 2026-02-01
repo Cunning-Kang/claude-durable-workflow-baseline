@@ -176,7 +176,8 @@ status: Done
         # 分支未合并,所以删除失败是预期行为
         assert result.branch_deleted is False
         assert len(result.errors) > 0
-        assert "not fully merged" in result.errors[0]
+        error_message = result.errors[0]
+        assert "not fully merged" in error_message or "没有完全合并" in error_message
         assert result.order == ["worktree"]
         assert not worktree_path.exists()
 

@@ -4,8 +4,9 @@ import sys
 import argparse
 import subprocess
 import json
+import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 from task_manager import TaskManager
@@ -13,8 +14,20 @@ from execution_engine import ExecutionEngine, StateTracker
 from plan_generator.types import ExecutionPlan, Task, TaskStatus
 
 
-def find_project_root() -> Path:
+def _resolve_project_root(value: Optional[str]) -> Optional[Path]:
+    if not value:
+        return None
+    root = Path(value)
+    return root.resolve()
+
+
+def find_project_root(override: Optional[Path] = None) -> Path:
     """查找项目根目录（包含 docs/tasks/ 的地方）"""
+    if override is not None:
+        tasks_dir = override / "docs" / "tasks"
+        tasks_dir.mkdir(parents=True, exist_ok=True)
+        return override
+
     current = Path.cwd()
 
     # 向上查找直到找到 docs/tasks/ 或到达根目录
@@ -29,18 +42,26 @@ def find_project_root() -> Path:
     return Path.cwd()
 
 
-def get_task_manager():
+def get_task_manager(project_root: Optional[Path] = None):
     """获取 TaskManager 实例"""
-    project_root = find_project_root()
-    tasks_dir = project_root / "docs" / "tasks"
-    index_file = project_root / "docs" / "_index.json"
+    resolved_root = find_project_root(project_root)
+    tasks_dir = resolved_root / "docs" / "tasks"
+    index_file = resolved_root / "docs" / "_index.json"
 
     return TaskManager(tasks_dir=tasks_dir, index_file=index_file)
 
 
+def _get_project_root_from_args(args) -> Optional[Path]:
+    env_root = os.environ.get("TASK_FLOW_PROJECT_ROOT")
+    env_path = _resolve_project_root(env_root)
+    arg_path = _resolve_project_root(getattr(args, "project_root", None))
+    return arg_path or env_path
+
+
 def cmd_create_task(args):
     """创建新任务"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     task_id = tm.create_task(args.title)
 
     print(f"✓ Created task: {task_id}")
@@ -52,7 +73,8 @@ def cmd_create_task(args):
 
 def cmd_list_tasks(args):
     """列出任务"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     tasks = tm.list_tasks(status=args.status)
 
     if not tasks:
@@ -69,7 +91,8 @@ def cmd_list_tasks(args):
 
 def cmd_show_task(args):
     """显示任务详情"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
     if not task:
@@ -84,7 +107,8 @@ def cmd_show_task(args):
 
 def cmd_start_task(args):
     """启动任务（创建/切换 worktree）"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
     if not task:
@@ -145,7 +169,8 @@ def cmd_start_task(args):
 
 def cmd_update_task(args):
     """更新任务"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
     if not task:
@@ -178,6 +203,35 @@ def _load_frontmatter(task_file: Path) -> Dict[str, Any]:
     return yaml.safe_load(yaml_content) or {}
 
 
+def _parse_markdown_plan(content: str) -> List[Dict[str, Any]]:
+    tasks: List[Dict[str, Any]] = []
+    current_task: Dict[str, Any] | None = None
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if line.startswith("### Task "):
+            if current_task:
+                if not current_task.get("description"):
+                    current_task["description"] = current_task.get("title", "")
+                tasks.append(current_task)
+            title = line.split(":", 1)[1].strip() if ":" in line else line[len("### Task "):].strip()
+            current_task = {
+                "id": f"TASK-{len(tasks) + 1:03d}",
+                "title": title,
+                "description": "",
+            }
+            continue
+        if current_task and line.startswith("**Description:**"):
+            current_task["description"] = line.split("**Description:**", 1)[1].strip()
+
+    if current_task:
+        if not current_task.get("description"):
+            current_task["description"] = current_task.get("title", "")
+        tasks.append(current_task)
+
+    return tasks
+
+
 def _build_execution_plan(plan_data: Dict[str, Any]) -> ExecutionPlan:
     tasks_data = plan_data.get("tasks", [])
     tasks: List[Task] = []
@@ -204,12 +258,23 @@ def _build_execution_plan(plan_data: Dict[str, Any]) -> ExecutionPlan:
 def _load_plan_file(plan_path: Path) -> Dict[str, Any]:
     if not plan_path.exists():
         raise FileNotFoundError(f"Plan file not found: {plan_path}")
-    return yaml.safe_load(plan_path.read_text()) or {}
+    content = plan_path.read_text()
+    try:
+        data = yaml.safe_load(content) or {}
+    except yaml.YAMLError:
+        data = {}
+    if isinstance(data, dict) and data.get("tasks"):
+        return data
+    markdown_tasks = _parse_markdown_plan(content)
+    if markdown_tasks:
+        return {"tasks": markdown_tasks}
+    raise ValueError("Unsupported plan format: missing tasks in YAML and Markdown")
 
 
 def cmd_execute_next_batch(args):
     """执行下一批 ready tasks"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
     if not task:
@@ -249,7 +314,8 @@ def cmd_execute_next_batch(args):
 
 def cmd_complete_task(args):
     """完成任务"""
-    tm = get_task_manager()
+    project_root = _get_project_root_from_args(args)
+    tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
     if not task:
@@ -279,6 +345,11 @@ def cmd_complete_task(args):
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="task-flow - Task management system")
+    parser.add_argument(
+        "--project-root",
+        help="Explicit project root (overrides TASK_FLOW_PROJECT_ROOT)",
+        default=None,
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # create-task

@@ -76,6 +76,55 @@ class TestCreateTaskCommand:
         assert "TASK-002" in result.stdout
 
 
+class TestProjectRootOverride:
+    def test_create_task_respects_project_root_env(self, tmp_path, cli_env):
+        project = tmp_path / "project"
+        (project / "docs" / "tasks").mkdir(parents=True)
+        runner = tmp_path / "runner"
+        runner.mkdir()
+
+        env = cli_env.copy()
+        env["TASK_FLOW_PROJECT_ROOT"] = str(project)
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "create-task", "Test task"],
+            cwd=runner,
+            capture_output=True,
+            text=True,
+            env=env
+        )
+
+        assert result.returncode == 0
+        assert (project / "docs" / "tasks" / "TASK-001-test-task.md").exists()
+        assert not (runner / "docs" / "tasks" / "TASK-001-test-task.md").exists()
+
+    def test_create_task_respects_project_root_arg(self, tmp_path, cli_env):
+        project = tmp_path / "project"
+        (project / "docs" / "tasks").mkdir(parents=True)
+        runner = tmp_path / "runner"
+        runner.mkdir()
+
+        result = subprocess.run(
+            [
+                "python",
+                "-m",
+                "cli",
+                "--project-root",
+                str(project),
+                "create-task",
+                "Test task",
+            ],
+            cwd=runner,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        assert (project / "docs" / "tasks" / "TASK-001-test-task.md").exists()
+        assert not (runner / "docs" / "tasks" / "TASK-001-test-task.md").exists()
+
+
 class TestListTasksCommand:
     """测试 list-tasks 命令"""
 
@@ -257,3 +306,79 @@ execution_state: {}
         assert result.returncode == 0
         stats = json.loads(result.stdout)
         assert stats["tasks_executed"] == 1
+
+    @pytest.fixture
+    def project_dir_markdown(self, tmp_path):
+        project = tmp_path / "markdown-project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+        (project / "docs" / "plans").mkdir(parents=True)
+
+        plan_file = project / "docs" / "plans" / "execution-plan.md"
+        plan_file.write_text(
+            """# Example Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Example goal
+
+---
+
+### Task 1: First step
+**Description:** Do the first thing
+
+### Task 2: Second step
+**Description:** Do the second thing
+"""
+        )
+
+        task_file = project / "docs" / "tasks" / "TASK-001-test-task.md"
+        task_file.write_text(
+            """---
+id: TASK-001
+title: "Test Task"
+status: "To Do"
+created_at: 2026-02-01
+updated_at: 2026-02-01
+execution_mode: "executing-plans"
+plan_file: "docs/plans/execution-plan.md"
+execution_config:
+  batch_size: 1
+  auto_continue: false
+  checkpoint_interval: 3
+execution_state: {}
+---
+"""
+        )
+
+        return project
+
+    def test_execute_next_batch_accepts_markdown_plan(self, cli_env, project_dir_markdown):
+        project = project_dir_markdown
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-next-batch", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        stats = json.loads(result.stdout)
+        assert stats["tasks_executed"] == 1
+
+    def test_execute_next_batch_no_callable_defaults_to_noop(self, cli_env, project_dir):
+        project, _task_file = project_dir
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-next-batch", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        stats = json.loads(result.stdout)
+        assert stats["total_completed"] == 1

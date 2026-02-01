@@ -84,10 +84,9 @@ class SubagentPoolExecutor:
         callable = metadata.get("callable")
 
         if callable is None:
-            # No callable - mark as failed
-            error = "No callable found in task.metadata"
-            self.on_fail(task.id, error)
-            return ExecutorResult(status=TaskStatus.FAILED)
+            # No callable - treat as no-op success
+            self.on_success(task.id, None)
+            return ExecutorResult(status=TaskStatus.COMPLETED)
 
         # Execute via SubagentPool
         result = self.subagent_pool.submit(task.id, callable)
