@@ -37,5 +37,9 @@ Thumbs.db
 dist/
 *.egg-info/
 
+# Git worktrees
+.worktrees/
+worktrees/
+
 # Logs
 *.log

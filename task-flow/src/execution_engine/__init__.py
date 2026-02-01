@@ -7,6 +7,14 @@ This package contains the execution engine components for task-flow:
 - ExecutionController: Control execution flow (future)
 """
 
+from .controller import ExecutionController
+from .dependency_resolver import DependencyResolver
+from .engine import ExecutionEngine
 from .state_tracker import StateTracker
 
-__all__ = ["StateTracker"]
+__all__ = [
+    "ExecutionController",
+    "DependencyResolver",
+    "ExecutionEngine",
+    "StateTracker",
+]
