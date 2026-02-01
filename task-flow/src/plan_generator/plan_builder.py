@@ -6,6 +6,7 @@ from typing import Dict, List, Any
 from .analyzer import GoalAnalyzer
 from .project_scanner import ProjectScanner
 from .task_breakdown import TaskBreakdown
+from .path_inference import PathInference
 
 
 class PlanBuilder:
@@ -22,6 +23,7 @@ class PlanBuilder:
         self.goal_analyzer = GoalAnalyzer()
         self.project_scanner = ProjectScanner(self.project_root)
         self.task_breakdown = TaskBreakdown()
+        self.path_inference = PathInference()
 
     def generate(self, plan_packet: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -59,6 +61,9 @@ class PlanBuilder:
 
         # 生成任务
         tasks = self.task_breakdown.breakdown(goal, context)
+
+        # 使用 PathInference 为任务推断文件路径
+        tasks = self._add_file_paths_to_tasks(tasks, context)
 
         # 检测任务依赖关系
         tasks_with_deps = self.task_breakdown.detect_dependencies(tasks)
@@ -116,6 +121,59 @@ class PlanBuilder:
         })
 
         return context
+
+    def _add_file_paths_to_tasks(
+        self,
+        tasks: List[Dict[str, Any]],
+        context: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        """
+        使用 PathInference 为任务推断文件路径
+
+        Args:
+            tasks: 任务列表
+            context: 上下文信息（包含 language, tech_stack 等）
+
+        Returns:
+            包含文件路径的任务列表
+        """
+        language = context.get("language", "python")
+        tech_stack = context.get("tech_stack", [])
+
+        for task in tasks:
+            # 从任务标题中提取功能名称
+            title = task.get("title", "")
+
+            # 使用 PathInference 推断文件路径
+            try:
+                file_path = self.path_inference.infer(
+                    feature=title,
+                    project_type=language,
+                    tech_stack=tech_stack
+                )
+
+                # 添加文件信息到任务
+                task["files"] = [
+                    {
+                        "action": "Create",
+                        "path": file_path
+                    }
+                ]
+
+                # 如果是测试任务，也推断测试文件路径
+                if "测试" in title or "test" in title.lower():
+                    test_framework = context.get("project_info", {}).get("test_framework", "pytest")
+                    test_path = self.path_inference.infer_test_path(file_path, test_framework)
+                    task["files"].append({
+                        "action": "Create",
+                        "path": test_path
+                    })
+
+            except Exception:
+                # 如果推断失败，跳过添加文件路径
+                pass
+
+        return tasks
 
     def _format_plan(
         self,
