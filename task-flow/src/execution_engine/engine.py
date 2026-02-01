@@ -8,12 +8,86 @@ This module provides the main orchestration layer that integrates:
 
 from pathlib import Path
 from typing import Dict, List, Any
+from dataclasses import dataclass
 
 from plan_generator.types import ExecutionPlan, Task, TaskStatus
 from .controller import ExecutionController
 from .dependency_resolver import DependencyResolver
 from .state_tracker import StateTracker
 from .subagent_pool.pool import SubagentPool
+from .task_dispatcher import TaskDispatcher, TaskExecutor
+
+
+@dataclass
+class ExecutorResult:
+    """Result from executor.run() with status attribute for TaskDispatcher."""
+    status: TaskStatus
+
+
+class SubagentPoolExecutor:
+    """TaskExecutor adapter that uses SubagentPool to execute tasks.
+
+    This adapter bridges TaskDispatcher's executor interface with SubagentPool:
+    - Executor.run(task) returns ExecutorResult with status
+    - Uses SubagentPool.submit to execute task.metadata["callable"]
+    """
+
+    def __init__(
+        self,
+        subagent_pool: SubagentPool,
+        state_tracker_getter: callable,  # callable(task_id) -> StateTracker
+        task_metadata_getter: callable,  # callable(task) -> dict
+    ):
+        """Initialize the executor adapter.
+
+        Args:
+            subagent_pool: The SubagentPool for executing callables
+            state_tracker_getter: Function to get StateTracker for a task
+            task_metadata_getter: Function to get metadata from a Task
+        """
+        self.subagent_pool = subagent_pool
+        self.state_tracker_getter = state_tracker_getter
+        self.task_metadata_getter = task_metadata_getter
+
+    def run(self, task: Task) -> ExecutorResult:
+        """Execute a task and return result with status.
+
+        Args:
+            task: The Task to execute
+
+        Returns:
+            ExecutorResult with TaskStatus.COMPLETED or FAILED
+        """
+        # Get or create state tracker for this task
+        tracker = self.state_tracker_getter(task.id)
+
+        # Mark task as running in frontmatter
+        tracker.start_task(task.id, task.title)
+
+        # Get callable from task metadata
+        metadata = self.task_metadata_getter(task)
+        callable = metadata.get("callable")
+
+        if callable is None:
+            # No callable - mark as failed
+            tracker.update_execution_state({
+                "status": "failed",
+                "error": "No callable found in task.metadata"
+            })
+            return ExecutorResult(status=TaskStatus.FAILED)
+
+        # Execute via SubagentPool
+        result = self.subagent_pool.submit(task.id, callable)
+
+        if result.ok:
+            tracker.complete_task(task.id)
+            return ExecutorResult(status=TaskStatus.COMPLETED)
+        else:
+            tracker.update_execution_state({
+                "status": "failed",
+                "error": result.error
+            })
+            return ExecutorResult(status=TaskStatus.FAILED)
 
 
 class ExecutionEngine:
@@ -54,6 +128,9 @@ class ExecutionEngine:
 
         # Initialize subagent pool for task execution
         self.subagent_pool = SubagentPool()
+
+        # Dispatcher is initialized lazily
+        self._dispatcher: TaskDispatcher = None
 
     def _convert_tasks_to_dicts(self, tasks: List[Task]) -> List[Dict[str, Any]]:
         """Convert Task objects to dict format for DependencyResolver.
@@ -104,15 +181,41 @@ class ExecutionEngine:
             {"task_id": dep_id, "type": "blocking"} for dep_id in dependencies
         ]
 
+    def _create_dispatcher(self) -> TaskDispatcher:
+        """Create a TaskDispatcher with SubagentPool executor.
+
+        Returns:
+            TaskDispatcher configured to execute tasks via SubagentPool
+        """
+        executor = SubagentPoolExecutor(
+            subagent_pool=self.subagent_pool,
+            state_tracker_getter=self._get_state_tracker,
+            task_metadata_getter=lambda t: t.metadata,
+        )
+        return TaskDispatcher(self.plan, self.task_dir, executor)
+
+    def _get_state_tracker(self, task_id: str) -> StateTracker:
+        """Get or create StateTracker for a task.
+
+        Args:
+            task_id: The task ID
+
+        Returns:
+            StateTracker instance for the task
+        """
+        if task_id not in self.state_trackers:
+            task_file = self.task_dir / f"{task_id}.md"
+            self.state_trackers[task_id] = StateTracker(task_file)
+        return self.state_trackers[task_id]
+
     def execute_next_batch(self) -> dict:
         """Execute the next batch of ready tasks.
 
         This method:
         1. Updates resolver with latest task states
         2. Gets ready tasks from DependencyResolver
-        3. Executes each ready task via SubagentPool
-        4. Persists execution state via StateTracker
-        5. Updates task status based on execution result
+        3. Delegates execution to TaskDispatcher
+        4. Returns execution statistics
 
         Returns:
             Dictionary containing execution statistics:
@@ -126,59 +229,21 @@ class ExecutionEngine:
         # Step 2: Get ready tasks from DependencyResolver
         ready_ids = self.resolver.get_ready_tasks()
 
-        # Step 3: Filter plan tasks to ready tasks that are pending
-        ready_tasks = [
-            t for t in self.plan.tasks
-            if t.id in ready_ids and t.status == TaskStatus.PENDING
-        ]
-
-        # Step 4: Select batch
+        # Step 3: Get batch size from controller
         batch_size = self.controller.batch_size
-        batch_tasks = ready_tasks[:batch_size]
 
-        # Step 5: Execute each task in the batch
-        for task in batch_tasks:
-            # Get or create state tracker for this task
-            task_file = self.task_dir / f"{task.id}.md"
-            if task.id not in self.state_trackers:
-                self.state_trackers[task.id] = StateTracker(task_file)
-            tracker = self.state_trackers[task.id]
+        # Step 4: Create dispatcher and delegate execution
+        dispatcher = self._create_dispatcher()
+        dispatch_stats = dispatcher.dispatch_next_batch(batch_size, ready_ids)
 
-            # Mark task as running in frontmatter
-            tracker.start_task(task.id, task.title)
-
-            # Get callable from metadata
-            callable = task.metadata.get("callable")
-            if callable is None:
-                # No callable - mark as failed
-                task.status = TaskStatus.FAILED
-                tracker.update_execution_state({
-                    "status": "failed",
-                    "error": "No callable found in task.metadata"
-                })
-                continue
-
-            # Execute via SubagentPool
-            result = self.subagent_pool.submit(task.id, callable)
-
-            if result.ok:
-                task.status = TaskStatus.COMPLETED
-                tracker.complete_task(task.id)
-            else:
-                task.status = TaskStatus.FAILED
-                tracker.update_execution_state({
-                    "status": "failed",
-                    "error": result.error
-                })
-
-        # Step 6: Calculate statistics
+        # Step 5: Calculate statistics from plan state
         completed_tasks = [
             task for task in self.plan.tasks if task.status == TaskStatus.COMPLETED
         ]
 
         return {
-            "batch_size": len(batch_tasks),
-            "tasks_executed": len(batch_tasks),
+            "batch_size": dispatch_stats["tasks_dispatched"],
+            "tasks_executed": dispatch_stats["tasks_dispatched"],
             "total_completed": len(completed_tasks),
         }
 
