@@ -50,3 +50,6 @@ worktrees/
 # Backlog artifacts
 backlog/tasks/
 backlog/drafts/
+
+# Git worktrees (project local)
+.worktrees/
