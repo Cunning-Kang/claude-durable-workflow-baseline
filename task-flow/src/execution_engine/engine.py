@@ -13,6 +13,7 @@ from plan_generator.types import ExecutionPlan, Task, TaskStatus
 from .controller import ExecutionController
 from .dependency_resolver import DependencyResolver
 from .state_tracker import StateTracker
+from .subagent_pool.pool import SubagentPool
 
 
 class ExecutionEngine:
@@ -50,6 +51,9 @@ class ExecutionEngine:
 
         # Initialize state trackers dict (populated lazily)
         self.state_trackers: Dict[str, StateTracker] = {}
+
+        # Initialize subagent pool for task execution
+        self.subagent_pool = SubagentPool()
 
     def _convert_tasks_to_dicts(self, tasks: List[Task]) -> List[Dict[str, Any]]:
         """Convert Task objects to dict format for DependencyResolver.
@@ -106,15 +110,15 @@ class ExecutionEngine:
         This method:
         1. Updates resolver with latest task states
         2. Gets ready tasks from DependencyResolver
-        3. Filters plan tasks to only those that are ready
-        4. Marks ready tasks as IN_PROGRESS up to batch_size
-        5. Tracks state for each executed task
+        3. Executes each ready task via SubagentPool
+        4. Persists execution state via StateTracker
+        5. Updates task status based on execution result
 
         Returns:
             Dictionary containing execution statistics:
             - batch_size: Number of tasks in this batch
-            - tasks_executed: Number of tasks marked for execution
-            - total_completed: Total number of completed tasks
+            - tasks_executed: Number of tasks dispatched for execution
+            - total_completed: Total number of completed tasks in plan
         """
         # Step 1: Update resolver with latest task states
         self._update_resolver_tasks()
@@ -122,30 +126,52 @@ class ExecutionEngine:
         # Step 2: Get ready tasks from DependencyResolver
         ready_ids = self.resolver.get_ready_tasks()
 
-        # Step 2: Filter plan tasks to ready tasks
-        ready_tasks = [t for t in self.plan.tasks if t.id in ready_ids]
+        # Step 3: Filter plan tasks to ready tasks that are pending
+        ready_tasks = [
+            t for t in self.plan.tasks
+            if t.id in ready_ids and t.status == TaskStatus.PENDING
+        ]
 
-        # Step 3: Mark tasks as IN_PROGRESS up to batch_size
+        # Step 4: Select batch
         batch_size = self.controller.batch_size
         batch_tasks = ready_tasks[:batch_size]
 
-        for task in batch_tasks:
-            if task.status == TaskStatus.PENDING:
-                task.status = TaskStatus.IN_PROGRESS
-
-        # Step 4: Track state for each executed task
+        # Step 5: Execute each task in the batch
         for task in batch_tasks:
             # Get or create state tracker for this task
+            task_file = self.task_dir / f"{task.id}.md"
             if task.id not in self.state_trackers:
-                task_file = self.task_dir / f"{task.id}.md"
                 self.state_trackers[task.id] = StateTracker(task_file)
+            tracker = self.state_trackers[task.id]
 
-            # Track completion if task was completed
-            if task.status == TaskStatus.COMPLETED:
-                tracker = self.state_trackers[task.id]
+            # Mark task as running in frontmatter
+            tracker.start_task(task.id, task.title)
+
+            # Get callable from metadata
+            callable = task.metadata.get("callable")
+            if callable is None:
+                # No callable - mark as failed
+                task.status = TaskStatus.FAILED
+                tracker.update_execution_state({
+                    "status": "failed",
+                    "error": "No callable found in task.metadata"
+                })
+                continue
+
+            # Execute via SubagentPool
+            result = self.subagent_pool.submit(task.id, callable)
+
+            if result.ok:
+                task.status = TaskStatus.COMPLETED
                 tracker.complete_task(task.id)
+            else:
+                task.status = TaskStatus.FAILED
+                tracker.update_execution_state({
+                    "status": "failed",
+                    "error": result.error
+                })
 
-        # Calculate statistics
+        # Step 6: Calculate statistics
         completed_tasks = [
             task for task in self.plan.tasks if task.status == TaskStatus.COMPLETED
         ]
