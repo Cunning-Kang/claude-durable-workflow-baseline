@@ -1,5 +1,0 @@
-#!/bin/bash
-# Task Flow 命令包装器
-
-SKILL_DIR="$HOME/.claude/skills/task-flow"
-PYTHONPATH="$SKILL_DIR/src:$PYTHONPATH" python "$SKILL_DIR/src/cli.py" "$@"
