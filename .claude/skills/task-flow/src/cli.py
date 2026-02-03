@@ -13,6 +13,7 @@ from task_manager import TaskManager
 from execution_engine import ExecutionEngine, StateTracker
 from plan_generator import ExecutionPlan, Task, TaskStatus
 from todowrite_compat.tool import TodoWriteCompat
+from ci_detector import resolve_quality_gate_command
 
 
 def _resolve_project_root(value: Optional[str]) -> Optional[Path]:
@@ -313,6 +314,15 @@ def cmd_execute_next_batch(args):
         engine.controller.checkpoint_interval = checkpoint_interval
 
     stats = engine.execute_next_batch()
+
+    # Run quality gate if configured
+    quality_gate_cmd = resolve_quality_gate_command(project_root, frontmatter)
+    if quality_gate_cmd and not quality_gate_cmd.startswith("#"):  # Skip placeholder commands
+        from execution_engine import run_quality_gate
+        gate_result = run_quality_gate(quality_gate_cmd, project_root)
+        if gate_result["status"] == "failed":
+            stats["quality_gate_error"] = gate_result.get("error", "Unknown quality gate error")
+
     print(json.dumps(stats))
 
 

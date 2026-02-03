@@ -112,3 +112,110 @@ ci: "wt ci"
         ci_command = detect_ci_command(tmp_path)
         # 应该fallback到 ci-local.sh
         assert ci_command == "./scripts/ci-local.sh"
+
+
+class TestTaskFrontmatterCIOverridesDetection:
+    """测试任务 frontmatter 中的 CI 配置覆盖默认检测"""
+
+    def test_resolve_quality_gate_command_uses_frontmatter_when_present(self, tmp_path):
+        """当 frontmatter 中有 quality_gate 时，使用它而不是默认检测"""
+        from ci_detector import resolve_quality_gate_command
+
+        # 创建 .wt-workflow 文件来 simulate 默认检测会返回的内容
+        wt_workflow = tmp_path / ".wt-workflow"
+        wt_workflow.write_text("""version: 1
+ci:
+  command: wt ci from file
+""")
+
+        # frontmatter 中的 quality_gate 应该优先
+        frontmatter = {
+            "quality_gate": "pytest custom-test"
+        }
+
+        result = resolve_quality_gate_command(tmp_path, frontmatter)
+
+        # 应该使用 frontmatter 中的值，而不是默认检测到的
+        assert result == "pytest custom-test"
+
+    def test_resolve_quality_gate_command_falls_back_to_default_detection(self, tmp_path):
+        """当 frontmatter 中没有 quality_gate 时，回退到默认检测"""
+        from ci_detector import resolve_quality_gate_command
+
+        # 创建 .wt-workflow 文件
+        wt_workflow = tmp_path / ".wt-workflow"
+        wt_workflow.write_text("""version: 1
+ci:
+  command: wt ci from file
+""")
+
+        # frontmatter 中没有 quality_gate
+        frontmatter = {
+            "some_other_field": "value"
+        }
+
+        result = resolve_quality_gate_command(tmp_path, frontmatter)
+
+        # 应该回退到默认检测
+        assert result == "wt ci from file"
+
+    def test_resolve_quality_gate_command_handles_empty_quality_gate(self, tmp_path):
+        """当 frontmatter 中 quality_gate 为空时，回退到默认检测"""
+        from ci_detector import resolve_quality_gate_command
+
+        # 创建 .wt-workflow 文件
+        wt_workflow = tmp_path / ".wt-workflow"
+        wt_workflow.write_text("""version: 1
+ci:
+  command: wt ci from file
+""")
+
+        # frontmatter 中 quality_gate 为空
+        frontmatter = {
+            "quality_gate": ""
+        }
+
+        result = resolve_quality_gate_command(tmp_path, frontmatter)
+
+        # 应该回退到默认检测
+        assert result == "wt ci from file"
+
+    def test_resolve_quality_gate_command_handles_none_quality_gate(self, tmp_path):
+        """当 frontmatter 中 quality_gate 为 None 时，回退到默认检测"""
+        from ci_detector import resolve_quality_gate_command
+
+        # 创建 .wt-workflow 文件
+        wt_workflow = tmp_path / ".wt-workflow"
+        wt_workflow.write_text("""version: 1
+ci:
+  command: wt ci from file
+""")
+
+        # frontmatter 中 quality_gate 为 None
+        frontmatter = {
+            "quality_gate": None
+        }
+
+        result = resolve_quality_gate_command(tmp_path, frontmatter)
+
+        # 应该回退到默认检测
+        assert result == "wt ci from file"  # 回退到默认检测
+
+    def test_resolve_quality_gate_command_handles_none_frontmatter(self, tmp_path):
+        """当 frontmatter 为 None 时，回退到默认检测"""
+        from ci_detector import resolve_quality_gate_command
+
+        # 创建 .wt-workflow 文件
+        wt_workflow = tmp_path / ".wt-workflow"
+        wt_workflow.write_text("""version: 1
+ci:
+  command: wt ci from file
+""")
+
+        # frontmatter 为 None
+        frontmatter = None
+
+        result = resolve_quality_gate_command(tmp_path, frontmatter)
+
+        # 应该回退到默认检测
+        assert result == "wt ci from file"  # 回退到默认检测

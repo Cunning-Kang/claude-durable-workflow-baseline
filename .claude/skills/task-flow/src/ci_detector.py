@@ -65,3 +65,27 @@ def detect_ci_command(project_root: Path) -> str:
 
     # Default placeholder
     return "# 请配置 CI 命令"
+
+
+def resolve_quality_gate_command(project_root: Path, task_frontmatter: dict) -> str:
+    """
+    Resolve quality gate command from task frontmatter or fallback to CI detection.
+
+    Priority order:
+    1. task_frontmatter.quality_gate (if present and not None/empty)
+    2. Default CI detection
+
+    Args:
+        project_root: Project root directory
+        task_frontmatter: Frontmatter dictionary from task file
+
+    Returns:
+        Quality gate command string
+    """
+    task_frontmatter = task_frontmatter or {}
+    # Check if quality_gate is explicitly defined in task frontmatter
+    if "quality_gate" in task_frontmatter and task_frontmatter["quality_gate"] is not None and task_frontmatter["quality_gate"] != "":
+        return task_frontmatter["quality_gate"]
+
+    # Fallback to default CI detection
+    return detect_ci_command(project_root)
