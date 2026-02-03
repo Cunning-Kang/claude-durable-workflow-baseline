@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 import re
+import yaml
 
 try:
     from .todowrite_compat.tool import maybe_run_bootstrap
@@ -19,6 +20,7 @@ class TaskManager:
     def __init__(self, tasks_dir: Path, index_file: Path):
         self.tasks_dir = tasks_dir
         self.index_file = index_file
+        self._task_index = {}  # In-memory index for task files
         self._ensure_index()
 
     def _ensure_index(self):
@@ -35,6 +37,25 @@ class TaskManager:
         # Ensure parent directory exists
         self.index_file.parent.mkdir(parents=True, exist_ok=True)
         self.index_file.write_text(json.dumps(data, indent=2))
+
+    def _build_index(self):
+        """Build in-memory index of task files by scanning tasks directory"""
+        self._task_index = {}
+        for task_file in self.tasks_dir.glob("TASK-*.md"):
+            try:
+                frontmatter = self._load_frontmatter(task_file)
+                task_id = frontmatter.get("id")
+                if task_id:
+                    self._task_index[task_id] = task_file
+            except Exception:
+                # Skip files that don't have valid frontmatter
+                continue
+
+    def _get_task_file(self, task_id: str) -> Path:
+        """Get task file path by task ID using in-memory index"""
+        if not self._task_index:
+            self._build_index()
+        return self._task_index.get(task_id)
 
     def generate_task_id(self) -> str:
         """生成下一个任务 ID"""
@@ -56,6 +77,9 @@ class TaskManager:
 
         content = self._generate_task_content(task_id, title, filename, todo_id=None)
         task_file.write_text(content)
+
+        # Add to in-memory index
+        self._task_index[task_id] = task_file
 
         return task_id
 
@@ -205,15 +229,28 @@ completed_at: null"""
                 result[key.strip()] = value.strip()
         return result
 
+    def _load_frontmatter(self, task_file: Path) -> dict:
+        """Load YAML frontmatter from a task file using yaml.safe_load for proper parsing."""
+
+        content = task_file.read_text()
+
+        # Extract YAML frontmatter between ---
+        frontmatter_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+        if not frontmatter_match:
+            return {}
+
+        frontmatter_text = frontmatter_match.group(1)
+        return yaml.safe_load(frontmatter_text) or {}
+
     def get_task(self, task_id: str) -> dict:
         """通过 ID 获取任务"""
-        for task_file in self.tasks_dir.glob("TASK-*.md"):
+        task_file = self._get_task_file(task_id)
+        if task_file and task_file.exists():
             task = self._parse_task_file(task_file)
-            if task["id"] == task_id:
-                # 读取完整内容
-                content = task_file.read_text()
-                task["content"] = content
-                return task
+            # 读取完整内容
+            content = task_file.read_text()
+            task["content"] = content
+            return task
         return None
 
     def get_task_by_todo_id(self, todo_id: str) -> dict:
@@ -257,35 +294,58 @@ completed_at: null"""
 
         task_file.write_text(content)
 
+        # Add to in-memory index
+        self._task_index[task_id] = task_file
+
         return task_id
 
 
+    def _replace_frontmatter(self, task_file: Path, updates: dict):
+        """Replace the frontmatter in a task file with updated values."""
+        content = task_file.read_text()
+
+        frontmatter_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
+        if not frontmatter_match:
+            raise ValueError(f"Invalid task file {task_file}: missing YAML frontmatter")
+
+        frontmatter_text = frontmatter_match.group(1)
+        remaining_content = content[frontmatter_match.end():]
+
+        now = datetime.now().strftime("%Y-%m-%d")
+        updates_with_timestamp = dict(updates)
+        updates_with_timestamp["updated_at"] = now
+
+        updated_lines = []
+        for line in frontmatter_text.splitlines():
+            stripped = line.lstrip()
+            if not stripped or line != stripped or ":" not in line:
+                updated_lines.append(line)
+                continue
+            key, _value = line.split(":", 1)
+            key = key.strip()
+            if key in updates_with_timestamp:
+                updated_lines.append(f"{key}: {updates_with_timestamp[key]}")
+            else:
+                updated_lines.append(line)
+
+        new_frontmatter = "---\n" + "\n".join(updated_lines) + "\n---"
+        new_content = new_frontmatter + remaining_content
+        task_file.write_text(new_content)
+        return new_content
+
     def update_task(self, task_id: str, **kwargs):
         """更新任务字段"""
-        task = self.get_task(task_id)
-        if not task:
+        task_file = self._get_task_file(task_id)
+        if not task_file or not task_file.exists():
             raise ValueError(f"Task {task_id} not found")
-
-        task_file = Path(task["file"])
-        content = task_file.read_text()
 
         # Check if status is being updated to "In Progress"
         if 'status' in kwargs and kwargs['status'].lower() in ["in progress", "in_progress"]:
             # Call bootstrap functionality if transitioning to In Progress
             maybe_run_bootstrap(self, task_id, kwargs['status'])
 
-        # 更新 YAML frontmatter 中的字段
-        for key, value in kwargs.items():
-            # 匹配 "key: value" 格式，value 可能包含空格
-            pattern = f"^{key}:\\s*.+$"
-            replacement = f"{key}: {value}"
-            content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
-
-        # 更新 updated_at
-        now = datetime.now().strftime("%Y-%m-%d")
-        content = re.sub(r"^updated_at:\s*.+$", f"updated_at: {now}", content, flags=re.MULTILINE)
-
-        task_file.write_text(content)
+        # Use the helper method to update frontmatter in a single operation
+        self._replace_frontmatter(task_file, kwargs)
 
     def add_task_note(self, task_id: str, note: str):
         """在任务的 Notes section 添加备注"""
@@ -319,11 +379,10 @@ completed_at: null"""
 
     def complete_task(self, task_id: str):
         """完成任务（标记为 Done 并归档）"""
-        task = self.get_task(task_id)
-        if not task:
+        task_file = self._get_task_file(task_id)
+        if not task_file or not task_file.exists():
             raise ValueError(f"Task {task_id} not found")
 
-        task_file = Path(task["file"])
         filename = task_file.name
 
         # 更新任务状态
@@ -341,6 +400,10 @@ completed_at: null"""
         # 移动任务文件到 completed/
         new_path = completed_dir / filename
         task_file.rename(new_path)
+
+        # Remove from in-memory index
+        if task_id in self._task_index:
+            del self._task_index[task_id]
 
         # 更新 _index.json
         index = self._read_index()

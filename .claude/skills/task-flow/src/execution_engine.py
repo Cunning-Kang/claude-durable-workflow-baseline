@@ -14,26 +14,22 @@ from plan_generator import ExecutionPlan, Task, TaskStatus, ExecutionStats, vali
 @dataclass
 class StateTracker:
     """Tracks execution state for tasks"""
-    completed: List[str] = field(default_factory=list)
-    failed: List[str] = field(default_factory=list)
-    in_progress: List[str] = field(default_factory=list)
-    skipped: List[str] = field(default_factory=list)
+    completed: set = field(default_factory=set)
+    failed: set = field(default_factory=set)
+    in_progress: set = field(default_factory=set)
+    skipped: set = field(default_factory=set)
 
     def mark_completed(self, task_id: str):
-        if task_id not in self.completed:
-            self.completed.append(task_id)
+        self.completed.add(task_id)
 
     def mark_failed(self, task_id: str):
-        if task_id not in self.failed:
-            self.failed.append(task_id)
+        self.failed.add(task_id)
 
     def mark_in_progress(self, task_id: str):
-        if task_id not in self.in_progress:
-            self.in_progress.append(task_id)
+        self.in_progress.add(task_id)
 
     def mark_skipped(self, task_id: str):
-        if task_id not in self.skipped:
-            self.skipped.append(task_id)
+        self.skipped.add(task_id)
 
     def is_completed(self, task_id: str) -> bool:
         return task_id in self.completed
@@ -103,6 +99,9 @@ class ExecutionEngine:
         self.controller = ExecutionController()
         self.state = StateTracker()
 
+        # Create task_id index dictionary for O(1) lookup
+        self._task_id_index = {task.id: task for task in self.plan.tasks}
+
         # Load previous execution state if exists
         self._load_state()
 
@@ -159,27 +158,24 @@ class ExecutionEngine:
 
             if success:
                 self.state.mark_completed(task.id)
-                self.state.in_progress.remove(task.id)
+                self.state.in_progress.discard(task.id)
                 task.status = TaskStatus.COMPLETED
                 tasks_executed += 1
             else:
                 self.state.mark_failed(task.id)
-                self.state.in_progress.remove(task.id)
+                self.state.in_progress.discard(task.id)
                 task.status = TaskStatus.FAILED
 
         return {
             "tasks_executed": tasks_executed,
             "total_completed": len(self.state.completed),
             "errors": errors,
-            "skipped": self.state.skipped,
+            "skipped": list(self.state.skipped),  # Convert set to list for backward compatibility
         }
 
     def get_task_by_id(self, task_id: str) -> Optional[Task]:
         """Get a task by its ID"""
-        for task in self.plan.tasks:
-            if task.id == task_id:
-                return task
-        return None
+        return self._task_id_index.get(task_id)
 
     def update_task_status(self, task_id: str, status: TaskStatus):
         """Update the status of a task"""

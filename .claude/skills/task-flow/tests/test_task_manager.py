@@ -202,6 +202,14 @@ class TestTaskUpdate:
 
         assert "current_step: 3" in content
 
+    def test_update_task_updates_multiple_fields(self, task_manager, temp_tasks_dir):
+        task_id = task_manager.create_task("Update task")
+        task_manager.update_task(task_id, status="In Progress", current_step=2)
+        task_file = temp_tasks_dir / f"{task_id}-update-task.md"
+        content = task_file.read_text()
+        assert "status: In Progress" in content
+        assert "current_step: 2" in content
+
 
 class TestTaskRetrieval:
     """测试任务检索"""
@@ -221,6 +229,11 @@ class TestTaskRetrieval:
         task = task_manager.get_task("TASK-999")
 
         assert task is None
+
+    def test_task_lookup_uses_index_after_creation(self, task_manager, temp_tasks_dir):
+        task_id = task_manager.create_task("Indexed task")
+        task = task_manager.get_task(task_id)
+        assert task["id"] == task_id
 
 
 class TestTaskStepUpdates:
@@ -247,3 +260,10 @@ class TestTaskStepUpdates:
         task_manager.update_task_step(task_id, step=3)
         final_content = task_file.read_text()
         assert "current_step: 3" in final_content
+
+    def test_frontmatter_parser_handles_existing_fields(self, task_manager, temp_tasks_dir):
+        task_id = task_manager.create_task("Test task")
+        task_file = temp_tasks_dir / f"{task_id}-test-task.md"
+        data = task_manager._load_frontmatter(task_file)
+        assert data["id"] == task_id
+        assert data["status"] == "To Do"

@@ -534,3 +534,69 @@ plan_file: null
         # 读取任务文件，验证状态变为 "Blocked" 由于错误
         updated_content = task_file.read_text()
         assert "status: Blocked" in updated_content
+
+
+class TestStartTaskCommand:
+    """测试 start-task 命令"""
+
+    def test_start_task_reads_branch_from_frontmatter(self, tmp_path, monkeypatch, cli_env):
+        """This test asserts branch resolution uses frontmatter if present
+        and does not depend on regex scanning of body."""
+
+        # 创建项目目录结构
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+        (project / ".worktrees").mkdir()
+
+        # 创建带有特定分支名的 frontmatter 的任务文件
+        task_file = project / "docs" / "tasks" / "TASK-001-test-task.md"
+        task_file.write_text(
+            """---
+id: TASK-001
+title: "Test Task"
+status: "To Do"
+created_at: 2026-02-01
+updated_at: 2026-02-01
+branch: custom-branch-from-frontmatter
+---
+# Task: Test Task
+
+Some content that mentions branch: this-should-not-be-used
+"""
+        )
+
+        # Initialize a git repository to avoid the git error
+        subprocess.run(["git", "init"], cwd=project, capture_output=True)
+
+        # Mock the git worktree add command to prevent actual worktree creation
+        original_run = subprocess.run
+        def mock_subprocess_run(command, *args, **kwargs):
+            if isinstance(command, list) and len(command) >= 3 and 'worktree' in command and 'add' in command:
+                # Return a successful result without actually running the git worktree add command
+                class MockResult:
+                    returncode = 0
+                    stdout = "Mock: Git worktree add command would succeed"
+                    stderr = ""
+                return MockResult()
+            else:
+                # Execute the original subprocess.run for other commands
+                return original_run(command, *args, **kwargs)
+
+        monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
+
+        # 执行 start-task 命令
+        result = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        # 验证命令成功执行
+        assert result.returncode == 0
+
+        # 验证使用了 frontmatter 中的分支名而不是正文中的
+        assert "custom-branch-from-frontmatter" in result.stdout
+        assert "this-should-not-be-used" not in result.stdout

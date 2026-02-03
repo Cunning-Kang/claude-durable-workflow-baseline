@@ -1,7 +1,7 @@
 """Tests for execution engine"""
 
 import pytest
-from execution_engine import ExecutionEngine, execute_plan, ExecutionResult, run_step, parse_plan_steps, PlanStep, build_execution_report, StepResult
+from execution_engine import ExecutionEngine, execute_plan, ExecutionResult, run_step, parse_plan_steps, PlanStep, build_execution_report, StepResult, StateTracker
 from plan_generator import ExecutionPlan, Task, TaskStatus
 
 
@@ -248,3 +248,11 @@ Expect: something should appear
         assert len(result.steps) == 1
         assert result.steps[0].status == "failed"
         assert "expect assertion failed" in result.steps[0].error.lower() or "expected" in result.steps[0].error.lower()
+
+
+def test_state_tracker_uses_set_semantics():
+    from execution_engine import StateTracker
+    s = StateTracker()
+    s.mark_completed("TASK-001")
+    s.mark_completed("TASK-001")
+    assert len(s.completed) == 1

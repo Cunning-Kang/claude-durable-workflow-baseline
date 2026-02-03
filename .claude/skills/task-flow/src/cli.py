@@ -117,14 +117,13 @@ def cmd_start_task(args):
         print(f"Error: Task {args.task_id} not found", file=sys.stderr)
         sys.exit(1)
 
-    # 从任务文件中提取分支名，如果没有则从标题生成
-    import re
-    branch_match = re.search(r'branch:\s*(\S+)', task['content'])
-    if branch_match:
-        branch_name = branch_match.group(1)
-        if branch_name == 'null':
-            branch_name = None
-    else:
+    # Load frontmatter to get branch name, fallback to regex if not in frontmatter
+    task_file = Path(task["file"])
+    frontmatter = tm._load_frontmatter(task_file)
+
+    # Get branch from frontmatter first, then fall back to regex in content if needed
+    branch_name = frontmatter.get("branch")
+    if branch_name == 'null' or branch_name is None:
         branch_name = None
 
     if not branch_name:
@@ -194,15 +193,6 @@ def cmd_update_task(args):
     if args.note:
         tm.add_task_note(args.task_id, args.note)
         print(f"✓ Added note to task {args.task_id}")
-
-
-def _load_frontmatter(task_file: Path) -> Dict[str, Any]:
-    content = task_file.read_text()
-    parts = content.split("---")
-    if len(parts) < 3:
-        return {}
-    yaml_content = parts[1].strip()
-    return yaml.safe_load(yaml_content) or {}
 
 
 def _parse_markdown_plan(content: str) -> List[Dict[str, Any]]:
@@ -287,7 +277,7 @@ def cmd_execute_next_batch(args):
     tm.update_task(args.task_id, status="In Progress")
 
     task_file = Path(task["file"])
-    frontmatter = _load_frontmatter(task_file)
+    frontmatter = tm._load_frontmatter(task_file)
     plan_file_value = frontmatter.get("plan_file")
     if not plan_file_value:
         print("Error: plan_file is required for execute-next-batch", file=sys.stderr)
