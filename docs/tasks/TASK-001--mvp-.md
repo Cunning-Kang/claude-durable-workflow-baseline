@@ -1,7 +1,7 @@
 ---
 id: TASK-001
 title: 自动化 MVP 执行器
-status: To Do
+status: Done
 created_at: 2026-02-03
 updated_at: 2026-02-03
 execution_mode: executing-plans
