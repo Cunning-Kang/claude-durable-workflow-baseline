@@ -431,6 +431,7 @@ def main():
     # execute-next-batch
     parser_execute = subparsers.add_parser(
         "execute-next-batch",
+        aliases=["execute-plan"],  # Add execute-plan as an alias
         help="Execute next batch of ready tasks"
     )
     parser_execute.add_argument("task_id", help="Task ID (e.g., TASK-001)")
@@ -456,7 +457,7 @@ def main():
         cmd_start_task(args)
     elif args.command == "update-task":
         cmd_update_task(args)
-    elif args.command == "execute-next-batch":
+    elif args.command == "execute-next-batch" or args.command == "execute-plan":
         cmd_execute_next_batch(args)
     elif args.command == "complete-task":
         cmd_complete_task(args)

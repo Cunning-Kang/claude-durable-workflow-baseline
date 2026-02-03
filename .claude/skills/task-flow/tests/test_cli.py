@@ -292,6 +292,22 @@ execution_state: {}
         assert result.returncode == 0
         assert "execute-next-batch" in result.stdout
 
+    def test_execute_plan_alias_in_help(self, cli_env, tmp_path):
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "--help"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        assert "execute-plan" in result.stdout
+
     def test_execute_next_batch_runs_engine(self, cli_env, project_dir):
         project, task_file = project_dir
 
@@ -382,6 +398,26 @@ execution_state: {}
         assert result.returncode == 0
         stats = json.loads(result.stdout)
         assert stats["total_completed"] == 1
+
+    def test_execute_plan_alias_works_same_as_execute_next_batch(self, cli_env, project_dir):
+        project, task_file = project_dir
+
+        # 先重置任务状态为 To Do
+        content = task_file.read_text()
+        content = content.replace('status: "To Do"', 'status: "To Do"')
+        task_file.write_text(content)
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-plan", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        stats = json.loads(result.stdout)
+        assert stats["tasks_executed"] == 1
 
 
 class TestExecuteNextBatchStatusChanges:
