@@ -141,8 +141,8 @@ def test_bootstrap_called_when_in_progress_and_enabled(monkeypatch, tmp_path):
     # Mock the _run_bootstrap method to record if it was called
     run_bootstrap_called = []
 
-    def mock_run_bootstrap(self):
-        run_bootstrap_called.append(True)
+    def mock_run_bootstrap(self, task_id):
+        run_bootstrap_called.append(task_id)
         return True
 
     monkeypatch.setattr('todowrite_compat.tool.TodoWriteCompat._run_bootstrap', mock_run_bootstrap)
@@ -169,7 +169,7 @@ def test_bootstrap_failure_does_not_block_status_update(monkeypatch, tmp_path):
     and task_manager.add_task_note is used to record failure
     """
     # Mock the _run_bootstrap method to throw an exception
-    def mock_run_bootstrap(self):
+    def mock_run_bootstrap(self, task_id):
         raise Exception("Bootstrap failed")
 
     monkeypatch.setattr('todowrite_compat.tool.TodoWriteCompat._run_bootstrap', mock_run_bootstrap)
