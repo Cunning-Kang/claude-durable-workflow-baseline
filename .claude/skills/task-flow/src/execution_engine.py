@@ -263,7 +263,7 @@ def parse_plan_steps(plan_text: str) -> List[PlanStep]:
 
 
 def run_step(step: PlanStep, step_callback: Optional[Callable[[int], None]] = None) -> StepResult:
-    """Execute a single step's Run command.
+    """Execute a single step's Run command and validate against Expect statement.
 
     Args:
         step: The PlanStep to execute
@@ -289,14 +289,43 @@ def run_step(step: PlanStep, step_callback: Optional[Callable[[int], None]] = No
                 output=completed.stdout,
                 error=completed.stderr or f"Command exited with code {completed.returncode}"
             )
-        # Call step callback after successful execution
+
+        # Check if the output matches the expected result
+        output = completed.stdout.strip()
+        expected = step.expect.strip()
+
+        # Handle PASS/FAIL explicitly, otherwise treat Expect as keyword
+        if expected:
+            normalized = expected.lower()
+            if normalized == "pass":
+                pass
+            elif normalized == "fail":
+                return StepResult(
+                    step_number=step.number,
+                    title=step.title,
+                    status="failed",
+                    output=output,
+                    error="Expect assertion requested FAIL"
+                )
+            else:
+                # Check if expected string is contained in the output (case-insensitive)
+                if normalized not in output.lower():
+                    return StepResult(
+                        step_number=step.number,
+                        title=step.title,
+                        status="failed",
+                        output=output,
+                        error=f"Expect assertion failed: Expected '{expected}' not found in output '{output}'."
+                    )
+
+        # Call step callback after successful execution and validation
         if step_callback:
             step_callback(step.number)
         return StepResult(
             step_number=step.number,
             title=step.title,
             status="passed",
-            output=completed.stdout
+            output=output
         )
     except ValueError as e:
         return StepResult(

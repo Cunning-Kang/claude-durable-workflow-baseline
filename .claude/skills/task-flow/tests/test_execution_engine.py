@@ -52,11 +52,11 @@ Run: command
         plan_text = """
 ### Step 1: Simple command
 Run: echo "test"
-Expect: test output
+Expect: test
 
 ### Step 2: Another command
 Run: true
-Expect: success
+Expect: PASS
 """
         result = execute_plan(plan_text=plan_text)
         # Should not fail validation
@@ -86,7 +86,7 @@ Run: command
         plan_text = """
 ### Step 1: Valid step
 Run: echo "hello"
-Expect: hello printed
+Expect: hello
 """
         result = execute_plan(plan_text=plan_text)
 
@@ -190,3 +190,61 @@ class TestExecutionReport:
 
         # Verify overall status
         assert "Execution Status: PASSED" in report
+
+
+class TestExpectAssertion:
+    """Test Expect assertion logic"""
+
+    def test_expect_keyword_fails_when_output_does_not_match(self):
+        """Test that step fails when command output doesn't match Expect statement"""
+        plan = """
+### Step 1: Test mismatch
+Run: echo "actual output"
+Expect: Expected different output
+"""
+        result = execute_plan(plan_text=plan)
+        # Should fail because output "actual output" doesn't contain "Expected different output"
+        assert result.status == "failed"
+        assert len(result.steps) == 1
+        assert result.steps[0].status == "failed"
+        assert "expectation not met" in result.steps[0].error.lower() or "expected" in result.steps[0].error.lower()
+
+    def test_expect_keyword_passes_when_output_contains_expected_substring(self):
+        """Test that step passes when command output contains expected substring"""
+        plan = """
+### Step 1: Test match
+Run: echo "This is the expected output"
+Expect: expected
+"""
+        result = execute_plan(plan_text=plan)
+        # Should pass because output contains the expected substring
+        assert result.status == "passed"
+        assert len(result.steps) == 1
+        assert result.steps[0].status == "passed"
+
+    def test_expect_keyword_passes_when_full_output_matches_exactly(self):
+        """Test that step passes when command output matches expectation exactly"""
+        plan = """
+### Step 1: Test exact match
+Run: echo "exact match"
+Expect: exact match
+"""
+        result = execute_plan(plan_text=plan)
+        # Should pass because output matches expectation exactly (ignoring newlines)
+        assert result.status == "passed"
+        assert len(result.steps) == 1
+        assert result.steps[0].status == "passed"
+
+    def test_expect_keyword_fails_when_output_is_empty_but_expectation_exists(self):
+        """Test that step fails when command produces no output but expects something"""
+        plan = """
+### Step 1: Test empty output
+Run: true
+Expect: something should appear
+"""
+        result = execute_plan(plan_text=plan)
+        # Should fail because command produced no output but expected something
+        assert result.status == "failed"
+        assert len(result.steps) == 1
+        assert result.steps[0].status == "failed"
+        assert "expect assertion failed" in result.steps[0].error.lower() or "expected" in result.steps[0].error.lower()
