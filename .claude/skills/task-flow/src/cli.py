@@ -301,7 +301,10 @@ def cmd_execute_next_batch(args):
     auto_continue = execution_config.get("auto_continue")
     checkpoint_interval = execution_config.get("checkpoint_interval")
 
-    engine = ExecutionEngine(plan, task_file.parent)
+    def step_callback(step_number: int):
+        tm.update_task_step(args.task_id, step_number)
+
+    engine = ExecutionEngine(plan, task_file.parent, step_callback=step_callback)
     if batch_size is not None:
         engine.controller.batch_size = batch_size
     if auto_continue is not None:

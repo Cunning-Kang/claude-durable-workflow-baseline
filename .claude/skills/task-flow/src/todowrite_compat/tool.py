@@ -128,7 +128,13 @@ class TodoWriteCompat:
 
                 # Run bootstrap if needed
                 if task_flow_status == "In Progress" and self.bootstrap:
-                    self._run_bootstrap(task_id)
+                    try:
+                        self._run_bootstrap(task_id)
+                    except Exception as e:
+                        self.task_manager.add_task_note(
+                            task_id,
+                            f"Bootstrap failed: {str(e)}"
+                        )
 
             results.append({
                 "id": todo_id,

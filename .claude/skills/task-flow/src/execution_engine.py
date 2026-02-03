@@ -336,9 +336,9 @@ def run_quality_gate(cmd: str, project_root: Path) -> Dict[str, Any]:
         return {"status": "passed", "note": "No quality gate configured"}
 
     try:
+        gate_args = shlex.split(cmd)
         result = subprocess.run(
-            cmd,
-            shell=True,
+            gate_args,
             capture_output=True,
             text=True,
             timeout=300,  # 5 minutes for CI commands
@@ -353,6 +353,11 @@ def run_quality_gate(cmd: str, project_root: Path) -> Dict[str, Any]:
         return {
             "status": "passed",
             "output": result.stdout
+        }
+    except ValueError as e:
+        return {
+            "status": "failed",
+            "error": f"Invalid command: {e}"
         }
     except subprocess.TimeoutExpired:
         return {
