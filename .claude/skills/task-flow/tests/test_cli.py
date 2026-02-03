@@ -382,3 +382,119 @@ execution_state: {}
         assert result.returncode == 0
         stats = json.loads(result.stdout)
         assert stats["total_completed"] == 1
+
+
+class TestExecuteNextBatchStatusChanges:
+    """测试 execute-next-batch 命令的状态变更"""
+
+    @pytest.fixture
+    def project_dir_with_task(self, tmp_path):
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+        (project / "docs" / "plans").mkdir(parents=True)
+
+        # 创建一个简单的计划文件 - 使用与原测试相同的格式
+        plan_file = project / "docs" / "plans" / "simple-plan.yaml"
+        plan_file.write_text(
+            """tasks:
+- id: TASK-001
+  title: Step 1
+  description: First step
+- id: TASK-002
+  title: Step 2
+  description: Second step
+  dependencies:
+    - TASK-001
+"""
+        )
+
+        # 创建任务文件，初始状态为 "To Do"
+        task_file = project / "docs" / "tasks" / "TASK-001-test-status-change.md"
+        task_file.write_text(
+            """---
+id: TASK-001
+title: "Test Status Change"
+status: "To Do"
+created_at: 2026-02-01
+updated_at: 2026-02-01
+execution_mode: "executing-plans"
+plan_file: "docs/plans/simple-plan.yaml"
+execution_config:
+  batch_size: 1
+  auto_continue: false
+  checkpoint_interval: 3
+execution_state: {}
+---
+# Task: Test Status Change
+
+## Plan Packet
+...
+"""
+        )
+
+        return project, task_file
+
+    def test_execute_next_batch_sets_status_to_done_if_successful(self, cli_env, project_dir_with_task):
+        """execute-next-batch 成功时应将状态设置为 'Done'"""
+        project, task_file = project_dir_with_task
+
+        # 验证初始状态是 "To Do"
+        initial_content = task_file.read_text()
+        assert 'status: "To Do"' in initial_content
+
+        # 执行 execute-next-batch 命令
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-next-batch", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        # 验证命令正常完成
+        assert result.returncode == 0
+        json.loads(result.stdout)
+
+        # 验证状态更新为 Done
+        updated_content = task_file.read_text()
+        assert "status: Done" in updated_content
+
+    def test_execute_next_batch_handles_missing_plan_file(self, tmp_path, cli_env):
+        """execute-next-batch 应该正确处理缺少 plan_file 的情况"""
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+
+        # 创建一个没有 plan_file 的任务
+        task_file = project / "docs" / "tasks" / "TASK-001-no-plan.md"
+        task_file.write_text(
+            """---
+id: TASK-001
+title: "No Plan Task"
+status: "To Do"
+created_at: 2026-02-01
+updated_at: 2026-02-01
+execution_mode: "executing-plans"
+plan_file: null
+---
+# Task: No Plan Task
+"""
+        )
+
+        # 执行 execute-next-batch 命令 - 这会导致错误
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-next-batch", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        # 命令应该返回非 0 并包含错误信息
+        assert result.returncode != 0
+        assert "plan_file is required" in result.stderr
+
+        # 读取任务文件，验证状态变为 "Blocked" 由于错误
+        updated_content = task_file.read_text()
+        assert "status: Blocked" in updated_content

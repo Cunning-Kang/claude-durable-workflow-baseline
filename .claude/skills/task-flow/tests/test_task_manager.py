@@ -174,6 +174,12 @@ class TestTaskUpdate:
 
         assert "status: In Progress" in content
 
+    def test_task_status_updates_on_execution_states(self, task_manager, temp_tasks_dir):
+        task_id = task_manager.create_task("Test task")
+        task_manager.update_task(task_id, status="In Progress")
+        task_file = temp_tasks_dir / f"{task_id}-test-task.md"
+        assert "status: In Progress" in task_file.read_text()
+
     def test_update_task_worktree(self, task_manager, temp_tasks_dir):
         """更新 worktree 路径"""
         task_id = task_manager.create_task("Test task")

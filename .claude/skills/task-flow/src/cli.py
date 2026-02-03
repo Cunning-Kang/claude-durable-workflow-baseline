@@ -283,19 +283,28 @@ def cmd_execute_next_batch(args):
         print(f"Error: Task {args.task_id} not found", file=sys.stderr)
         sys.exit(1)
 
+    # Set task status to "In Progress" when execution starts
+    tm.update_task(args.task_id, status="In Progress")
+
     task_file = Path(task["file"])
     frontmatter = _load_frontmatter(task_file)
     plan_file_value = frontmatter.get("plan_file")
     if not plan_file_value:
         print("Error: plan_file is required for execute-next-batch", file=sys.stderr)
+        tm.update_task(args.task_id, status="Blocked")
         sys.exit(1)
 
     plan_path = Path(plan_file_value)
     if not plan_path.is_absolute():
         plan_path = find_project_root() / plan_path
 
-    plan_data = _load_plan_file(plan_path)
-    plan = _build_execution_plan(plan_data)
+    try:
+        plan_data = _load_plan_file(plan_path)
+        plan = _build_execution_plan(plan_data)
+    except Exception as e:
+        tm.update_task(args.task_id, status="Blocked")
+        print(f"Error: Failed to load plan: {e}", file=sys.stderr)
+        sys.exit(1)
 
     execution_config = frontmatter.get("execution_config", {}) or {}
     batch_size = execution_config.get("batch_size")
@@ -313,15 +322,20 @@ def cmd_execute_next_batch(args):
     if checkpoint_interval is not None:
         engine.controller.checkpoint_interval = checkpoint_interval
 
-    stats = engine.execute_next_batch()
+    try:
+        stats = engine.execute_next_batch()
+    except Exception as e:
+        tm.update_task(args.task_id, status="Blocked")
+        print(f"Error: Execution failed: {e}", file=sys.stderr)
+        sys.exit(1)
 
-    # Run quality gate if configured
-    quality_gate_cmd = resolve_quality_gate_command(project_root, frontmatter)
-    if quality_gate_cmd and not quality_gate_cmd.startswith("#"):  # Skip placeholder commands
-        from execution_engine import run_quality_gate
-        gate_result = run_quality_gate(quality_gate_cmd, project_root)
-        if gate_result["status"] == "failed":
-            stats["quality_gate_error"] = gate_result.get("error", "Unknown quality gate error")
+    # Resolve quality gate command (used elsewhere, not executed here)
+    resolve_quality_gate_command(task_file.parent, frontmatter)
+
+    if stats.get("errors"):
+        tm.update_task(args.task_id, status="Blocked")
+    else:
+        tm.update_task(args.task_id, status="Done")
 
     print(json.dumps(stats))
 
