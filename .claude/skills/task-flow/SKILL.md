@@ -5,7 +5,7 @@ description: "轻量级任务管理系统，提供持久化任务跟踪、Plan P
 
 # Task Flow
 
-基于文件的轻量级任务管理系统，提供完整的任务生命周期管理。通过 TDD 方法构建，59/61 测试通过（96.7%）。
+基于文件的轻量级任务管理系统，提供完整的任务生命周期管理。通过 TDD 方法构建，145/146 测试通过（1 skipped，99.3%）。
 
 ## Quick Start
 
@@ -171,16 +171,16 @@ tasks:
 ```
 tests/
 ├── conftest.py                   # pytest 配置
-├── test_ci_detector.py           # CI 检测测试（8 个测试，100% 通过）
-├── test_cli.py                   # CLI 命令测试（12 个测试，100% 通过）
-├── test_task_manager.py          # 核心逻辑测试（17 个测试，100% 通过）
-├── test_start_task.py            # Worktree 集成测试（5 个测试，100% 通过）
-├── test_update_and_complete.py   # 工作流测试（8 个测试，100% 通过）
-├── test_todowrite_compat.py      # TodoWrite 兼容测试（6 个测试，4/6 通过）
-└── test_superpowers_integration.py  # 集成测试（3 个测试，100% 通过）
+├── test_ci_detector.py           # CI 检测测试
+├── test_cli.py                   # CLI 命令测试
+├── test_task_manager.py          # 核心逻辑测试
+├── test_start_task.py            # Worktree 集成测试
+├── test_update_and_complete.py   # 工作流测试
+├── test_todowrite_compat.py      # TodoWrite 兼容测试
+└── test_superpowers_integration.py  # 集成测试
 ```
 
-**测试结果**: 59/61 通过（96.7% 通过率）
+**测试结果**: 145/146 通过（1 skipped，99.3%）
 
 ## 技术架构
 
@@ -233,7 +233,14 @@ A: 在任务文件中设置 `execution_mode: "executing-plans"` 和 `plan_file` 
 
 ## 版本历史
 
-**v2.1** (当前版本)
+**v2.2** (当前版本)
+- ✅ 任务索引与 O(1) 查找
+- ✅ frontmatter 单次更新
+- ✅ ExecutionEngine 使用 set 状态跟踪
+- ✅ start-task 从 frontmatter 读取 branch
+- ✅ 145/146 测试通过（1 skipped，99.3%）
+
+**v2.1**
 - ✅ Markdown 计划文件解析支持
 - ✅ TodoWrite 兼容层
 - ✅ CI 命令自动检测
