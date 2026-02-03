@@ -2,6 +2,7 @@
 
 import json
 import re
+import shlex
 import subprocess
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable
@@ -273,9 +274,9 @@ def run_step(step: PlanStep, step_callback: Optional[Callable[[int], None]] = No
         StepResult with execution status
     """
     try:
+        run_args = shlex.split(step.run)
         completed = subprocess.run(
-            step.run,
-            shell=True,
+            run_args,
             capture_output=True,
             text=True,
             timeout=60  # Default timeout
@@ -296,6 +297,13 @@ def run_step(step: PlanStep, step_callback: Optional[Callable[[int], None]] = No
             title=step.title,
             status="passed",
             output=completed.stdout
+        )
+    except ValueError as e:
+        return StepResult(
+            step_number=step.number,
+            title=step.title,
+            status="failed",
+            error=f"Invalid command: {e}"
         )
     except subprocess.TimeoutExpired:
         return StepResult(
