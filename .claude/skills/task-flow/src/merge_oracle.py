@@ -294,70 +294,67 @@ class MergeOracle:
                 suggestion=f"Failed to checkout {target_branch}: {checkout_result.stderr}"
             )
 
-        # Attempt merge
-        merge_result = self.git_ops._run_git(
-            ["merge", "--no-commit", "--no-ff", branch],
-            capture_output=True
-        )
-
-        conflicts_auto_resolved = 0
-
-        if merge_result.returncode == 0:
-            # Clean merge - commit it
-            commit_result = self.git_ops._run_git(
-                ["commit", "-m", f"Merge {branch} into {target_branch}"],
+        try:
+            # Attempt merge
+            merge_result = self.git_ops._run_git(
+                ["merge", "--no-commit", "--no-ff", branch],
                 capture_output=True
             )
-            success = commit_result.returncode == 0
 
-            # For status-only conflicts, count as auto-resolved
-            if risk.risk_level == "MEDIUM" and "status" in risk.suggestion.lower():
-                conflicts_auto_resolved = 1
+            conflicts_auto_resolved = 0
 
-            # Restore original branch
-            self.git_ops._run_git(["checkout", original_branch], capture_output=True)
-
-            return MergeResult(
-                success=success,
-                conflicts_auto_resolved=conflicts_auto_resolved,
-                suggestion="" if success else "Merge succeeded but commit failed"
-            )
-        else:
-            # Merge had conflicts
-            # Check if they're simple conflicts we can auto-resolve
-            if risk.risk_level == "MEDIUM" and "status" in risk.suggestion.lower():
-                # Try to abort and use strategy-option=theirs for status conflicts
-                abort_result = self.git_ops._run_git(
-                    ["merge", "--abort"],
+            if merge_result.returncode == 0:
+                # Clean merge - commit it
+                commit_result = self.git_ops._run_git(
+                    ["commit", "-m", f"Merge {branch} into {target_branch}"],
                     capture_output=True
                 )
+                success = commit_result.returncode == 0
 
-                # Try merge with theirs strategy for simple conflicts
-                merge_result2 = self.git_ops._run_git(
-                    ["merge", "-X", "theirs", "--no-commit", "--no-ff", branch],
-                    capture_output=True
+                # For status-only conflicts, count as auto-resolved
+                if risk.risk_level == "MEDIUM" and "status" in risk.suggestion.lower():
+                    conflicts_auto_resolved = 1
+
+                return MergeResult(
+                    success=success,
+                    conflicts_auto_resolved=conflicts_auto_resolved,
+                    suggestion="" if success else "Merge succeeded but commit failed"
                 )
-
-                if merge_result2.returncode == 0:
-                    commit_result = self.git_ops._run_git(
-                        ["commit", "-m", f"Merge {branch} into {target_branch} (auto-resolved)"],
+            else:
+                # Merge had conflicts
+                # Check if they're simple conflicts we can auto-resolve
+                if risk.risk_level == "MEDIUM" and "status" in risk.suggestion.lower():
+                    self.git_ops._run_git(
+                        ["merge", "--abort"],
                         capture_output=True
                     )
 
-                    self.git_ops._run_git(["checkout", original_branch], capture_output=True)
-
-                    return MergeResult(
-                        success=commit_result.returncode == 0,
-                        conflicts_auto_resolved=1,
-                        suggestion=""
+                    # Try merge with theirs strategy for simple conflicts
+                    merge_result2 = self.git_ops._run_git(
+                        ["merge", "-X", "theirs", "--no-commit", "--no-ff", branch],
+                        capture_output=True
                     )
 
-            # Abort failed merge and restore
-            self.git_ops._run_git(["merge", "--abort"], capture_output=True)
-            self.git_ops._run_git(["checkout", original_branch], capture_output=True)
+                    if merge_result2.returncode == 0:
+                        commit_result = self.git_ops._run_git(
+                            ["commit", "-m", f"Merge {branch} into {target_branch} (auto-resolved)"],
+                            capture_output=True
+                        )
 
-            return MergeResult(
-                success=False,
-                conflicts_auto_resolved=0,
-                suggestion=risk.suggestion or "Merge conflicts detected. Manual resolution required."
-            )
+                        return MergeResult(
+                            success=commit_result.returncode == 0,
+                            conflicts_auto_resolved=1,
+                            suggestion=""
+                        )
+
+                # Abort failed merge
+                self.git_ops._run_git(["merge", "--abort"], capture_output=True)
+
+                return MergeResult(
+                    success=False,
+                    conflicts_auto_resolved=0,
+                    suggestion=risk.suggestion or "Merge conflicts detected. Manual resolution required."
+                )
+        finally:
+            if original_branch and original_branch != target_branch:
+                self.git_ops._run_git(["checkout", original_branch], capture_output=True)
