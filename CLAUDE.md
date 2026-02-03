@@ -1,28 +1,57 @@
-## 工作流：Plan Packet 驱动开发
+## 官方工作流：Task Flow × Superpowers
 
-Plan Packet 是任务文件的结构化计划部分，帮助组织开发思路。
+本项目以 **task-flow** 作为任务事实源，以 **superpowers** 作为流程纪律与执行能力核心。所有任务、状态、计划必须可追溯到 TASK-xxx。
 
-### 使用方式
+### 核心原则
 
-告诉 Claude：
-- "初始化 plan-packet" - 设置工作流
-- "添加 Plan Packet 到任务" - 为任务添加结构化计划
-- "关联当前分支到任务" - 记录分支关联
-- "显示当前任务" - 查看关联的任务和计划
+1. **事实源唯一**：任务与状态仅存在于 `docs/tasks/`。
+2. **计划归档唯一**：实施计划仅存在于 `docs/plans/`。
+3. **入口语句固定**：仅使用标准入口语句触发流程。
+4. **复杂任务强流程**：brainstorm → plan → execute。
+5. **强可追溯**：任务、计划、实现必须相互映射。
 
-### Plan Packet 结构
+### 标准入口语句
 
-1. **Goal / Non-goals** - 明确目标和不做什么
-2. **Scope** - 按可并行 workstreams 拆分
-3. **Interfaces & Constraints** - 代码路径、依赖、质量入口
-4. **Execution Order** - 执行顺序
-5. **Acceptance Criteria** - 验收标准
-6. **Quality Gates** - 质量检查命令
-7. **Risks & Rollback** - 风险和回滚步骤
-8. **Backlog 任务映射** - 任务 ID、文件路径、关联分支
-9. **Notes** - 上下文、决策、参考链接
+```
+创建任务：<标题>
+开始需求澄清：TASK-xxx
+为 TASK-xxx 写实施计划
+启动任务 TASK-xxx
+按计划执行 TASK-xxx
+更新任务 TASK-xxx 进度到第 N 步
+完成任务 TASK-xxx
+```
+
+### 推荐执行顺序（主流程）
+
+1. **创建任务** → task-flow `create-task`
+2. **需求澄清** → superpowers:brainstorming
+3. **实施计划** → superpowers:writing-plans
+4. **启动任务** → task-flow `start-task`
+5. **执行计划** → superpowers:executing-plans / superpowers:subagent-driven-development
+6. **更新进度** → task-flow `update-task`
+7. **完成任务** → task-flow `complete-task`
+
+### 分支流程
+
+**小改动**
+1. 创建任务
+2. 启动任务
+3. 直接实现
+4. 完成任务
+
+**复杂需求**
+1. 创建任务
+2. 需求澄清
+3. 实施计划
+4. 启动任务
+5. 执行计划
+6. 完成任务
 
 ### 相关技能
 
-- **plan-packet**: 任务结构化计划
-- **wt-workflow**: worktree 工作流管理
+- **task-flow**: 任务管理与执行入口
+- **superpowers:brainstorming**: 需求澄清
+- **superpowers:writing-plans**: 可执行计划
+- **superpowers:executing-plans**: 计划执行
+- **superpowers:subagent-driven-development**: 子代理分步执行
