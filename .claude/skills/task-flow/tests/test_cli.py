@@ -61,6 +61,21 @@ class TestCreateTaskCommand:
         task_file = project_dir / "docs" / "tasks" / "TASK-001-test-task.md"
         assert task_file.exists()
 
+    def test_create_task_uses_task_id_slug_for_non_latin_title(self, project_dir, cli_env):
+        """非拉丁标题应使用任务 ID 作为 slug"""
+        result = subprocess.run(
+            ["python", "-m", "cli", "create-task", "团队邀请与成员管理"],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        assert "TASK-001" in result.stdout
+        assert "docs/tasks/TASK-001-task-001.md" in result.stdout
+        assert (project_dir / "docs" / "tasks" / "TASK-001-task-001.md").exists()
+
     def test_create_task_second_gets_new_id(self, project_dir, cli_env):
         """第二个任务应该获得 TASK-002"""
         subprocess.run(
@@ -383,6 +398,51 @@ execution_state: {}
 
         return project
 
+    @pytest.fixture
+    def project_dir_cycle(self, tmp_path):
+        project = tmp_path / "cycle-project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+        (project / "docs" / "plans").mkdir(parents=True)
+        _mark_initialized(project)
+
+        plan_file = project / "docs" / "plans" / "execution-plan.yaml"
+        plan_file.write_text(
+            """tasks:
+- id: TASK-001
+  title: Step 1
+  description: First step
+  dependencies:
+    - TASK-002
+- id: TASK-002
+  title: Step 2
+  description: Second step
+  dependencies:
+    - TASK-001
+"""
+        )
+
+        task_file = project / "docs" / "tasks" / "TASK-001-test-task.md"
+        task_file.write_text(
+            """---
+id: TASK-001
+title: "Test Task"
+status: "To Do"
+created_at: 2026-02-01
+updated_at: 2026-02-01
+execution_mode: "executing-plans"
+plan_file: "docs/plans/execution-plan.yaml"
+execution_config:
+  batch_size: 1
+  auto_continue: false
+  checkpoint_interval: 3
+execution_state: {}
+---
+"""
+        )
+
+        return project
+
     def test_execute_next_batch_accepts_markdown_plan(self, cli_env, project_dir_markdown):
         project = project_dir_markdown
 
@@ -397,6 +457,20 @@ execution_state: {}
         assert result.returncode == 0
         stats = json.loads(result.stdout)
         assert stats["tasks_executed"] == 1
+
+    def test_execute_next_batch_rejects_circular_dependencies(self, cli_env, project_dir_cycle):
+        project = project_dir_cycle
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "execute-next-batch", "TASK-001"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode != 0
+        assert "circular" in (result.stdout + result.stderr).lower()
 
     def test_execute_next_batch_no_callable_defaults_to_noop(self, cli_env, project_dir):
         project, _task_file = project_dir

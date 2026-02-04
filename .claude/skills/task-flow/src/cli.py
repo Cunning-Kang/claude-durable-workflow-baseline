@@ -130,9 +130,12 @@ def cmd_create_task(args):
         return
     tm = get_task_manager(project_root)
     task_id = tm.create_task(args.title)
+    slug = tm._slugify(args.title)
+    if not slug:
+        slug = task_id.lower()
 
     print(f"✓ Created task: {task_id}")
-    print(f"  File: docs/tasks/{task_id}-{tm._slugify(args.title)}.md")
+    print(f"  File: docs/tasks/{task_id}-{slug}.md")
     print(f"\nNext steps:")
     print(f"  1. Edit the task file to fill in the Plan Packet")
     print(f"  2. Run: start-task {task_id}")
@@ -194,8 +197,10 @@ def cmd_start_task(args):
 
     # Get branch from frontmatter, fallback to slugified title
     branch_name = frontmatter.get("branch")
-    if branch_name in (None, 'null'):
+    if not branch_name or branch_name == "null":
         branch_name = tm._slugify(task['title'])
+    if not branch_name:
+        branch_name = args.task_id.lower()
 
     worktree_path = f".worktrees/{branch_name}"
 
@@ -395,6 +400,9 @@ def cmd_execute_next_batch(args):
 
     if stats.get("errors"):
         tm.update_task(args.task_id, status="Blocked")
+        print(json.dumps(stats))
+        print(f"Error: {stats['errors'][0]}", file=sys.stderr)
+        sys.exit(1)
     else:
         tm.update_task(args.task_id, status="Done")
 

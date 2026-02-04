@@ -138,6 +138,22 @@ class ExecutionEngine:
         """
         ready_tasks = self._get_ready_tasks()
 
+        if not ready_tasks:
+            pending_tasks = [
+                task for task in self.plan.tasks
+                if task.status == TaskStatus.PENDING
+                and not self.state.is_completed(task.id)
+                and not self.state.is_failed(task.id)
+            ]
+            if pending_tasks:
+                pending_ids = ", ".join(task.id for task in pending_tasks)
+                return {
+                    "tasks_executed": 0,
+                    "total_completed": len(self.state.completed),
+                    "errors": [f"Circular dependency detected among: {pending_ids}"],
+                    "skipped": list(self.state.skipped),
+                }
+
         # Limit by batch size
         tasks_to_execute = ready_tasks[: self.controller.batch_size]
 

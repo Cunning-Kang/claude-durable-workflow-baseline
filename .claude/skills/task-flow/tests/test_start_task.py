@@ -72,6 +72,18 @@ def project_with_task(git_project, cli_env):
     return git_project
 
 
+@pytest.fixture
+def project_with_non_latin_task(git_project, cli_env):
+    """创建一个带中文标题任务的 git 项目"""
+    subprocess.run(
+        ["python", "-m", "cli", "create-task", "团队邀请与成员管理"],
+        cwd=git_project,
+        capture_output=True,
+        env=cli_env
+    )
+    return git_project
+
+
 class TestStartTask:
     """测试 start-task 命令"""
 
@@ -90,6 +102,20 @@ class TestStartTask:
 
         # 验证 worktree 存在
         worktree_path = project_with_task / ".worktrees" / "implement-feature"
+        assert worktree_path.exists()
+
+    def test_start_task_with_non_latin_title_creates_valid_worktree(self, project_with_non_latin_task, cli_env):
+        """中文标题应创建有效 worktree 路径"""
+        result = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=project_with_non_latin_task,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        worktree_path = project_with_non_latin_task / ".worktrees" / "task-001"
         assert worktree_path.exists()
 
     def test_start_task_updates_task_status(self, project_with_task, cli_env):

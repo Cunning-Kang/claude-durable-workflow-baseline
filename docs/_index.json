@@ -1,3 +1,9 @@
 {
-  "next_id": 3
+  "next_id": 7,
+  "completed_tasks": {
+    "TASK-006": {
+      "completed_at": "2026-02-04",
+      "file": "tasks/completed/TASK-006-task-006.md"
+    }
+  }
 }

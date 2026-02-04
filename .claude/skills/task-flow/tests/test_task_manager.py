@@ -115,6 +115,17 @@ class TestTaskCreation:
         assert "- 关联分支：" in content
 
 
+class TestTaskCreationSlugging:
+    """测试任务 slug 生成"""
+
+    def test_create_task_slug_falls_back_to_task_id_for_non_latin_title(self, task_manager, temp_tasks_dir):
+        """中文标题应使用任务 ID 作为 slug 兜底"""
+        task_id = task_manager.create_task("团队邀请与成员管理")
+
+        task_file = temp_tasks_dir / f"{task_id}-{task_id.lower()}.md"
+        assert task_file.exists()
+
+
 class TestTaskListing:
     """测试任务列表"""
 

@@ -69,6 +69,8 @@ class TaskManager:
         """创建新任务"""
         task_id = self.generate_task_id()
         slug = self._slugify(title)
+        if not slug:
+            slug = task_id.lower()
         filename = f"{task_id}-{slug}.md"
         task_file = self.tasks_dir / filename
 
@@ -283,6 +285,8 @@ completed_at: null"""
         # 否则按常规方式创建新任务
         task_id = self.generate_task_id()
         slug = self._slugify(title)
+        if not slug:
+            slug = task_id.lower()
         filename = f"{task_id}-{slug}.md"
         task_file = self.tasks_dir / filename
 

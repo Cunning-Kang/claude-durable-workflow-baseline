@@ -7,7 +7,7 @@
 - ✅ **持久化任务管理** - 任务文件保存在 `docs/tasks/`
 - ✅ **完整 Plan Packet** - 结构化的 9 部分计划模板
 - ✅ **Git Worktree 集成** - 自动创建隔离的工作环境
-- ✅ **TDD 驱动** - 181/182 测试通过（1 skipped，99.5%）
+- ✅ **TDD 驱动** - 184/185 测试通过（1 skipped，99.5%）
 - ✅ **Markdown/YAML 计划文件** - 支持多种计划格式
 - ✅ **TodoWrite 兼容** - 兼容 TodoWrite 格式输入
 - ✅ **CI 命令自动检测** - 自动检测项目 CI 配置
@@ -159,7 +159,7 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=html
 ```
 
-**测试结果**: 181/182 通过（1 skipped，99.5%）
+**测试结果**: 184/185 通过（1 skipped，99.5%）
 
 ## 项目结构
 
