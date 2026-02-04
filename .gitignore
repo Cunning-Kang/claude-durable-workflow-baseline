@@ -46,6 +46,13 @@ worktrees/
 
 # Claude Code
 .claude/
+!.claude/
+!.claude/skills/
+!.claude/skills/task-flow/
+!.claude/skills/task-flow/**
+.claude/settings.json
+.claude/**/__pycache__/
+.claude/**/__pycache__/**
 
 # Git worktrees (project local)
 .worktrees/

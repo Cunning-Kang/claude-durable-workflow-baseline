@@ -5,6 +5,7 @@ import argparse
 import subprocess
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -59,6 +60,21 @@ def _get_project_root_from_args(args) -> Optional[Path]:
     env_path = _resolve_project_root(env_root)
     arg_path = _resolve_project_root(getattr(args, "project_root", None))
     return arg_path or env_path
+
+
+def _docs_has_uncommitted_changes(repo_root: Path) -> bool:
+    """Check if docs directory has uncommitted changes using git status --porcelain."""
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "docs"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        return bool(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        return False
 
 
 def _check_initialization(project_root: Optional[Path]) -> bool:
@@ -191,6 +207,9 @@ def cmd_start_task(args):
         print(f"Error: Task {args.task_id} not found", file=sys.stderr)
         sys.exit(1)
 
+    # Resolve project root (handles None case)
+    resolved_root = project_root or find_project_root()
+
     # Load frontmatter to get branch name
     task_file = Path(task["file"])
     frontmatter = tm._load_frontmatter(task_file)
@@ -224,6 +243,19 @@ def cmd_start_task(args):
         except subprocess.CalledProcessError as e:
             print(f"Error creating worktree: {e.stderr}", file=sys.stderr)
             sys.exit(1)
+
+        # Sync docs directory if missing in worktree
+        worktree_docs = worktree_full / "docs"
+        main_docs = resolved_root / "docs"
+        if not worktree_docs.exists() and main_docs.exists():
+            if _docs_has_uncommitted_changes(resolved_root):
+                print("⚠️  docs 有未提交变更，已同步到 worktree")
+            print("Syncing docs from main working area...")
+            try:
+                shutil.copytree(main_docs, worktree_docs)
+                print("✓ Synced docs to worktree")
+            except Exception as e:
+                print(f"Warning: Failed to sync docs: {e}", file=sys.stderr)
 
     # Update task status
     tm.update_task(

@@ -182,3 +182,52 @@ class TestStartTask:
 
         assert result.returncode != 0
         assert "not found" in (result.stdout + result.stderr).lower()
+
+    def test_start_task_syncs_docs_when_missing(self, git_project, cli_env):
+        """start-task 应该在 worktree 缺失 docs 时自动同步"""
+        # 创建一个包含 docs 内容的主工作区
+        main_docs = git_project / "docs"
+        (main_docs / "test.md").write_text("# Test Content")
+
+        # 创建任务
+        subprocess.run(
+            ["python", "-m", "cli", "create-task", "Sync docs test"],
+            cwd=git_project,
+            capture_output=True,
+            env=cli_env
+        )
+
+        # 启动任务（创建 worktree）
+        result = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=git_project,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+
+        # 验证 worktree 中 docs 目录存在并包含同步的内容
+        worktree_docs = git_project / ".worktrees" / "sync-docs-test" / "docs"
+        assert worktree_docs.exists()
+        assert (worktree_docs / "test.md").exists()
+        assert (worktree_docs / "test.md").read_text() == "# Test Content"
+
+    def test_start_task_warns_on_dirty_docs(self, project_with_task, cli_env):
+        """当主工作区 docs 有未提交变更时，start-task 应该输出警告"""
+        main_docs = project_with_task / "docs"
+        (main_docs / "dirty.md").write_text("# Dirty Content")
+
+        # 启动任务（应该显示警告）
+        result = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=project_with_task,
+            capture_output=True,
+            text=True,
+            env=cli_env
+        )
+
+        assert result.returncode == 0
+        # 验证输出包含警告信息
+        assert "docs 有未提交变更" in result.stdout

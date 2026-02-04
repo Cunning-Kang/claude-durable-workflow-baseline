@@ -67,12 +67,16 @@ status: To Do
 task-flow start-task TASK-001
 ```
 
-输出：
+输出（示例）：
 ```
 ✓ Created worktree: .worktrees/implement-user-authentication
 ✓ Created branch: implement-user-authentication
 ✓ Task TASK-001 is now In Progress
 ```
+
+**关键行为**：
+- 若 worktree 缺少 `docs/`，自动从主工作区同步，并输出同步提示
+- 若 `docs/` 存在未提交变更，提示但不阻断流程
 
 ### 4. 更新进度
 
@@ -238,7 +242,9 @@ task-flow/
 - ✅ 自动初始化 CLAUDE.md/AGENTS.md
 - ✅ 模板渲染与智能合并（version markers）
 - ✅ 初始化命令与非交互环境自动初始化
-- ✅ 181/182 测试通过（1 skipped，99.5%）
+- ✅ start-task 在 worktree 缺少 docs 时自动同步
+- ✅ docs 未提交变更时提示但不阻断
+- ✅ 188/189 测试通过（1 skipped，99.5%）
 
 ### v2.2
 - ✅ 任务索引与 O(1) 查找

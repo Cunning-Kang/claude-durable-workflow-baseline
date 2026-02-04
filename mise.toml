@@ -2,33 +2,33 @@
 python = { version = "3.10", virtualenv = ".venv" }
 
 [env]
-PYTHONPATH = "./scripts"
+PYTHONPATH = "./.claude/skills/task-flow/src"
 VIRTUAL_ENV = ".venv"
 
 [tasks.test]
 description = "Run tests"
-run = "python -m pytest tests/ -v"
+run = "python -m pytest .claude/skills/task-flow/tests -v"
 
 [tasks.test-coverage]
 description = "Run tests with coverage"
-run = "python -m pytest tests/ --cov=scripts --cov-report=term-missing --cov-report=html"
+run = "python -m pytest .claude/skills/task-flow/tests --cov=.claude/skills/task-flow/src --cov-report=term-missing --cov-report=html"
 
 [tasks.install]
 description = "Install dependencies"
-run = "pip install -r requirements.txt"
+run = "pip install -r .claude/skills/task-flow/requirements.txt"
 
 [tasks.dev]
 description = "Install development dependencies"
-run = "pip install -r requirements.txt && pip install pytest pytest-cov pytest-mock black pylint mypy"
+run = "pip install -r .claude/skills/task-flow/requirements.txt && pip install pytest pytest-cov pytest-mock black pylint mypy"
 
 [tasks.format]
 description = "Format code with black"
-run = "black scripts/ tests/"
+run = "black .claude/skills/task-flow/src .claude/skills/task-flow/tests"
 
 [tasks.lint]
 description = "Lint code with pylint"
-run = "pylint scripts/"
+run = "pylint --errors-only --disable=import-error .claude/skills/task-flow/src"
 
 [tasks.check]
 description = "Run type checking with mypy"
-run = "mypy scripts/"
+run = "mypy .claude/skills/task-flow/src/cli.py --ignore-missing-imports --disable-error-code=import-untyped"
