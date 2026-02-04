@@ -691,3 +691,32 @@ Some content that mentions branch: this-should-not-be-used
         # 验证使用了 frontmatter 中的分支名而不是正文中的
         assert "custom-branch-from-frontmatter" in result.stdout
         assert "this-should-not-be-used" not in result.stdout
+
+
+class TestTaskFlowScriptEntry:
+    """测试 task-flow 脚本入口"""
+
+    def test_task_flow_script_runs(self, tmp_path):
+        """task-flow 脚本应该能从任意目录运行"""
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "docs" / "tasks").mkdir(parents=True)
+        _mark_initialized(project)
+
+        # 获取 task-flow 脚本路径
+        skill_root = Path(__file__).parent.parent
+        script_path = skill_root / "task-flow"
+
+        # 确保脚本存在
+        assert script_path.exists(), f"task-flow script not found at {script_path}"
+
+        # 从项目目录运行脚本（不是从 skill_root）
+        result = subprocess.run(
+            [str(script_path), "--project-root", str(project), "list-tasks"],
+            cwd=project,  # 从项目目录运行，测试脚本是否不依赖 cwd
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, f"Script failed: {result.stderr}"
+        assert "No tasks" in result.stdout

@@ -20,7 +20,7 @@
 
 ```bash
 cd your-project
-python -m cli create-task "Implement user authentication"
+task-flow create-task "Implement user authentication"
 ```
 
 输出：
@@ -30,7 +30,7 @@ python -m cli create-task "Implement user authentication"
 
 Next steps:
   1. Edit the task file to fill in the Plan Packet
-  2. Run: start-task TASK-001
+  2. Run: task-flow start-task TASK-001
 ```
 
 ### 2. 填写 Plan Packet
@@ -64,7 +64,7 @@ status: To Do
 ### 3. 启动任务
 
 ```bash
-python -m cli start-task TASK-001
+task-flow start-task TASK-001
 ```
 
 输出：
@@ -78,47 +78,56 @@ python -m cli start-task TASK-001
 
 ```bash
 # 更新步骤
-python -m cli update-task TASK-001 --step 2
+task-flow update-task TASK-001 --step 2
 
 # 添加备注
-python -m cli update-task TASK-001 --note "决定使用 pyjwt 库"
+task-flow update-task TASK-001 --note "决定使用 pyjwt 库"
 ```
 
 ### 5. 完成任务
 
 ```bash
-python -m cli complete-task TASK-001
+task-flow complete-task TASK-001
 ```
 
 ## 所有命令
 
 ```bash
 # 创建任务
-python -m cli create-task "<title>"
+task-flow create-task "<title>"
 
 # 列出任务
-python -m cli list-tasks [--status <status>]
+task-flow list-tasks [--status <status>]
 
 # 显示任务详情
-python -m cli show-task <TASK-ID>
+task-flow show-task <TASK-ID>
 
 # 启动任务（创建 worktree）
-python -m cli start-task <TASK-ID>
+task-flow start-task <TASK-ID>
 
 # 更新任务
-python -m cli update-task <TASK-ID> [--status <status>] [--step <n>] [--note <note>]
+task-flow update-task <TASK-ID> [--status <status>] [--step <n>] [--note <note>]
 
 # 完成任务
-python -m cli complete-task <TASK-ID> [--no-cleanup]
+task-flow complete-task <TASK-ID> [--no-cleanup]
 
 # 执行计划批次
-python -m cli execute-next-batch <TASK-ID>
+task-flow execute-next-batch <TASK-ID>
 
 # 初始化项目文档
-python -m cli init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
+task-flow init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
 
 # TodoWrite 兼容
-python -m cli todowrite --input-file todos.json
+task-flow todowrite --input-file todos.json
+```
+
+### 注：Skill 开发时的直接运行方式
+
+如果你正在开发 task-flow 技能本身，可以直接运行 Python 模块：
+
+```bash
+# 从技能目录直接运行（仅用于 skill 开发）
+python ~/.claude/skills/task-flow/src/cli.py create-task "<title>"
 ```
 
 ## 计划文件格式
@@ -165,9 +174,10 @@ pytest tests/ --cov=src --cov-report=html
 
 ```
 task-flow/
+├── task-flow                 # 可执行入口脚本（推荐使用方式）
 ├── src/
 │   ├── __init__.py
-│   ├── __main__.py           # Python 模块支持
+│   ├── __main__.py           # Python 模块支持（用于开发）
 │   ├── cli.py                # CLI 入口（450+ 行）
 │   ├── task_manager.py       # 任务管理核心逻辑（350+ 行）
 │   ├── ci_detector.py        # CI 命令检测

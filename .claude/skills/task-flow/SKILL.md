@@ -55,7 +55,11 @@ Task Flow 是**纯 Python + 文件系统**的轻量级方案：
 生成任务 ID，创建包含 Plan Packet 模板的任务文件。
 
 ```bash
-python -m cli --project-root <project-root> create-task "<title>"
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> create-task "<title>"
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> create-task "<title>"
 ```
 
 **输出示例**：
@@ -73,7 +77,11 @@ Next steps:
 创建或切换到对应的 git worktree，更新任务状态为 In Progress。
 
 ```bash
-python -m cli --project-root <project-root> start-task TASK-001
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> start-task TASK-001
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> start-task TASK-001
 ```
 
 **输出示例**：
@@ -88,7 +96,11 @@ python -m cli --project-root <project-root> start-task TASK-001
 更新任务状态、步骤或添加备注。
 
 ```bash
-python -m cli --project-root <project-root> update-task TASK-001 [OPTIONS]
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> update-task TASK-001 [OPTIONS]
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> update-task TASK-001 [OPTIONS]
 ```
 
 **选项**：
@@ -101,7 +113,11 @@ python -m cli --project-root <project-root> update-task TASK-001 [OPTIONS]
 标记任务为 Done，归档任务文件到 `docs/tasks/completed/`。
 
 ```bash
-python -m cli --project-root <project-root> complete-task TASK-001 [--no-cleanup]
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> complete-task TASK-001 [--no-cleanup]
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> complete-task TASK-001 [--no-cleanup]
 ```
 
 ### `execute-next-batch <task-id>` - 执行计划批次
@@ -109,7 +125,11 @@ python -m cli --project-root <project-root> complete-task TASK-001 [--no-cleanup
 执行计划文件的下一批任务。支持 YAML 和 Markdown 格式。
 
 ```bash
-python -m cli --project-root <project-root> execute-next-batch TASK-100
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> execute-next-batch TASK-100
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> execute-next-batch TASK-100
 ```
 
 **返回 JSON**：
@@ -122,7 +142,11 @@ python -m cli --project-root <project-root> execute-next-batch TASK-100
 生成或更新 CLAUDE.md/AGENTS.md，并写入版本标记与 task-flow 章节。
 
 ```bash
-python -m cli --project-root <project-root> init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
 ```
 
 ### `todowrite [--input-file <file>]` - TodoWrite 兼容
@@ -130,7 +154,11 @@ python -m cli --project-root <project-root> init [--template <minimal|standard|f
 处理 TodoWrite 格式输入，创建或更新任务。
 
 ```bash
-python -m cli --project-root <project-root> todowrite --input-file todos.json
+# 使用 task-flow 脚本（推荐）
+task-flow --project-root <project-root> todowrite --input-file todos.json
+
+# 或使用 Python 直接运行（skill 开发时）
+python <skill_root>/src/cli.py --project-root <project-root> todowrite --input-file todos.json
 ```
 
 ## Plan Packet 结构
