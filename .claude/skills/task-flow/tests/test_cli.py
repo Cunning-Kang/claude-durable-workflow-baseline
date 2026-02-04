@@ -9,6 +9,10 @@ import shutil
 import os
 
 
+def _mark_initialized(project: Path) -> None:
+    (project / ".task-flow-initialized").write_text("initialized")
+
+
 @pytest.fixture
 def cli_env():
     """设置 CLI 环境变量"""
@@ -29,6 +33,7 @@ class TestCreateTaskCommand:
         project.mkdir()
         docs = project / "docs" / "tasks"
         docs.mkdir(parents=True)
+        _mark_initialized(project)
         return project
 
     def test_create_task_generates_id(self, project_dir, cli_env):
@@ -80,6 +85,7 @@ class TestProjectRootOverride:
     def test_create_task_respects_project_root_env(self, tmp_path, cli_env):
         project = tmp_path / "project"
         (project / "docs" / "tasks").mkdir(parents=True)
+        _mark_initialized(project)
         runner = tmp_path / "runner"
         runner.mkdir()
 
@@ -101,6 +107,7 @@ class TestProjectRootOverride:
     def test_create_task_respects_project_root_arg(self, tmp_path, cli_env):
         project = tmp_path / "project"
         (project / "docs" / "tasks").mkdir(parents=True)
+        _mark_initialized(project)
         runner = tmp_path / "runner"
         runner.mkdir()
 
@@ -135,6 +142,7 @@ class TestListTasksCommand:
         project.mkdir()
         docs = project / "docs" / "tasks"
         docs.mkdir(parents=True)
+        _mark_initialized(project)
 
         # 创建一个测试任务
         index_file = project / "docs" / "_index.json"
@@ -169,6 +177,7 @@ class TestListTasksCommand:
         project.mkdir()
         docs = project / "docs" / "tasks"
         docs.mkdir(parents=True)
+        _mark_initialized(project)
 
         result = subprocess.run(
             ["python", "-m", "cli", "list-tasks"],
@@ -192,6 +201,7 @@ class TestShowTaskCommand:
         project.mkdir()
         docs = project / "docs" / "tasks"
         docs.mkdir(parents=True)
+        _mark_initialized(project)
 
         subprocess.run(
             ["python", "-m", "cli", "create-task", "Test task"],
@@ -240,6 +250,7 @@ class TestExecuteNextBatchCommand:
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
         (project / "docs" / "plans").mkdir(parents=True)
+        _mark_initialized(project)
 
         plan_file = project / "docs" / "plans" / "execution-plan.yaml"
         plan_file.write_text(
@@ -280,6 +291,7 @@ execution_state: {}
         project = tmp_path / "project"
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
+        _mark_initialized(project)
 
         result = subprocess.run(
             ["python", "-m", "cli", "--help"],
@@ -296,6 +308,7 @@ execution_state: {}
         project = tmp_path / "project"
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
+        _mark_initialized(project)
 
         result = subprocess.run(
             ["python", "-m", "cli", "--help"],
@@ -329,6 +342,7 @@ execution_state: {}
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
         (project / "docs" / "plans").mkdir(parents=True)
+        _mark_initialized(project)
 
         plan_file = project / "docs" / "plans" / "execution-plan.md"
         plan_file.write_text(
@@ -429,6 +443,7 @@ class TestExecuteNextBatchStatusChanges:
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
         (project / "docs" / "plans").mkdir(parents=True)
+        _mark_initialized(project)
 
         # 创建一个简单的计划文件 - 使用与原测试相同的格式
         plan_file = project / "docs" / "plans" / "simple-plan.yaml"
@@ -501,6 +516,7 @@ execution_state: {}
         project = tmp_path / "project"
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
+        _mark_initialized(project)
 
         # 创建一个没有 plan_file 的任务
         task_file = project / "docs" / "tasks" / "TASK-001-no-plan.md"
@@ -548,6 +564,7 @@ class TestStartTaskCommand:
         project.mkdir()
         (project / "docs" / "tasks").mkdir(parents=True)
         (project / ".worktrees").mkdir()
+        _mark_initialized(project)
 
         # 创建带有特定分支名的 frontmatter 的任务文件
         task_file = project / "docs" / "tasks" / "TASK-001-test-task.md"

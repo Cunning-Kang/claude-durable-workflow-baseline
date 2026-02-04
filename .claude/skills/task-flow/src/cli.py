@@ -14,6 +14,7 @@ from execution_engine import ExecutionEngine, StateTracker
 from plan_generator import ExecutionPlan, Task, TaskStatus
 from todowrite_compat.tool import TodoWriteCompat
 from ci_detector import resolve_quality_gate_command
+from config import ConfigManager
 
 
 def _resolve_project_root(value: Optional[str]) -> Optional[Path]:
@@ -60,9 +61,73 @@ def _get_project_root_from_args(args) -> Optional[Path]:
     return arg_path or env_path
 
 
+def _check_initialization(project_root: Optional[Path]) -> bool:
+    if project_root is None:
+        project_root = find_project_root()
+    if ConfigManager.is_initialized(project_root):
+        return True
+    if ConfigManager.is_ci_environment():
+        print("⚠️  CI 环境：跳过初始化提示")
+        print("   请预先运行: task-flow init")
+        return False
+
+    manager = ConfigManager(project_root)
+    if not sys.stdin.isatty():
+        result = manager.initialize(interactive=False)
+        if not result.success:
+            print(result.message, file=sys.stderr)
+            return False
+        return True
+
+    print("╔══════════════════════════════════════════╗")
+    print("║  检测到项目尚未初始化 task-flow 工作流   ║")
+    print("║                                           ║")
+    print("║  [回车] 自动初始化（推荐）               ║")
+    print("║  [Ctrl+C] 取消                           ║")
+    print("╚══════════════════════════════════════════╝")
+    try:
+        input()
+        result = manager.initialize(interactive=False)
+        if not result.success:
+            print(result.message, file=sys.stderr)
+            return False
+        return True
+    except (KeyboardInterrupt, EOFError):
+        print("\n⚠️  已跳过初始化")
+        print("   稍后可运行: task-flow init")
+        return False
+
+
+def cmd_init(args):
+    """初始化项目配置"""
+    project_root = _get_project_root_from_args(args) or Path.cwd()
+    manager = ConfigManager(project_root)
+    if manager.is_initialized(project_root) and not args.force:
+        existing_version = manager.detect_existing_version()
+        if existing_version:
+            print(f"✓ 项目已初始化 (v{existing_version})")
+        else:
+            print("✓ 项目已初始化")
+        print("  使用 --force 强制重新初始化")
+        return
+    result = manager.initialize(
+        template_type=args.template or "standard",
+        force=args.force,
+        interactive=not args.yes,
+        backup=not args.no_backup,
+    )
+    if result.success:
+        print(result.message)
+        return
+    print(result.message, file=sys.stderr)
+    sys.exit(1)
+
+
 def cmd_create_task(args):
     """创建新任务"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     task_id = tm.create_task(args.title)
 
@@ -76,6 +141,8 @@ def cmd_create_task(args):
 def cmd_list_tasks(args):
     """列出任务"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     tasks = tm.list_tasks(status=args.status)
 
@@ -94,6 +161,8 @@ def cmd_list_tasks(args):
 def cmd_show_task(args):
     """显示任务详情"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
@@ -110,6 +179,8 @@ def cmd_show_task(args):
 def cmd_start_task(args):
     """启动任务（创建/切换 worktree）"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
@@ -117,31 +188,27 @@ def cmd_start_task(args):
         print(f"Error: Task {args.task_id} not found", file=sys.stderr)
         sys.exit(1)
 
-    # Load frontmatter to get branch name, fallback to regex if not in frontmatter
+    # Load frontmatter to get branch name
     task_file = Path(task["file"])
     frontmatter = tm._load_frontmatter(task_file)
 
-    # Get branch from frontmatter first, then fall back to regex in content if needed
+    # Get branch from frontmatter, fallback to slugified title
     branch_name = frontmatter.get("branch")
-    if branch_name == 'null' or branch_name is None:
-        branch_name = None
-
-    if not branch_name:
-        # 从标题生成分支名
+    if branch_name in (None, 'null'):
         branch_name = tm._slugify(task['title'])
 
     worktree_path = f".worktrees/{branch_name}"
 
-    # 检查 worktree 是否已存在
+    # Check if worktree already exists
     worktree_full = Path(worktree_path)
     if worktree_full.exists():
         print(f"✓ Worktree already exists: {worktree_path}")
         print(f"  Switching to existing worktree...")
     else:
-        # 创建 worktree
+        # Create worktree
         print(f"Creating worktree: {worktree_path}")
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ["git", "worktree", "add", worktree_path, "-b", branch_name],
                 check=True,
                 capture_output=True,
@@ -153,7 +220,7 @@ def cmd_start_task(args):
             print(f"Error creating worktree: {e.stderr}", file=sys.stderr)
             sys.exit(1)
 
-    # 更新任务状态
+    # Update task status
     tm.update_task(
         args.task_id,
         status="In Progress",
@@ -171,6 +238,8 @@ def cmd_start_task(args):
 def cmd_update_task(args):
     """更新任务"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
@@ -266,6 +335,8 @@ def _load_plan_file(plan_path: Path) -> Dict[str, Any]:
 def cmd_execute_next_batch(args):
     """执行下一批 ready tasks"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
@@ -297,20 +368,20 @@ def cmd_execute_next_batch(args):
         sys.exit(1)
 
     execution_config = frontmatter.get("execution_config", {}) or {}
-    batch_size = execution_config.get("batch_size")
-    auto_continue = execution_config.get("auto_continue")
-    checkpoint_interval = execution_config.get("checkpoint_interval")
 
     def step_callback(step_number: int):
         tm.update_task_step(args.task_id, step_number)
 
     engine = ExecutionEngine(plan, task_file.parent, step_callback=step_callback)
-    if batch_size is not None:
-        engine.controller.batch_size = batch_size
-    if auto_continue is not None:
-        engine.controller.auto_continue = auto_continue
-    if checkpoint_interval is not None:
-        engine.controller.checkpoint_interval = checkpoint_interval
+
+    # Apply configuration settings if provided
+    for attr_name, value in [
+        ('batch_size', execution_config.get('batch_size')),
+        ('auto_continue', execution_config.get('auto_continue')),
+        ('checkpoint_interval', execution_config.get('checkpoint_interval'))
+    ]:
+        if value is not None:
+            setattr(engine.controller, attr_name, value)
 
     try:
         stats = engine.execute_next_batch()
@@ -333,6 +404,8 @@ def cmd_execute_next_batch(args):
 def cmd_complete_task(args):
     """完成任务"""
     project_root = _get_project_root_from_args(args)
+    if not _check_initialization(project_root):
+        return
     tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
@@ -395,6 +468,13 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # init
+    parser_init = subparsers.add_parser("init", help="Initialize project configuration")
+    parser_init.add_argument("--template", "-t", choices=["minimal", "standard", "full"], default="standard")
+    parser_init.add_argument("--force", "-f", action="store_true")
+    parser_init.add_argument("--yes", "-y", action="store_true")
+    parser_init.add_argument("--no-backup", action="store_true")
+
     # create-task
     parser_create = subparsers.add_parser("create-task", help="Create a new task")
     parser_create.add_argument("title", help="Task title")
@@ -437,22 +517,22 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "create-task":
-        cmd_create_task(args)
-    elif args.command == "list-tasks":
-        cmd_list_tasks(args)
-    elif args.command == "show-task":
-        cmd_show_task(args)
-    elif args.command == "start-task":
-        cmd_start_task(args)
-    elif args.command == "update-task":
-        cmd_update_task(args)
-    elif args.command == "execute-next-batch" or args.command == "execute-plan":
-        cmd_execute_next_batch(args)
-    elif args.command == "complete-task":
-        cmd_complete_task(args)
-    elif args.command == "todowrite":
-        cmd_todowrite(args)
+    # Command dispatch mapping
+    command_map = {
+        "init": cmd_init,
+        "create-task": cmd_create_task,
+        "list-tasks": cmd_list_tasks,
+        "show-task": cmd_show_task,
+        "start-task": cmd_start_task,
+        "update-task": cmd_update_task,
+        "execute-next-batch": cmd_execute_next_batch,
+        "execute-plan": cmd_execute_next_batch,  # Alias for execute-next-batch
+        "complete-task": cmd_complete_task,
+        "todowrite": cmd_todowrite,
+    }
+
+    if args.command in command_map:
+        command_map[args.command](args)
     else:
         parser.print_help()
 
