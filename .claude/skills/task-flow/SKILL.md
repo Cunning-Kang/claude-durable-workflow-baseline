@@ -5,7 +5,7 @@ description: "轻量级任务管理系统，提供持久化任务跟踪、Plan P
 
 # Task Flow
 
-基于文件的轻量级任务管理系统，提供完整的任务生命周期管理。通过 TDD 方法构建，145/146 测试通过（1 skipped，99.3%）。
+基于文件的轻量级任务管理系统，提供完整的任务生命周期管理。通过 TDD 方法构建，181/182 测试通过（1 skipped，99.5%）。
 
 ## Quick Start
 
@@ -32,7 +32,8 @@ Task Flow 是**纯 Python + 文件系统**的轻量级方案：
 3. **Git 集成** - 自动创建和管理 worktree
 4. **CLI 驱动** - 所有操作通过命令行接口
 5. **计划执行** - 支持 YAML 和 Markdown 格式的计划文件解析
-6. **TodoWrite 兼容** - 兼容 TodoWrite 格式输入
+6. **自动初始化文档** - 自动生成或更新 CLAUDE.md/AGENTS.md
+7. **TodoWrite 兼容** - 兼容 TodoWrite 格式输入
 
 ## 触发短语
 
@@ -116,6 +117,14 @@ python -m cli --project-root <project-root> execute-next-batch TASK-100
 {"tasks_executed": 1, "total_completed": 1, "errors": [], "skipped": []}
 ```
 
+### `init` - 初始化项目文档
+
+生成或更新 CLAUDE.md/AGENTS.md，并写入版本标记与 task-flow 章节。
+
+```bash
+python -m cli --project-root <project-root> init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
+```
+
 ### `todowrite [--input-file <file>]` - TodoWrite 兼容
 
 处理 TodoWrite 格式输入，创建或更新任务。
@@ -180,7 +189,7 @@ tests/
 └── test_superpowers_integration.py  # 集成测试
 ```
 
-**测试结果**: 145/146 通过（1 skipped，99.3%）
+**测试结果**: 181/182 通过（1 skipped，99.5%）
 
 ## 技术架构
 
@@ -233,7 +242,13 @@ A: 在任务文件中设置 `execution_mode: "executing-plans"` 和 `plan_file` 
 
 ## 版本历史
 
-**v2.2** (当前版本)
+**v2.3** (当前版本)
+- ✅ 自动初始化 CLAUDE.md/AGENTS.md
+- ✅ 模板渲染与智能合并（version markers）
+- ✅ 初始化命令与非交互环境自动初始化
+- ✅ 181/182 测试通过（1 skipped，99.5%）
+
+**v2.2**
 - ✅ 任务索引与 O(1) 查找
 - ✅ frontmatter 单次更新
 - ✅ ExecutionEngine 使用 set 状态跟踪

@@ -1,16 +1,17 @@
 # task-flow
 
-基于文件的轻量级任务管理系统，使用 TDD 方法构建。提供持久化任务跟踪、Plan Packet 结构化计划、Git Worktree 自动化集成。
+基于文件的轻量级任务管理系统，使用 TDD 方法构建。提供持久化任务跟踪、Plan Packet 结构化计划、Git Worktree 自动化集成，以及 CLAUDE.md 自动初始化。
 
 ## 特性
 
 - ✅ **持久化任务管理** - 任务文件保存在 `docs/tasks/`
 - ✅ **完整 Plan Packet** - 结构化的 9 部分计划模板
 - ✅ **Git Worktree 集成** - 自动创建隔离的工作环境
-- ✅ **TDD 驱动** - 145/146 测试通过（1 skipped，99.3%）
+- ✅ **TDD 驱动** - 181/182 测试通过（1 skipped，99.5%）
 - ✅ **Markdown/YAML 计划文件** - 支持多种计划格式
 - ✅ **TodoWrite 兼容** - 兼容 TodoWrite 格式输入
 - ✅ **CI 命令自动检测** - 自动检测项目 CI 配置
+- ✅ **自动初始化文档** - 自动生成或更新 CLAUDE.md/AGENTS.md
 - ✅ **零依赖 MCP** - 不需要外部 MCP 服务器
 
 ## 快速开始
@@ -113,6 +114,9 @@ python -m cli complete-task <TASK-ID> [--no-cleanup]
 # 执行计划批次
 python -m cli execute-next-batch <TASK-ID>
 
+# 初始化项目文档
+python -m cli init [--template <minimal|standard|full>] [--force] [--yes] [--no-backup]
+
 # TodoWrite 兼容
 python -m cli todowrite --input-file todos.json
 ```
@@ -155,7 +159,7 @@ pytest tests/ -v
 pytest tests/ --cov=src --cov-report=html
 ```
 
-**测试结果**: 59/61 通过（96.7%）
+**测试结果**: 181/182 通过（1 skipped，99.5%）
 
 ## 项目结构
 
@@ -170,6 +174,12 @@ task-flow/
 │   ├── execution_engine.py   # 执行引擎
 │   ├── plan_generator/       # 计划类型定义
 │   │   └── __init__.py
+│   ├── config/               # 自动初始化配置
+│   │   ├── manager.py
+│   │   ├── template_loader.py
+│   │   ├── template_renderer.py
+│   │   ├── content_merger.py
+│   │   └── exceptions.py
 │   └── todowrite_compat/     # TodoWrite 兼容层
 │       ├── __init__.py
 │       └── tool.py
@@ -181,7 +191,10 @@ task-flow/
 │   ├── test_start_task.py    # Worktree 集成测试
 │   ├── test_update_and_complete.py  # 工作流测试
 │   ├── test_todowrite_compat.py     # TodoWrite 兼容测试
-│   └── test_superpowers_integration.py  # 集成测试
+│   ├── test_superpowers_integration.py  # 集成测试
+│   ├── test_config_manager.py        # 配置管理测试
+│   ├── test_template_loader.py       # 模板加载测试
+│   └── test_content_merger.py        # 内容合并测试
 ├── requirements.txt          # Python 依赖
 ├── SKILL.md                  # Skill 定义
 └── README.md                 # 本文件
@@ -211,7 +224,20 @@ task-flow/
 
 ## 版本历史
 
-### v2.1 (当前版本)
+### v2.3 (当前版本)
+- ✅ 自动初始化 CLAUDE.md/AGENTS.md
+- ✅ 模板渲染与智能合并（version markers）
+- ✅ 初始化命令与非交互环境自动初始化
+- ✅ 181/182 测试通过（1 skipped，99.5%）
+
+### v2.2
+- ✅ 任务索引与 O(1) 查找
+- ✅ frontmatter 单次更新
+- ✅ ExecutionEngine 使用 set 状态跟踪
+- ✅ start-task 从 frontmatter 读取 branch
+- ✅ 145/146 测试通过（1 skipped，99.3%）
+
+### v2.1
 - ✅ Markdown 计划文件解析支持
 - ✅ TodoWrite 兼容层
 - ✅ CI 命令自动检测
