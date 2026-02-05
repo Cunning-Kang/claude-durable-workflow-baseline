@@ -5,6 +5,7 @@
 ## 特性
 
 - ✅ **持久化任务管理** - 任务文件保存在 `docs/tasks/`
+- ✅ **索引驱动** - list-tasks 与 todo_id 查询直接走索引
 - ✅ **完整 Plan Packet** - 结构化的 9 部分计划模板
 - ✅ **Git Worktree 集成** - 自动创建隔离的工作环境
 - ✅ **TDD 驱动** - 184/185 测试通过（1 skipped，99.5%）
@@ -15,6 +16,14 @@
 - ✅ **零依赖 MCP** - 不需要外部 MCP 服务器
 
 ## 快速开始
+
+### 初始化检查跳过（可选）
+
+在自动化或批处理环境中可用：
+
+```bash
+TASK_FLOW_SKIP_INIT=1 task-flow list-tasks
+```
 
 ### 1. 创建任务
 
@@ -238,7 +247,14 @@ task-flow/
 
 ## 版本历史
 
-### v2.3 (当前版本)
+### v2.4 (当前版本)
+- ✅ 持久化任务索引与 todo_id 映射
+- ✅ list-tasks / get_task_by_todo_id 直走索引
+- ✅ frontmatter 轻量解析快速路径
+- ✅ execute-next-batch 使用就绪队列避免全量扫描
+- ✅ 支持 TASK_FLOW_SKIP_INIT=1 跳过初始化检查
+
+### v2.3
 - ✅ 自动初始化 CLAUDE.md/AGENTS.md
 - ✅ 模板渲染与智能合并（version markers）
 - ✅ 初始化命令与非交互环境自动初始化

@@ -106,6 +106,7 @@ class TestProjectRootOverride:
 
         env = cli_env.copy()
         env["TASK_FLOW_PROJECT_ROOT"] = str(project)
+        env["TASK_FLOW_SKIP_INIT"] = "1"
 
         result = subprocess.run(
             ["python", "-m", "cli", "create-task", "Test task"],
@@ -126,6 +127,9 @@ class TestProjectRootOverride:
         runner = tmp_path / "runner"
         runner.mkdir()
 
+        env = cli_env.copy()
+        env["TASK_FLOW_SKIP_INIT"] = "1"
+
         result = subprocess.run(
             [
                 "python",
@@ -139,7 +143,7 @@ class TestProjectRootOverride:
             cwd=runner,
             capture_output=True,
             text=True,
-            env=cli_env
+            env=env
         )
 
         assert result.returncode == 0
@@ -149,6 +153,49 @@ class TestProjectRootOverride:
 
 class TestListTasksCommand:
     """测试 list-tasks 命令"""
+
+
+class TestInitializationBypass:
+    def test_list_tasks_skips_init_when_env_set(self, tmp_path, cli_env):
+        project = tmp_path / "project"
+        project.mkdir()
+
+        env = cli_env.copy()
+        env["TASK_FLOW_SKIP_INIT"] = "1"
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "list-tasks"],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            env=env
+        )
+
+        assert result.returncode == 0
+        assert "No tasks" in result.stdout
+
+    def test_find_project_root_prefers_init_marker(self, tmp_path, cli_env):
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / ".task-flow-initialized").write_text("initialized")
+
+        runner = project / "subdir"
+        runner.mkdir()
+
+        env = cli_env.copy()
+        env["TASK_FLOW_SKIP_INIT"] = "1"
+
+        result = subprocess.run(
+            ["python", "-m", "cli", "list-tasks"],
+            cwd=runner,
+            capture_output=True,
+            text=True,
+            env=env
+        )
+
+        assert result.returncode == 0
+        assert (project / "docs" / "tasks").exists()
+        assert not (runner / "docs" / "tasks").exists()
 
     @pytest.fixture
     def project_dir(self, tmp_path, cli_env):
@@ -161,13 +208,15 @@ class TestListTasksCommand:
 
         # 创建一个测试任务
         index_file = project / "docs" / "_index.json"
-        index_file.write_text('{"next_id": 1}')
+        index_file.write_text('{"next_id": 1, "tasks": {}, "todos": {}}')
 
+        env = cli_env.copy()
+        env["TASK_FLOW_SKIP_INIT"] = "1"
         subprocess.run(
             ["python", "-m", "cli", "create-task", "Test task"],
             cwd=project,
             capture_output=True,
-            env=cli_env
+            env=env
         )
 
         return project

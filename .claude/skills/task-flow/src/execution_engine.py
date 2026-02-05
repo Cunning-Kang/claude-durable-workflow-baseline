@@ -101,6 +101,8 @@ class ExecutionEngine:
 
         # Create task_id index dictionary for O(1) lookup
         self._task_id_index = {task.id: task for task in self.plan.tasks}
+        self._ready_queue = []
+        self._initialize_ready_queue()
 
         # Load previous execution state if exists
         self._load_state()
@@ -111,9 +113,7 @@ class ExecutionEngine:
         # This is called from cli.py with the task file parent
         pass
 
-    def _get_ready_tasks(self) -> List[Task]:
-        """Get tasks that are ready to execute (dependencies satisfied)"""
-        ready_tasks = []
+    def _initialize_ready_queue(self):
         for task in self.plan.tasks:
             if (
                 task.status == TaskStatus.PENDING
@@ -122,8 +122,11 @@ class ExecutionEngine:
                 and not self.state.is_in_progress(task.id)
                 and self.state.can_execute(task)
             ):
-                ready_tasks.append(task)
-        return ready_tasks
+                self._ready_queue.append(task)
+
+    def _get_ready_tasks(self) -> List[Task]:
+        """Get tasks that are ready to execute (dependencies satisfied)"""
+        return list(self._ready_queue)
 
     def execute_next_batch(self) -> Dict[str, Any]:
         """

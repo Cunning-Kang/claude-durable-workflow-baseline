@@ -34,6 +34,12 @@ def find_project_root(override: Optional[Path] = None) -> Path:
 
     current = Path.cwd()
 
+    for parent in [current] + list(current.parents):
+        if (parent / ConfigManager.INIT_MARKER).exists():
+            tasks_dir = parent / "docs" / "tasks"
+            tasks_dir.mkdir(parents=True, exist_ok=True)
+            return parent
+
     # 向上查找直到找到 docs/tasks/ 或到达根目录
     for parent in [current] + list(current.parents):
         tasks_dir = parent / "docs" / "tasks"
@@ -78,6 +84,8 @@ def _docs_has_uncommitted_changes(repo_root: Path) -> bool:
 
 
 def _check_initialization(project_root: Optional[Path]) -> bool:
+    if os.environ.get("TASK_FLOW_SKIP_INIT") == "1":
+        return True
     if project_root is None:
         project_root = find_project_root()
     if ConfigManager.is_initialized(project_root):
@@ -387,7 +395,7 @@ def cmd_execute_next_batch(args):
     task_file = Path(task["file"])
     frontmatter = tm._load_frontmatter(task_file)
     plan_file_value = frontmatter.get("plan_file")
-    if not plan_file_value:
+    if not plan_file_value or str(plan_file_value).lower() == "null":
         print("Error: plan_file is required for execute-next-batch", file=sys.stderr)
         tm.update_task(args.task_id, status="Blocked")
         sys.exit(1)

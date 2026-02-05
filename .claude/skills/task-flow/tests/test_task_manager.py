@@ -1,7 +1,9 @@
 """Tests for task-flow task manager"""
 
 import pytest
+import json
 from pathlib import Path
+import task_manager as task_manager_module
 from task_manager import TaskManager
 
 
@@ -18,6 +20,16 @@ def task_manager(temp_tasks_dir):
     """Create a TaskManager instance with temp directory"""
     index_file = temp_tasks_dir.parent / "_index.json"
     return TaskManager(tasks_dir=temp_tasks_dir, index_file=index_file)
+
+
+class _GlobSpy:
+    def __init__(self, original):
+        self.original = original
+        self.called = False
+
+    def __call__(self, *args, **kwargs):
+        self.called = True
+        return []
 
 
 class TestTaskIDGeneration:
@@ -129,6 +141,19 @@ class TestTaskCreationSlugging:
 class TestTaskListing:
     """测试任务列表"""
 
+    def test_list_tasks_does_not_scan_directory_when_index_available(self, task_manager, temp_tasks_dir, monkeypatch):
+        task_id = task_manager.create_task("First task")
+        task_manager.get_task(task_id)
+
+        def _fail_glob(*_args, **_kwargs):
+            raise AssertionError("list_tasks should not scan directory")
+
+        monkeypatch.setattr(Path, "glob", _fail_glob)
+
+        tasks = task_manager.list_tasks()
+
+        assert tasks
+
     def test_list_empty_tasks(self, task_manager):
         """空任务列表应该返回空列表"""
         tasks = task_manager.list_tasks()
@@ -225,6 +250,18 @@ class TestTaskUpdate:
 class TestTaskRetrieval:
     """测试任务检索"""
 
+    def test_get_task_by_todo_id_uses_index(self, task_manager, temp_tasks_dir, monkeypatch):
+        task_id = task_manager.create_task_with_todo_id("Todo task", todo_id="123")
+
+        def _fail_glob(*_args, **_kwargs):
+            raise AssertionError("get_task_by_todo_id should not scan directory")
+
+        monkeypatch.setattr(Path, "glob", _fail_glob)
+
+        task = task_manager.get_task_by_todo_id("123")
+
+        assert task["id"] == task_id
+
     def test_get_task_by_id(self, task_manager):
         """通过 ID 获取任务"""
         task_id = task_manager.create_task("Test task")
@@ -249,6 +286,58 @@ class TestTaskRetrieval:
 
 class TestTaskStepUpdates:
     """测试任务步骤更新"""
+
+
+class TestFrontmatterParsing:
+    def test_load_frontmatter_uses_fast_path_for_simple_kv(self, task_manager, temp_tasks_dir, monkeypatch):
+        task_file = temp_tasks_dir / "TASK-001-simple.md"
+        task_file.write_text(
+            """---
+"""
+            "id: TASK-001\n"
+            "title: Simple Task\n"
+            "status: To Do\n"
+            "updated_at: 2026-02-01\n"
+            "---\n"
+            "# Task: Simple Task\n"
+        )
+
+        def _fail_safe_load(*_args, **_kwargs):
+            raise AssertionError("yaml.safe_load should not be used for simple frontmatter")
+
+        monkeypatch.setattr(task_manager_module.yaml, "safe_load", _fail_safe_load)
+
+        data = task_manager._load_frontmatter(task_file)
+
+        assert data["id"] == "TASK-001"
+        assert data["status"] == "To Do"
+
+    def test_load_frontmatter_falls_back_for_complex(self, task_manager, temp_tasks_dir, monkeypatch):
+        task_file = temp_tasks_dir / "TASK-002-complex.md"
+        task_file.write_text(
+            """---
+"""
+            "id: TASK-002\n"
+            "title: Complex Task\n"
+            "execution_config:\n"
+            "  batch_size: 2\n"
+            "---\n"
+            "# Task: Complex Task\n"
+        )
+
+        called = {"value": False}
+        expected = {"id": "TASK-002", "execution_config": {"batch_size": 2}}
+
+        def _spy_safe_load(*_args, **_kwargs):
+            called["value"] = True
+            return expected
+
+        monkeypatch.setattr(task_manager_module.yaml, "safe_load", _spy_safe_load)
+
+        data = task_manager._load_frontmatter(task_file)
+
+        assert called["value"] is True
+        assert data == expected
 
     def test_task_updates_step_after_each_execution(self, task_manager, temp_tasks_dir):
         """执行步骤后任务应更新 current_step"""

@@ -1,6 +1,7 @@
 """Tests for execution engine"""
 
 import pytest
+from pathlib import Path
 from execution_engine import ExecutionEngine, execute_plan, ExecutionResult, run_step, parse_plan_steps, PlanStep, build_execution_report, StepResult, StateTracker
 from plan_generator import ExecutionPlan, Task, TaskStatus
 
@@ -65,6 +66,22 @@ Expect: PASS
 
 class TestExecutionEngineIntegration:
     """Test ExecutionEngine with plan validation"""
+
+    def test_execute_next_batch_avoids_plan_scan_for_ready_tasks(self):
+        plan = ExecutionPlan(tasks=[
+            Task(id="TASK-001", title="One", description="", status=TaskStatus.PENDING, dependencies=[]),
+            Task(id="TASK-002", title="Two", description="", status=TaskStatus.PENDING, dependencies=["TASK-001"]),
+        ])
+
+        class _FailOnIter(list):
+            def __iter__(self):
+                raise AssertionError("plan.tasks should not be scanned for ready tasks")
+
+        engine = ExecutionEngine(plan, project_root=Path("."))
+        engine.plan.tasks = _FailOnIter(engine.plan.tasks)
+        stats = engine.execute_next_batch()
+
+        assert stats["tasks_executed"] == 1
 
     def test_engine_rejects_plan_text_with_errors(self):
         """Test that ExecutionEngine can be used with validated plan text"""

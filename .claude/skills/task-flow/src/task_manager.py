@@ -21,12 +21,77 @@ class TaskManager:
         self.tasks_dir = tasks_dir
         self.index_file = index_file
         self._task_index = {}  # In-memory index for task files
+        self._task_meta = {}
+        self._todo_index = {}
         self._ensure_index()
+        self._load_index_cache()
 
     def _ensure_index(self):
         """确保 _index.json 存在"""
         if not self.index_file.exists():
-            self._write_index({"next_id": 1})
+            self._write_index({"next_id": 1, "tasks": {}, "todos": {}})
+
+    def _load_index_cache(self):
+        data = self._read_index()
+        tasks = data.get("tasks") or {}
+        todos = data.get("todos") or {}
+        self._task_meta = tasks
+        self._todo_index = todos
+        self._task_index = {
+            task_id: self.tasks_dir.parent / meta["file"]
+            for task_id, meta in tasks.items()
+            if meta.get("file")
+        }
+
+    def _persist_index_cache(self):
+        data = self._read_index()
+        data["tasks"] = self._task_meta
+        data["todos"] = self._todo_index
+        self._write_index(data)
+
+    def _index_task(self, task_id: str, task_file: Path, meta: dict, todo_id: str | None = None, persist: bool = True):
+        self._task_index[task_id] = task_file
+        self._task_meta[task_id] = meta
+        if todo_id is not None:
+            self._todo_index[str(todo_id)] = task_id
+        if persist:
+            self._persist_index_cache()
+
+    def _task_meta_from_frontmatter(self, task_file: Path, frontmatter: dict) -> dict:
+        updated_at = frontmatter.get("updated_at")
+        if updated_at is not None:
+            updated_at = str(updated_at)
+
+        execution_mode = frontmatter.get("execution_mode")
+        if execution_mode is not None:
+            execution_mode = str(execution_mode)
+
+        plan_file = frontmatter.get("plan_file")
+        if plan_file is not None:
+            plan_file = str(plan_file)
+
+        return {
+            "file": str(task_file.relative_to(self.tasks_dir.parent)),
+            "title": frontmatter.get("title"),
+            "status": frontmatter.get("status"),
+            "updated_at": updated_at,
+            "execution_mode": execution_mode,
+            "plan_file": plan_file,
+        }
+
+    def _remove_task_from_index(self, task_id: str):
+        self._task_index.pop(task_id, None)
+        self._task_meta.pop(task_id, None)
+        for todo_key, mapped in list(self._todo_index.items()):
+            if mapped == task_id:
+                self._todo_index.pop(todo_key, None)
+        self._persist_index_cache()
+
+    def _update_task_index_meta(self, task_id: str, updates: dict):
+        meta = self._task_meta.get(task_id) or {}
+        meta.update(updates)
+        self._task_meta[task_id] = meta
+        self._persist_index_cache()
 
     def _read_index(self) -> dict:
         """读取 _index.json"""
@@ -36,25 +101,40 @@ class TaskManager:
         """写入 _index.json"""
         # Ensure parent directory exists
         self.index_file.parent.mkdir(parents=True, exist_ok=True)
-        self.index_file.write_text(json.dumps(data, indent=2))
+        self.index_file.write_text(json.dumps(data, indent=2, default=str))
 
     def _build_index(self):
         """Build in-memory index of task files by scanning tasks directory"""
         self._task_index = {}
+        self._task_meta = {}
+        self._todo_index = {}
         for task_file in self.tasks_dir.glob("TASK-*.md"):
             try:
                 frontmatter = self._load_frontmatter(task_file)
                 task_id = frontmatter.get("id")
                 if task_id:
+                    relative_path = str(task_file.relative_to(self.tasks_dir.parent))
+                    meta = {
+                        "file": relative_path,
+                        "title": frontmatter.get("title"),
+                        "status": frontmatter.get("status"),
+                        "updated_at": frontmatter.get("updated_at"),
+                    }
+                    todo_id = frontmatter.get("todo_id")
                     self._task_index[task_id] = task_file
+                    self._task_meta[task_id] = meta
+                    if todo_id is not None:
+                        self._todo_index[str(todo_id)] = task_id
             except Exception:
-                # Skip files that don't have valid frontmatter
                 continue
+        self._persist_index_cache()
 
     def _get_task_file(self, task_id: str) -> Path:
         """Get task file path by task ID using in-memory index"""
         if not self._task_index:
-            self._build_index()
+            self._load_index_cache()
+            if not self._task_index:
+                self._build_index()
         return self._task_index.get(task_id)
 
     def generate_task_id(self) -> str:
@@ -80,8 +160,14 @@ class TaskManager:
         content = self._generate_task_content(task_id, title, filename, todo_id=None)
         task_file.write_text(content)
 
-        # Add to in-memory index
-        self._task_index[task_id] = task_file
+        relative_path = str(task_file.relative_to(self.tasks_dir.parent))
+        meta = {
+            "file": relative_path,
+            "title": title,
+            "status": "To Do",
+            "updated_at": datetime.now().strftime("%Y-%m-%d"),
+        }
+        self._index_task(task_id, task_file, meta)
 
         return task_id
 
@@ -196,11 +282,20 @@ completed_at: null"""
 
     def list_tasks(self, status: str = None) -> list:
         """列出所有任务"""
+        if not self._task_meta:
+            self._load_index_cache()
+            if not self._task_meta:
+                self._build_index()
+
         tasks = []
-        for task_file in self.tasks_dir.glob("TASK-*.md"):
-            task = self._parse_task_file(task_file)
-            if status is None or task["status"] == status:
-                tasks.append(task)
+        for task_id, meta in self._task_meta.items():
+            if status is None or meta.get("status") == status:
+                tasks.append({
+                    "id": task_id,
+                    "title": meta.get("title"),
+                    "status": meta.get("status"),
+                    "file": str(self.tasks_dir.parent / meta.get("file")) if meta.get("file") else None,
+                })
         return sorted(tasks, key=lambda t: t["id"])
 
     def _parse_task_file(self, task_file: Path) -> dict:
@@ -232,16 +327,33 @@ completed_at: null"""
         return result
 
     def _load_frontmatter(self, task_file: Path) -> dict:
-        """Load YAML frontmatter from a task file using yaml.safe_load for proper parsing."""
+        """Load YAML frontmatter with a fast path for simple key-value pairs."""
 
         content = task_file.read_text()
 
-        # Extract YAML frontmatter between ---
         frontmatter_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
         if not frontmatter_match:
             return {}
 
         frontmatter_text = frontmatter_match.group(1)
+        lines = frontmatter_text.splitlines()
+
+        def _is_simple_kv(line: str) -> bool:
+            if not line or ":" not in line:
+                return False
+            if line.startswith(" ") or line.startswith("-"):
+                return False
+            return True
+
+        if lines and all(_is_simple_kv(line) for line in lines if line.strip()):
+            parsed = {}
+            for line in lines:
+                if not line.strip():
+                    continue
+                key, value = line.split(":", 1)
+                parsed[key.strip()] = value.strip()
+            return parsed
+
         return yaml.safe_load(frontmatter_text) or {}
 
     def get_task(self, task_id: str) -> dict:
@@ -249,40 +361,44 @@ completed_at: null"""
         task_file = self._get_task_file(task_id)
         if task_file and task_file.exists():
             task = self._parse_task_file(task_file)
-            # 读取完整内容
             content = task_file.read_text()
             task["content"] = content
+
+            frontmatter = self._load_frontmatter(task_file)
+            meta = self._task_meta_from_frontmatter(task_file, frontmatter)
+            todo_id = frontmatter.get("todo_id")
+            self._index_task(
+                task_id,
+                task_file,
+                meta,
+                todo_id=str(todo_id) if todo_id is not None else None,
+                persist=False,
+            )
+
             return task
         return None
 
     def get_task_by_todo_id(self, todo_id: str) -> dict:
         """通过 todo_id 获取任务"""
-        for task_file in self.tasks_dir.glob("*.md"):
-            content = task_file.read_text()
-            # 提取 YAML frontmatter
-            frontmatter_match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
-            if frontmatter_match:
-                frontmatter_text = frontmatter_match.group(1)
-                frontmatter = self._parse_yaml_frontmatter(frontmatter_text)
+        todo_key = str(todo_id)
+        if not self._todo_index:
+            self._load_index_cache()
+            if not self._todo_index:
+                self._build_index()
 
-                # Convert both to string for comparison to handle int/string mismatches
-                if str(frontmatter.get('todo_id')) == str(todo_id):
-                    task = self._parse_task_file(task_file)
-                    # 读取完整内容
-                    task["content"] = content
-                    return task
-        return None
+        task_id = self._todo_index.get(todo_key)
+        if not task_id:
+            return None
+
+        return self.get_task(task_id)
 
     def create_task_with_todo_id(self, title: str, todo_id: str = None) -> str:
         """创建任务，支持 todo_id 映射和幂等创建"""
-        if todo_id:
-            # 检查是否已存在具有此 todo_id 的任务
+        if todo_id is not None:
             existing_task = self.get_task_by_todo_id(todo_id)
             if existing_task:
-                # 如果 todo_id 已存在，则返回现有任务的 ID
                 return existing_task["id"]
 
-        # 否则按常规方式创建新任务
         task_id = self.generate_task_id()
         slug = self._slugify(title)
         if not slug:
@@ -293,13 +409,17 @@ completed_at: null"""
         # Ensure tasks_dir exists
         self.tasks_dir.mkdir(parents=True, exist_ok=True)
 
-        # 直接在生成内容时包含 todo_id
         content = self._generate_task_content(task_id, title, filename, todo_id=todo_id)
-
         task_file.write_text(content)
 
-        # Add to in-memory index
-        self._task_index[task_id] = task_file
+        relative_path = str(task_file.relative_to(self.tasks_dir.parent))
+        meta = {
+            "file": relative_path,
+            "title": title,
+            "status": "To Do",
+            "updated_at": datetime.now().strftime("%Y-%m-%d"),
+        }
+        self._index_task(task_id, task_file, meta, todo_id=str(todo_id) if todo_id is not None else None)
 
         return task_id
 
@@ -343,13 +463,17 @@ completed_at: null"""
         if not task_file or not task_file.exists():
             raise ValueError(f"Task {task_id} not found")
 
-        # Check if status is being updated to "In Progress"
         if 'status' in kwargs and kwargs['status'].lower() in ["in progress", "in_progress"]:
-            # Call bootstrap functionality if transitioning to In Progress
             maybe_run_bootstrap(self, task_id, kwargs['status'])
 
-        # Use the helper method to update frontmatter in a single operation
         self._replace_frontmatter(task_file, kwargs)
+
+        if kwargs:
+            updates = {}
+            if "status" in kwargs:
+                updates["status"] = kwargs["status"]
+            updates["updated_at"] = datetime.now().strftime("%Y-%m-%d")
+            self._update_task_index_meta(task_id, updates)
 
     def add_task_note(self, task_id: str, note: str):
         """在任务的 Notes section 添加备注"""
@@ -405,9 +529,7 @@ completed_at: null"""
         new_path = completed_dir / filename
         task_file.rename(new_path)
 
-        # Remove from in-memory index
-        if task_id in self._task_index:
-            del self._task_index[task_id]
+        self._remove_task_from_index(task_id)
 
         # 更新 _index.json
         index = self._read_index()

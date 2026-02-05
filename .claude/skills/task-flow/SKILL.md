@@ -1,6 +1,6 @@
 ---
 name: task-flow
-description: "轻量级任务管理系统，提供持久化任务跟踪、Plan Packet 结构化计划、Git Worktree 自动化集成。支持 Markdown/YAML 计划文件解析和 TodoWrite 兼容层。使用时机：创建任务、启动开发、更新进度、完成任务、执行计划批次。零外部依赖。"
+description: "Use when managing task files, execution plans, and worktree-driven workflows with Plan Packet structure or TodoWrite compatibility."
 ---
 
 # Task Flow
@@ -25,15 +25,16 @@ description: "轻量级任务管理系统，提供持久化任务跟踪、Plan P
 
 ## 工作原理
 
-Task Flow 是**纯 Python + 文件系统**的轻量级方案：
+Task Flow 是纯 Python + 文件系统方案，强调可追溯与低开销：
 
-1. **持久化存储** - 任务文件保存在 `docs/tasks/`，_index.json 维护状态
-2. **Plan Packet** - 9 个结构化 sections（Goal、Scope、Execution Order 等）
-3. **Git 集成** - 自动创建和管理 worktree
-4. **CLI 驱动** - 所有操作通过命令行接口
-5. **计划执行** - 支持 YAML 和 Markdown 格式的计划文件解析
-6. **自动初始化文档** - 自动生成或更新 CLAUDE.md/AGENTS.md
-7. **TodoWrite 兼容** - 兼容 TodoWrite 格式输入
+1. **持久化存储** - 任务文件保存在 `docs/tasks/`，`_index.json` 维护索引
+2. **索引驱动** - 任务列表与 todo_id 查询直接走索引，避免目录扫描
+3. **Plan Packet** - 9 个结构化 sections（Goal、Scope、Execution Order 等）
+4. **Git 集成** - 自动创建和管理 worktree
+5. **CLI 驱动** - 所有操作通过命令行接口
+6. **计划执行** - 支持 YAML 和 Markdown 计划文件解析
+7. **自动初始化文档** - 自动生成或更新 CLAUDE.md/AGENTS.md
+8. **TodoWrite 兼容** - 兼容 TodoWrite 格式输入
 
 ## 触发短语
 
@@ -221,7 +222,7 @@ tests/
 └── test_superpowers_integration.py  # 集成测试
 ```
 
-**测试结果**: 181/182 通过（1 skipped，99.5%）
+**测试结果**: 184/185 通过（1 skipped，99.5%）
 
 ## 技术架构
 
@@ -274,7 +275,14 @@ A: 在任务文件中设置 `execution_mode: "executing-plans"` 和 `plan_file` 
 
 ## 版本历史
 
-**v2.3** (当前版本)
+**v2.4** (当前版本)
+- ✅ 持久化任务索引与 todo_id 映射
+- ✅ list_tasks / get_task_by_todo_id 直走索引
+- ✅ frontmatter 轻量解析快速路径
+- ✅ execute-next-batch 使用就绪队列避免全量扫描
+- ✅ 支持 TASK_FLOW_SKIP_INIT=1 跳过初始化检查
+
+**v2.3**
 - ✅ 自动初始化 CLAUDE.md/AGENTS.md
 - ✅ 模板渲染与智能合并（version markers）
 - ✅ 初始化命令与非交互环境自动初始化
