@@ -84,8 +84,11 @@ task-flow start-task TASK-001
 ```
 
 **关键行为**：
-- 若 worktree 缺少 `docs/`，自动从主工作区同步，并输出同步提示
-- 若 `docs/` 存在未提交变更，提示但不阻断流程
+- `start-task` 为 verify-only：若 worktree 缺少 `docs/` 将直接失败，不再复制 docs
+- 启动前执行 docs gate：检测 docs 未提交变更，需确认并按策略提交后再继续
+- 启动后写入 worktree 事件日志：`.worktrees/<branch>/.task-flow/events.jsonl`
+- 启动后维护活跃任务注册：`docs/tasks/_active.json`
+- 自动更新根目录 `PLAN.md` 路由块与 `docs/workflow/CONVENTIONS.md`
 
 ### 4. 更新进度
 
@@ -115,7 +118,7 @@ task-flow list-tasks [--status <status>]
 # 显示任务详情
 task-flow show-task <TASK-ID>
 
-# 启动任务（创建 worktree）
+# 启动任务（docs gate + active registry + events + PLAN 路由）
 task-flow start-task <TASK-ID>
 
 # 更新任务
@@ -258,9 +261,15 @@ task-flow/
 - ✅ 自动初始化 CLAUDE.md/AGENTS.md
 - ✅ 模板渲染与智能合并（version markers）
 - ✅ 初始化命令与非交互环境自动初始化
-- ✅ start-task 在 worktree 缺少 docs 时自动同步
-- ✅ docs 未提交变更时提示但不阻断
 - ✅ 188/189 测试通过（1 skipped，99.5%）
+
+### v2.5 (当前工作流增强)
+- ✅ `start-task` 改为 verify-only（不再复制 docs）
+- ✅ docs gate：支持 docs-only / all / cancel 三分支确认
+- ✅ 启动时写入 `.worktrees/<branch>/.task-flow/events.jsonl` 事件日志
+- ✅ 启动时维护 `docs/tasks/_active.json` 活跃任务注册
+- ✅ 自动写入 `docs/workflow/CONVENTIONS.md` 并注入 CLAUDE.md/AGENTS.md 约定块
+- ✅ 自动维护根目录 `PLAN.md` 路由块
 
 ### v2.2
 - ✅ 任务索引与 O(1) 查找

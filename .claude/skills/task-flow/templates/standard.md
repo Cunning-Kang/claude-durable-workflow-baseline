@@ -24,7 +24,7 @@
 | 用户语句 | 功能 |
 |---------|------|
 | 创建任务：{标题} | 创建新任务 |
-| 启动任务 TASK-XXX | 启动任务（创建 worktree） |
+| 启动任务 TASK-XXX | 启动任务（docs gate + active registry + events + PLAN 路由） |
 | 更新任务 TASK-XXX 进度到第 N 步 | 更新进度 |
 | 完成任务 TASK-XXX | 完成并归档 |
 | 查看任务 TASK-XXX | 查看详情 |
@@ -65,5 +65,6 @@
 - **superpowers:brainstorming**: 需求澄清
 - **superpowers:writing-plans**: 计划编写
 - **superpowers:executing-plans**: 计划执行
+- **machine-readable state**: `docs/tasks/_active.json` + `worktree/.task-flow/events.jsonl`
 
 > 由 task-flow v{VERSION} 自动生成 | {DATE}

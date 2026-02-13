@@ -14,7 +14,7 @@ description: "Use when managing task files, execution plans, and worktree-driven
 → Claude: 调用 task-flow 创建 TASK-001，生成 Plan Packet 模板
 
 用户: "启动任务 TASK-001"
-→ Claude: 创建 git worktree，更新任务状态
+→ Claude: 执行 docs gate，创建/切换 git worktree，写入 active/events 机器状态，更新 PLAN 路由与任务状态
 
 用户: "更新进度：已完成第2步"
 → Claude: 更新任务状态和步骤
@@ -75,7 +75,7 @@ Next steps:
 
 ### `start-task <task-id>` - 启动任务
 
-创建或切换到对应的 git worktree，更新任务状态为 In Progress。
+执行 docs gate，创建或切换到对应的 git worktree，写入 active/events 机器状态，并更新 PLAN 路由与任务状态。
 
 ```bash
 # 使用 task-flow 脚本（推荐）
@@ -93,8 +93,11 @@ python <skill_root>/src/cli.py --project-root <project-root> start-task TASK-001
 ```
 
 **关键行为**：
-- 若 worktree 缺少 `docs/`，自动从主工作区同步，并输出同步提示
-- 若 `docs/` 存在未提交变更，提示但不阻断流程
+- `start-task` 为 verify-only：若 worktree 缺少 `docs/` 将直接失败，不再复制 docs
+- 启动前执行 docs gate：检测 docs 未提交变更，需确认并按策略提交后再继续
+- 启动后写入 worktree 事件日志：`.worktrees/<branch>/.task-flow/events.jsonl`
+- 启动后维护活跃任务注册：`docs/tasks/_active.json`
+- 自动更新根目录 `PLAN.md` 路由块与 `docs/workflow/CONVENTIONS.md`
 
 ### `update-task <task-id>` - 更新任务
 
@@ -177,7 +180,7 @@ python <skill_root>/src/cli.py --project-root <project-root> todowrite --input-f
 5. **Acceptance Criteria** - 验收标准
 6. **Quality Gates** - 质量检查命令
 7. **Risks & Rollback** - 风险与回滚
-8. **Backlog 任务映射** - 任务 ID、文件路径、关联分支
+8. **任务元数据（Task Metadata）** - 任务 ID、文件路径、关联分支
 9. **Notes** - 备注和上下文
 
 ## 计划文件格式
@@ -286,9 +289,15 @@ A: 在任务文件中设置 `execution_mode: "executing-plans"` 和 `plan_file` 
 - ✅ 自动初始化 CLAUDE.md/AGENTS.md
 - ✅ 模板渲染与智能合并（version markers）
 - ✅ 初始化命令与非交互环境自动初始化
-- ✅ start-task 在 worktree 缺少 docs 时自动同步
-- ✅ docs 未提交变更时提示但不阻断
 - ✅ 188/189 测试通过（1 skipped，99.5%）
+
+**v2.5 (当前工作流增强)**
+- ✅ `start-task` 改为 verify-only（不再复制 docs）
+- ✅ docs gate：支持 docs-only / all / cancel 三分支确认
+- ✅ 启动时写入 `.worktrees/<branch>/.task-flow/events.jsonl` 事件日志
+- ✅ 启动时维护 `docs/tasks/_active.json` 活跃任务注册
+- ✅ 自动写入 `docs/workflow/CONVENTIONS.md` 并注入 CLAUDE.md/AGENTS.md 约定块
+- ✅ 自动维护根目录 `PLAN.md` 路由块
 
 **v2.2**
 - ✅ 任务索引与 O(1) 查找

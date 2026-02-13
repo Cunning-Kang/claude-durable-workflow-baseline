@@ -7,6 +7,13 @@ from config.template_loader import TemplateLoader
 from config.exceptions import TemplateNotFoundError
 
 
+@pytest.fixture
+def builtin_loader():
+    """加载项目内置模板目录"""
+    skill_dir = Path(__file__).parent.parent
+    return TemplateLoader(skill_dir=skill_dir)
+
+
 class TestTemplateLoader:
     """模板加载器测试"""
 
@@ -74,3 +81,29 @@ class TestTemplateLoader:
         """模板目录不存在时使用默认路径"""
         loader = TemplateLoader(skill_dir=Path("/nonexistent"))
         assert loader is not None
+
+    def test_builtin_standard_template_contains_machine_readable_start_task_contract(self, builtin_loader):
+        """standard 内置模板应使用 active/events 机器可读流转"""
+        content = builtin_loader.load_template("standard")
+
+        assert "启动任务（docs gate + active registry + events + PLAN 路由）" in content
+        assert "task_plan.md" not in content
+        assert "findings.md" not in content
+        assert "progress.md" not in content
+
+    def test_builtin_minimal_template_contains_machine_readable_start_task_description(self, builtin_loader):
+        """minimal 内置模板包含 machine-readable start-task 描述"""
+        content = builtin_loader.load_template("minimal")
+
+        assert "启动任务（docs gate/active/events/PLAN）" in content
+        assert "sidecar" not in content
+
+    def test_builtin_full_template_contains_machine_readable_start_task_and_metadata_term(self, builtin_loader):
+        """full 内置模板包含 machine-readable start-task 描述与第 8 项新术语"""
+        content = builtin_loader.load_template("full")
+
+        assert "启动任务（docs gate + active registry + events + PLAN 路由）" in content
+        assert "任务元数据（Task Metadata）" in content
+        assert "task_plan.md" not in content
+        assert "findings.md" not in content
+        assert "progress.md" not in content
