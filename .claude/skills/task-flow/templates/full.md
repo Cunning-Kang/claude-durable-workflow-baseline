@@ -62,7 +62,7 @@
 |---------|---------|------|
 | 创建任务：实现用户认证 | `create-task` | 生成新任务 ID 和模板 |
 | 新建任务：添加登录功能 | `create-task` | 同上（别名） |
-| 启动任务 TASK-001 | `start-task` | 创建 worktree 并更新状态 |
+| 启动任务 TASK-001 | `start-task` | 启动任务（docs gate + active registry + events + PLAN 路由） |
 | 更新任务 TASK-001 进度到第 3 步 | `update-task --step 3` | 更新当前步骤 |
 | 添加备注到 TASK-001 | `update-task --note "xxx"` | 添加备注信息 |
 | 完成任务 TASK-001 | `complete-task` | 标记完成并归档 |
@@ -83,6 +83,7 @@
 |---------|---------|------|
 | 开始需求澄清：TASK-001 | superpowers:brainstorming | 深入理解需求和约束 |
 | 为 TASK-001 写实施计划 | superpowers:writing-plans | 生成可执行计划文档 |
+| 查看任务机器状态 TASK-001 | task-flow | 读取 `docs/tasks/_active.json` 与 `events.jsonl` |
 | 审查 TASK-001 的实现 | superpowers:requesting-code-review | 代码质量检查 |
 
 ### 推荐执行流程
@@ -119,8 +120,9 @@ graph LR
 
 4. **启动任务** → `start-task TASK-XXX`
    - 从 frontmatter 读取分支名
-   - 创建或切换到 git worktree
-   - 更新状态为 In Progress
+   - 运行 docs gate（必要时按策略提交 docs）
+   - 创建或切换到 git worktree，写入 `.task-flow/events.jsonl`
+   - 更新 `docs/tasks/_active.json` 与根目录 `PLAN.md` 路由并置状态为 In Progress
 
 5. **执行计划** → `execute-next-batch TASK-XXX`
    - 执行引擎自动解析依赖
@@ -221,8 +223,13 @@ tasks:
 5. **Acceptance Criteria** - 验收标准
 6. **Quality Gates** - 质量检查命令
 7. **Risks & Rollback** - 风险与回滚
-8. **Backlog 任务映射** - 任务 ID、文件路径、关联分支
+8. **任务元数据（Task Metadata）** - 任务 ID、文件路径、关联分支
 9. **Notes** - 备注和上下文
+
+### Workflow Conventions（machine-readable 状态流转）
+- canonical 事实源固定为 `docs/tasks/` + `docs/plans/`
+- 活跃任务注册：`docs/tasks/_active.json`
+- 事件日志：`.worktrees/<branch>/.task-flow/events.jsonl`（append-only）
 
 ### 相关技能
 

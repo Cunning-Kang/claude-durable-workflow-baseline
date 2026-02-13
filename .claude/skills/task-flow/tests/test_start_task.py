@@ -18,35 +18,43 @@ def git_project(tmp_path):
     subprocess.run(
         ["git", "init"],
         cwd=project,
-        capture_output=True
+        capture_output=True,
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.email", "test@example.com"],
         cwd=project,
-        capture_output=True
+        capture_output=True,
+        check=True,
     )
     subprocess.run(
         ["git", "config", "user.name", "Test User"],
         cwd=project,
-        capture_output=True
+        capture_output=True,
+        check=True,
     )
 
-    # 创建初始提交
     (project / "README.md").write_text("# Test Project")
+
+    # 先创建 docs/tasks 与初始化标记，再做初始提交
+    docs = project / "docs" / "tasks"
+    docs.mkdir(parents=True)
+    # 跟踪一个占位文件，确保 worktree 中 docs 与 docs/tasks 目录都存在
+    (docs / ".gitkeep").write_text("")
+    (project / ".task-flow-initialized").write_text("initialized")
+
     subprocess.run(
         ["git", "add", "."],
         cwd=project,
-        capture_output=True
+        capture_output=True,
+        check=True,
     )
     subprocess.run(
         ["git", "commit", "-m", "Initial commit"],
         cwd=project,
-        capture_output=True
+        capture_output=True,
+        check=True,
     )
-
-    # 创建 docs/tasks 目录
-    docs = project / "docs" / "tasks"
-    docs.mkdir(parents=True)
 
     return project
 
@@ -57,6 +65,8 @@ def cli_env():
     env = os.environ.copy()
     task_flow_src = Path(__file__).parent.parent / "src"
     env["PYTHONPATH"] = str(task_flow_src)
+    env["TASK_FLOW_SKIP_INIT"] = "1"
+    env["TASK_FLOW_DOCS_GATE_SKIP"] = "1"
     return env
 
 
@@ -183,51 +193,150 @@ class TestStartTask:
         assert result.returncode != 0
         assert "not found" in (result.stdout + result.stderr).lower()
 
-    def test_start_task_syncs_docs_when_missing(self, git_project, cli_env):
-        """start-task 应该在 worktree 缺失 docs 时自动同步"""
-        # 创建一个包含 docs 内容的主工作区
+    def test_start_task_uses_verify_only_docs_mode(self, git_project, cli_env):
+        """start-task 采用 verify-only，不复制 docs 内容"""
         main_docs = git_project / "docs"
         (main_docs / "test.md").write_text("# Test Content")
 
-        # 创建任务
         subprocess.run(
-            ["python", "-m", "cli", "create-task", "Sync docs test"],
+            ["python", "-m", "cli", "create-task", "Verify docs mode"],
             cwd=git_project,
             capture_output=True,
-            env=cli_env
+            env=cli_env,
+            check=True,
         )
 
-        # 启动任务（创建 worktree）
         result = subprocess.run(
             ["python", "-m", "cli", "start-task", "TASK-001"],
             cwd=git_project,
             capture_output=True,
             text=True,
-            env=cli_env
+            env=cli_env,
         )
 
         assert result.returncode == 0
+        assert "Syncing docs from main working area" not in result.stdout
 
-        # 验证 worktree 中 docs 目录存在并包含同步的内容
-        worktree_docs = git_project / ".worktrees" / "sync-docs-test" / "docs"
+        worktree_docs = git_project / ".worktrees" / "verify-docs-mode" / "docs"
         assert worktree_docs.exists()
-        assert (worktree_docs / "test.md").exists()
-        assert (worktree_docs / "test.md").read_text() == "# Test Content"
+        assert not (worktree_docs / "test.md").exists()
 
-    def test_start_task_warns_on_dirty_docs(self, project_with_task, cli_env):
-        """当主工作区 docs 有未提交变更时，start-task 应该输出警告"""
-        main_docs = project_with_task / "docs"
-        (main_docs / "dirty.md").write_text("# Dirty Content")
-
-        # 启动任务（应该显示警告）
+    def test_start_task_creates_active_registry_events_and_plan_router(self, project_with_task, cli_env):
+        """start-task 应写入 active registry / events 并更新 PLAN.md"""
         result = subprocess.run(
             ["python", "-m", "cli", "start-task", "TASK-001"],
             cwd=project_with_task,
             capture_output=True,
             text=True,
-            env=cli_env
+            env=cli_env,
         )
 
         assert result.returncode == 0
-        # 验证输出包含警告信息
-        assert "docs 有未提交变更" in result.stdout
+
+        worktree_root = project_with_task / ".worktrees" / "implement-feature"
+        assert worktree_root.exists()
+
+        assert not (worktree_root / "task_plan.md").exists()
+        assert not (worktree_root / "findings.md").exists()
+        assert not (worktree_root / "progress.md").exists()
+
+        active_file = project_with_task / "docs" / "tasks" / "_active.json"
+        assert active_file.exists()
+        active_data = __import__("json").loads(active_file.read_text())
+
+        assert active_data["version"] == 1
+        assert "updated_at" in active_data
+        assert "TASK-001" in active_data["tasks"]
+
+        entry = active_data["tasks"]["TASK-001"]
+        assert entry["task_file"] == "docs/tasks/TASK-001-implement-feature.md"
+        assert entry["branch"] == "implement-feature"
+        assert entry["worktree"] == ".worktrees/implement-feature"
+        assert entry["status"] == "In Progress"
+        assert entry["last_event_seq"] == 1
+
+        events_file = worktree_root / ".task-flow" / "events.jsonl"
+        assert events_file.exists()
+        lines = [line for line in events_file.read_text().splitlines() if line.strip()]
+        assert len(lines) == 1
+
+        first_event = __import__("json").loads(lines[0])
+        assert first_event["seq"] == 1
+        assert first_event["task_id"] == "TASK-001"
+        assert first_event["type"] == "task_started"
+        assert "ts" in first_event
+
+        plan_router = (project_with_task / "PLAN.md").read_text()
+        assert "<!-- BEGIN: TASK_FLOW_PLAN_ROUTER -->" in plan_router
+        assert "- ID: `TASK-001`" in plan_router
+        assert "- Task: `docs/tasks/TASK-001-implement-feature.md`" in plan_router
+        assert "- Plan: `NOT GENERATED YET`" in plan_router
+        assert "- Active Registry: `docs/tasks/_active.json`" in plan_router
+        assert "- Events: `.worktrees/implement-feature/.task-flow/events.jsonl`" in plan_router
+
+    def test_start_task_writes_workflow_conventions(self, project_with_task, cli_env):
+        """start-task 应生成 conventions 文件并注入 CLAUDE.md 块"""
+        result = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=project_with_task,
+            capture_output=True,
+            text=True,
+            env=cli_env,
+        )
+
+        assert result.returncode == 0
+
+        conventions_file = project_with_task / "docs" / "workflow" / "CONVENTIONS.md"
+        assert conventions_file.exists()
+        conventions_content = conventions_file.read_text()
+        assert "Canonical Source of Truth" in conventions_content
+        assert "docs: update workflow artifacts" in conventions_content
+        assert "_active.json" in conventions_content
+        assert "events.jsonl" in conventions_content
+        assert "task_plan.md" not in conventions_content
+        assert "task_plan.md" not in conventions_content
+
+        claude_file = project_with_task / "CLAUDE.md"
+        assert claude_file.exists()
+        claude_content = claude_file.read_text()
+        assert "<!-- BEGIN: WORKFLOW_CONVENTIONS -->" in claude_content
+        assert "<!-- END: WORKFLOW_CONVENTIONS -->" in claude_content
+        assert "_active.json" in claude_content
+        assert "events.jsonl" in claude_content
+        assert "task_plan.md" not in claude_content
+        assert "task_plan.md" not in claude_content
+
+    def test_start_task_appends_event_when_restarting_existing_worktree(self, project_with_task, cli_env):
+        """重复 start-task 应在 events.jsonl 追加事件并更新 active last_event_seq"""
+        first_run = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=project_with_task,
+            capture_output=True,
+            text=True,
+            env=cli_env,
+        )
+        assert first_run.returncode == 0
+
+        second_run = subprocess.run(
+            ["python", "-m", "cli", "start-task", "TASK-001"],
+            cwd=project_with_task,
+            capture_output=True,
+            text=True,
+            env=cli_env,
+        )
+        assert second_run.returncode == 0
+
+        worktree_root = project_with_task / ".worktrees" / "implement-feature"
+        events_file = worktree_root / ".task-flow" / "events.jsonl"
+        lines = [line for line in events_file.read_text().splitlines() if line.strip()]
+        assert len(lines) == 2
+
+        first_event = __import__("json").loads(lines[0])
+        second_event = __import__("json").loads(lines[1])
+        assert first_event["seq"] == 1
+        assert second_event["seq"] == 2
+        assert second_event["type"] == "task_started"
+
+        active_file = project_with_task / "docs" / "tasks" / "_active.json"
+        active_data = __import__("json").loads(active_file.read_text())
+        assert active_data["tasks"]["TASK-001"]["last_event_seq"] == 2

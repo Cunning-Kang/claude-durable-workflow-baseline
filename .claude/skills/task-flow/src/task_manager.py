@@ -268,7 +268,7 @@ completed_at: null"""
 - 触发条件：
 - 回滚步骤：
 
-### 8. Backlog 任务映射
+### 8. 任务元数据（Task Metadata）
 - 任务 ID：{task_id}
 - 任务文件：{relative_path}
 - 关联分支：

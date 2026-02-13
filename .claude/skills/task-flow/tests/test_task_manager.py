@@ -94,7 +94,7 @@ class TestTaskCreation:
         assert "### 5. Acceptance Criteria" in content
         assert "### 6. Quality Gates" in content
         assert "### 7. Risks & Rollback" in content
-        assert "### 8. Backlog 任务映射" in content
+        assert "### 8. 任务元数据（Task Metadata）" in content
         assert "### 9. Notes" in content
 
     def test_create_task_file_has_yaml_frontmatter(self, task_manager, temp_tasks_dir):

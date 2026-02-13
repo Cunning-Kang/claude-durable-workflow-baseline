@@ -9,7 +9,7 @@
 | 命令 | 说明 |
 |------|------|
 | 创建任务：{标题} | 创建新任务 |
-| 启动任务 TASK-XXX | 启动任务 |
+| 启动任务 TASK-XXX | 启动任务（docs gate/active/events/PLAN） |
 | 完成任务 TASK-XXX | 完成任务 |
 
 ### 简化流程

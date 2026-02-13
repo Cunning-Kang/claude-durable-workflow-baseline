@@ -1,9 +1,9 @@
 # 项目工作流：Task Flow × Superpowers
 
-> **版本**: v2.2.0 | **更新日期**: 2025-02-04
+> **版本**: v2.3.0 | **更新日期**: 2026-02-04
 > **Task Flow 状态**: 145/146 测试通过（99.3%）
 
-本项目采用 **task-flow v2.2** 作为任务事实源，结合 **superpowers** 技能体系提供流程纪律与执行能力。所有任务、状态、计划必须可追溯到 TASK-xxx，实现完整的可追溯性。
+本项目采用 **task-flow v2.3.0** 作为任务事实源，结合 **superpowers** 技能体系提供流程纪律与执行能力。所有任务、状态、计划必须可追溯到 TASK-xxx，实现完整的可追溯性。
 
 ---
 
@@ -47,7 +47,7 @@
 | 用户语句 | 功能 |
 |---------|------|
 | 创建任务：{标题} | 创建新任务 |
-| 启动任务 TASK-XXX | 启动任务（创建 worktree） |
+| 启动任务 TASK-XXX | 启动任务（docs gate + active registry + events + PLAN 路由） |
 | 更新任务 TASK-XXX 进度到第 N 步 | 更新进度 |
 | 完成任务 TASK-XXX | 完成并归档 |
 | 查看任务 TASK-XXX | 查看详情 |
@@ -88,6 +88,7 @@
 - **superpowers:brainstorming**: 需求澄清
 - **superpowers:writing-plans**: 计划编写
 - **superpowers:executing-plans**: 计划执行
+- **machine-readable state**: `docs/tasks/_active.json` + `worktree/.task-flow/events.jsonl`
 
 > 由 task-flow v2.3.0 自动生成 | 2026-02-04
 
@@ -147,7 +148,7 @@
 |---------|---------|------|
 | 创建任务：实现用户认证 | `create-task` | 生成新任务 ID 和模板 |
 | 新建任务：添加登录功能 | `create-task` | 同上（别名） |
-| 启动任务 TASK-001 | `start-task` | 创建 worktree 并更新状态 |
+| 启动任务 TASK-001 | `start-task` | 启动任务（docs gate + active registry + events + PLAN 路由） |
 | 更新任务 TASK-001 进度到第 3 步 | `update-task --step 3` | 更新当前步骤 |
 | 添加备注到 TASK-001 | `update-task --note "xxx"` | 添加备注信息 |
 | 完成任务 TASK-001 | `complete-task` | 标记完成并归档 |
@@ -168,6 +169,7 @@
 |---------|---------|------|
 | 开始需求澄清：TASK-001 | superpowers:brainstorming | 深入理解需求和约束 |
 | 为 TASK-001 写实施计划 | superpowers:writing-plans | 生成可执行计划文档 |
+| 查看任务机器状态 TASK-001 | task-flow | 读取 `docs/tasks/_active.json` 与 `events.jsonl` |
 | 审查 TASK-001 的实现 | superpowers:requesting-code-review | 代码质量检查 |
 
 ---
@@ -206,8 +208,9 @@ graph LR
 
 4. **启动任务** → `start-task TASK-XXX`
    - 从 frontmatter 读取分支名
-   - 创建或切换到 git worktree
-   - 更新状态为 In Progress
+   - 运行 docs gate（必要时按策略提交 docs）
+   - 创建或切换到 git worktree，写入 `.task-flow/events.jsonl`
+   - 更新 `docs/tasks/_active.json` 与根目录 `PLAN.md` 路由并置状态为 In Progress
 
 5. **执行计划** → `execute-next-batch TASK-XXX`
    - 执行引擎自动解析依赖
@@ -331,7 +334,7 @@ tasks:
 ## Risks & Rollback
 风险识别与回滚策略
 
-## Backlog 任务映射
+## 任务元数据（Task Metadata）
 - 任务 ID: TASK-XXX
 - 文件路径: docs/tasks/TASK-XXX.md
 - 关联分支: feature/xxx
@@ -537,4 +540,13 @@ A: 从 `docs/tasks/completed/` 手动恢复任务文件，更新状态。
 
 - [Task Flow 完整文档](~/.claude/skills/task-flow/README.md)
 - [Superpowers 技能体系](~/.claude/skills/superpowers/)
-- [Plan Packet 规范](docs/plan-packet-spec.md)
+
+<!-- BEGIN: WORKFLOW_CONVENTIONS -->
+## Workflow Conventions
+- Canonical: `docs/tasks/` + `docs/plans/`；机器状态入口为 `docs/tasks/_active.json`。
+- worktree 固定目录 `.worktrees/`，并通过 `git check-ignore -q .worktrees` 校验。
+- docs gate：检测 docs 未提交变更，按规则确认并提交。
+- 事件日志：`.worktrees/<branch>/.task-flow/events.jsonl`（append-only）。
+- 固定入口：根目录 `PLAN.md`。
+- 详细规范：`docs/workflow/CONVENTIONS.md`。
+<!-- END: WORKFLOW_CONVENTIONS -->

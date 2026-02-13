@@ -20,6 +20,7 @@ def cli_env():
     # 获取 task-flow/src 的绝对路径
     task_flow_src = Path(__file__).parent.parent / "src"
     env["PYTHONPATH"] = str(task_flow_src)
+    env["TASK_FLOW_DOCS_GATE_SKIP"] = "1"
     return env
 
 
@@ -706,24 +707,13 @@ Some content that mentions branch: this-should-not-be-used
 """
         )
 
-        # Initialize a git repository to avoid the git error
-        subprocess.run(["git", "init"], cwd=project, capture_output=True)
+        # Initialize a git repository and create initial commit
+        subprocess.run(["git", "init"], cwd=project, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=project, capture_output=True, check=True)
+        subprocess.run(["git", "config", "user.name", "Test User"], cwd=project, capture_output=True, check=True)
+        subprocess.run(["git", "add", "."], cwd=project, capture_output=True, check=True)
+        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project, capture_output=True, check=True)
 
-        # Mock the git worktree add command to prevent actual worktree creation
-        original_run = subprocess.run
-        def mock_subprocess_run(command, *args, **kwargs):
-            if isinstance(command, list) and len(command) >= 3 and 'worktree' in command and 'add' in command:
-                # Return a successful result without actually running the git worktree add command
-                class MockResult:
-                    returncode = 0
-                    stdout = "Mock: Git worktree add command would succeed"
-                    stderr = ""
-                return MockResult()
-            else:
-                # Execute the original subprocess.run for other commands
-                return original_run(command, *args, **kwargs)
-
-        monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
 
         # 执行 start-task 命令
         result = subprocess.run(
@@ -740,6 +730,12 @@ Some content that mentions branch: this-should-not-be-used
         # 验证使用了 frontmatter 中的分支名而不是正文中的
         assert "custom-branch-from-frontmatter" in result.stdout
         assert "this-should-not-be-used" not in result.stdout
+
+        # start-task 输出应切换到 machine-readable 协作入口
+        assert "task_plan.md" not in result.stdout
+        assert "progress.md" not in result.stdout
+        assert "_active.json" in result.stdout
+        assert "events.jsonl" in result.stdout
 
 
 class TestTaskFlowScriptEntry:

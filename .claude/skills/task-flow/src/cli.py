@@ -5,7 +5,9 @@ import argparse
 import subprocess
 import json
 import os
-import shutil
+import re
+import fcntl
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -81,6 +83,570 @@ def _docs_has_uncommitted_changes(repo_root: Path) -> bool:
         return bool(result.stdout.strip())
     except subprocess.CalledProcessError:
         return False
+
+
+DOCS_ONLY_COMMIT_MESSAGE = "docs: update workflow artifacts"
+ALL_CHANGES_COMMIT_MESSAGE = "chore: checkpoint before start-task"
+WORKFLOW_CONVENTIONS_BEGIN = "<!-- BEGIN: WORKFLOW_CONVENTIONS -->"
+WORKFLOW_CONVENTIONS_END = "<!-- END: WORKFLOW_CONVENTIONS -->"
+PLAN_ROUTER_BEGIN = "<!-- BEGIN: TASK_FLOW_PLAN_ROUTER -->"
+PLAN_ROUTER_END = "<!-- END: TASK_FLOW_PLAN_ROUTER -->"
+
+
+def _run_git(repo_root: Path, args: List[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _normalize_repo_path(path: str) -> str:
+    normalized = path.strip().replace("\\", "/")
+    if normalized.startswith('"') and normalized.endswith('"'):
+        normalized = normalized[1:-1]
+    return normalized
+
+
+def _is_docs_scope_path(path: str) -> bool:
+    normalized = _normalize_repo_path(path)
+    if not normalized:
+        return False
+    if normalized.startswith("docs/"):
+        return True
+    if normalized in {"CLAUDE.md", "AGENTS.md"}:
+        return True
+    if normalized.startswith(".claude/") and (normalized.endswith(".md") or normalized.endswith(".mdx")):
+        return True
+    if normalized.endswith(".md") or normalized.endswith(".mdx"):
+        return True
+    return False
+
+
+def _collect_git_changes(repo_root: Path) -> Dict[str, Any]:
+    result = _run_git(repo_root, ["status", "--porcelain"])
+    if result.returncode != 0:
+        return {
+            "ok": False,
+            "error": result.stderr.strip() or result.stdout.strip(),
+            "docs_files": [],
+            "code_files": [],
+            "docs_staged": [],
+            "docs_unstaged": [],
+            "code_staged": [],
+            "code_unstaged": [],
+            "all_files": [],
+        }
+
+    docs_staged: set[str] = set()
+    docs_unstaged: set[str] = set()
+    code_staged: set[str] = set()
+    code_unstaged: set[str] = set()
+
+    for raw_line in result.stdout.splitlines():
+        if len(raw_line) < 3:
+            continue
+        status = raw_line[:2]
+        raw_path = raw_line[3:]
+        path = raw_path.split(" -> ", 1)[1] if " -> " in raw_path else raw_path
+        path = _normalize_repo_path(path)
+        if not path:
+            continue
+
+        is_docs = _is_docs_scope_path(path)
+
+        if status == "??":
+            if is_docs:
+                docs_unstaged.add(path)
+            else:
+                code_unstaged.add(path)
+            continue
+
+        if status[0] != " ":
+            if is_docs:
+                docs_staged.add(path)
+            else:
+                code_staged.add(path)
+
+        if status[1] != " ":
+            if is_docs:
+                docs_unstaged.add(path)
+            else:
+                code_unstaged.add(path)
+
+    docs_files = sorted(docs_staged | docs_unstaged)
+    code_files = sorted(code_staged | code_unstaged)
+
+    return {
+        "ok": True,
+        "docs_files": docs_files,
+        "code_files": code_files,
+        "docs_staged": sorted(docs_staged),
+        "docs_unstaged": sorted(docs_unstaged),
+        "code_staged": sorted(code_staged),
+        "code_unstaged": sorted(code_unstaged),
+        "all_files": sorted(set(docs_files + code_files)),
+    }
+
+
+def _print_changes(label: str, files: List[str]) -> None:
+    if not files:
+        return
+    print(f"  {label}:")
+    for file in files:
+        print(f"    - {file}")
+
+
+def _write_if_changed(file_path: Path, content: str) -> bool:
+    if file_path.exists() and file_path.read_text() == content:
+        return False
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text(content)
+    return True
+
+
+def _upsert_marked_block(file_path: Path, begin_marker: str, end_marker: str, block_content: str) -> bool:
+    block = f"{begin_marker}\n{block_content.rstrip()}\n{end_marker}"
+    current = file_path.read_text() if file_path.exists() else ""
+
+    if begin_marker in current and end_marker in current:
+        pattern = re.compile(
+            re.escape(begin_marker) + r"[\s\S]*?" + re.escape(end_marker),
+            re.MULTILINE,
+        )
+        updated = pattern.sub(block, current, count=1)
+    else:
+        if current.strip():
+            updated = current.rstrip() + "\n\n" + block + "\n"
+        else:
+            updated = block + "\n"
+
+    return _write_if_changed(file_path, updated)
+
+
+def _commit_paths(repo_root: Path, files: List[str], message: str, commit_only_paths: Optional[List[str]] = None) -> bool:
+    if not files:
+        return True
+
+    add_result = _run_git(repo_root, ["add", "--", *files])
+    if add_result.returncode != 0:
+        print(f"Error: git add 失败: {add_result.stderr.strip()}", file=sys.stderr)
+        return False
+
+    commit_args = ["commit", "-m", message]
+    if commit_only_paths:
+        commit_args.extend(["--", *commit_only_paths])
+
+    commit_result = _run_git(repo_root, commit_args)
+    if commit_result.returncode != 0:
+        combined = f"{commit_result.stdout}\n{commit_result.stderr}".lower()
+        if "nothing to commit" in combined:
+            return True
+        print(f"Error: git commit 失败: {commit_result.stderr.strip()}", file=sys.stderr)
+        return False
+
+    summary = commit_result.stdout.strip().splitlines()
+    if summary:
+        print(summary[0])
+    return True
+
+
+def _resolve_docs_gate_choice(has_code_changes: bool) -> Optional[str]:
+    if os.environ.get("TASK_FLOW_DOCS_GATE_SKIP") == "1":
+        return "y" if not has_code_changes else "1"
+
+    env_choice = os.environ.get("TASK_FLOW_DOCS_GATE_CHOICE", "").strip().lower()
+
+    if has_code_changes:
+        env_map = {
+            "1": "1",
+            "docs-only": "1",
+            "docs": "1",
+            "2": "2",
+            "all": "2",
+            "3": "3",
+            "cancel": "3",
+            "n": "3",
+            "no": "3",
+        }
+        if env_choice in env_map:
+            return env_map[env_choice]
+
+        if not sys.stdin.isatty():
+            return None
+
+        while True:
+            choice = input("请选择 [1/2/3] (默认 1): ").strip() or "1"
+            if choice in {"1", "2", "3"}:
+                return choice
+            print("无效输入，请输入 1、2 或 3。")
+
+    env_map = {
+        "y": "y",
+        "yes": "y",
+        "docs-only": "y",
+        "docs": "y",
+        "n": "n",
+        "no": "n",
+        "cancel": "n",
+    }
+    if env_choice in env_map:
+        return env_map[env_choice]
+
+    if not sys.stdin.isatty():
+        return None
+
+    while True:
+        choice = input("继续(Y) / 取消(N): ").strip().lower() or "y"
+        if choice in {"y", "yes", "n", "no"}:
+            return "y" if choice in {"y", "yes"} else "n"
+        print("无效输入，请输入 Y 或 N。")
+
+
+def _run_docs_gate(repo_root: Path) -> bool:
+    if os.environ.get("TASK_FLOW_DOCS_GATE_SKIP") == "1":
+        return True
+
+    changes = _collect_git_changes(repo_root)
+    if not changes["ok"]:
+        print(f"Warning: 无法检查 git 状态，跳过 docs gate: {changes['error']}", file=sys.stderr)
+        return True
+
+    docs_files = changes["docs_files"]
+    if not docs_files:
+        return True
+
+    print("⚠️  检测到 docs 范围存在未提交变更。")
+    _print_changes("docs staged", changes["docs_staged"])
+    _print_changes("docs unstaged", changes["docs_unstaged"])
+
+    has_code_changes = bool(changes["code_files"])
+    if has_code_changes:
+        _print_changes("code staged", changes["code_staged"])
+        _print_changes("code unstaged", changes["code_unstaged"])
+        print("\n检测到 docs 与 code 混改，请选择：")
+        print("  [1] 只提交 docs（默认更安全，仍需确认）")
+        print("  [2] 全部提交（必须明确确认）")
+        print("  [3] 取消并退出")
+
+    choice = _resolve_docs_gate_choice(has_code_changes=has_code_changes)
+    if choice is None:
+        print(
+            "Error: docs gate 需要交互确认。"
+            "请在交互终端运行，或设置 TASK_FLOW_DOCS_GATE_CHOICE=docs-only|all|cancel。",
+            file=sys.stderr,
+        )
+        return False
+
+    if not has_code_changes:
+        if choice != "y":
+            print("已取消 start-task。")
+            return False
+        print("正在提交 docs 变更...")
+        return _commit_paths(
+            repo_root,
+            files=docs_files,
+            message=DOCS_ONLY_COMMIT_MESSAGE,
+            commit_only_paths=docs_files,
+        )
+
+    if choice == "3":
+        print("已取消 start-task。")
+        return False
+
+    if choice == "1":
+        if sys.stdin.isatty() and not os.environ.get("TASK_FLOW_DOCS_GATE_CHOICE"):
+            confirm = input("确认仅提交 docs 变更并继续？[Y/n]: ").strip().lower() or "y"
+            if confirm not in {"y", "yes"}:
+                print("已取消 start-task。")
+                return False
+        print("正在提交 docs 变更...")
+        return _commit_paths(
+            repo_root,
+            files=docs_files,
+            message=DOCS_ONLY_COMMIT_MESSAGE,
+            commit_only_paths=docs_files,
+        )
+
+    if sys.stdin.isatty() and not os.environ.get("TASK_FLOW_DOCS_GATE_CHOICE"):
+        explicit = input("输入 YES 以确认提交全部变更并继续: ").strip()
+        if explicit != "YES":
+            print("未确认，已取消 start-task。")
+            return False
+
+    print("正在提交全部变更...")
+    return _commit_paths(
+        repo_root,
+        files=changes["all_files"],
+        message=ALL_CHANGES_COMMIT_MESSAGE,
+        commit_only_paths=None,
+    )
+
+
+def _resolve_task_relative_path(task_file: Path, repo_root: Path) -> str:
+    try:
+        return str(task_file.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
+    except ValueError:
+        return str(task_file).replace("\\", "/")
+
+
+def _resolve_plan_path(frontmatter: Dict[str, Any], repo_root: Path) -> str:
+    plan_file_value = frontmatter.get("plan_file")
+    if plan_file_value and str(plan_file_value).lower() != "null":
+        plan_path = Path(str(plan_file_value))
+        if not plan_path.is_absolute():
+            plan_path = repo_root / plan_path
+        if plan_path.exists():
+            try:
+                return str(plan_path.resolve().relative_to(repo_root.resolve())).replace("\\", "/")
+            except ValueError:
+                return str(plan_path).replace("\\", "/")
+
+    plans_dir = repo_root / "docs" / "plans"
+    if not plans_dir.exists():
+        return "NOT GENERATED YET"
+
+    candidates = [
+        path for path in plans_dir.glob("*.md")
+        if re.match(r"^\d{4}-\d{2}-\d{2}-.+\.md$", path.name)
+    ]
+    if not candidates:
+        return "NOT GENERATED YET"
+
+    latest_plan = max(candidates, key=lambda path: path.stat().st_mtime)
+    return str(latest_plan.relative_to(repo_root)).replace("\\", "/")
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp_path, path)
+
+
+def _load_json_or_default(path: Path, default: Dict[str, Any]) -> Dict[str, Any]:
+    if not path.exists():
+        return default
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except (json.JSONDecodeError, OSError):
+        return default
+
+
+def _append_event(
+    worktree_root: Path,
+    task_id: str,
+    event_type: str,
+    data: Dict[str, Any],
+) -> Dict[str, Any]:
+    task_flow_dir = worktree_root / ".task-flow"
+    task_flow_dir.mkdir(parents=True, exist_ok=True)
+
+    events_file = task_flow_dir / "events.jsonl"
+    lock_file = task_flow_dir / "events.lock"
+    lock_file.touch(exist_ok=True)
+
+    with open(lock_file, "r+", encoding="utf-8") as lock_handle:
+        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+        try:
+            last_seq = 0
+            if events_file.exists():
+                lines = [line for line in events_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+                if lines:
+                    try:
+                        last_seq = int(json.loads(lines[-1]).get("seq", 0))
+                    except (ValueError, json.JSONDecodeError, TypeError):
+                        last_seq = 0
+
+            event = {
+                "seq": last_seq + 1,
+                "ts": _utc_now_iso(),
+                "task_id": task_id,
+                "type": event_type,
+                "actor": "task-flow",
+                "data": data,
+            }
+
+            with open(events_file, "a", encoding="utf-8") as events_handle:
+                events_handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+                events_handle.flush()
+                os.fsync(events_handle.fileno())
+
+            return event
+        finally:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+
+
+def _upsert_active_registry(
+    repo_root: Path,
+    task_id: str,
+    task_path: str,
+    plan_path: str,
+    branch_name: str,
+    worktree_path: str,
+    status: str,
+    started_at: str,
+    last_event_seq: int,
+) -> None:
+    active_path = repo_root / "docs" / "tasks" / "_active.json"
+    lock_path = repo_root / "docs" / "tasks" / "_active.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path.touch(exist_ok=True)
+
+    with open(lock_path, "r+", encoding="utf-8") as lock_handle:
+        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX)
+        try:
+            active = _load_json_or_default(active_path, {
+                "version": 1,
+                "updated_at": _utc_now_iso(),
+                "tasks": {},
+            })
+
+            if not isinstance(active, dict):
+                active = {"version": 1, "updated_at": _utc_now_iso(), "tasks": {}}
+
+            tasks = active.get("tasks")
+            if not isinstance(tasks, dict):
+                tasks = {}
+                active["tasks"] = tasks
+
+            existing_started_at = None
+            if task_id in tasks and isinstance(tasks[task_id], dict):
+                existing_started_at = tasks[task_id].get("started_at")
+
+            tasks[task_id] = {
+                "task_file": task_path,
+                "plan_file": plan_path,
+                "branch": branch_name,
+                "worktree": worktree_path,
+                "status": status,
+                "started_at": existing_started_at or started_at,
+                "last_event_seq": last_event_seq,
+            }
+
+            active["version"] = 1
+            active["updated_at"] = _utc_now_iso()
+
+            _atomic_write_json(active_path, active)
+        finally:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+
+
+def _workflow_conventions_content() -> str:
+    return "\n".join([
+        "# Workflow Conventions",
+        "",
+        "## 1) Canonical Source of Truth",
+        "- 长期协作事实源仅为 `docs/tasks/` 与 `docs/plans/`。",
+        "- `docs/plans/` 使用 `YYYY-MM-DD-*.md` 命名。",
+        "- 活跃任务机器状态维护在 `docs/tasks/_active.json`（注册表，不替代 canonical docs）。",
+        "- worktree 过程事件写入 `.worktrees/<branch>/.task-flow/events.jsonl`（append-only）。",
+        "",
+        "## 2) Worktree 目录规则",
+        "- 统一使用 `.worktrees/` 存放工作树。",
+        "- 必须通过 `git check-ignore -q .worktrees` 校验忽略规则。",
+        "- 若不通过：更新 `.gitignore` 增加 `.worktrees/`，并提交该修复后再继续。",
+        "",
+        "## 3) Docs Gate（启动前守门）",
+        "- start-task 前检查 docs 范围 staged/unstaged 变更。",
+        "- 若仅 docs 变更：询问继续(Y)/取消(N)，选择继续则自动提交 docs。",
+        "- 若 docs + code 混改：提供 [1]仅 docs、[2]全部提交、[3]取消。",
+        "- docs-only 提交消息固定：`docs: update workflow artifacts`。",
+        "",
+        "## 4) Active Registry / Events 规则",
+        "- start-task 必须更新 `docs/tasks/_active.json` 中对应任务条目。",
+        "- start-task 必须向 `.task-flow/events.jsonl` 追加 `task_started` 事件。",
+        "- `_active.json` 使用锁文件与原子替换写入；`events.jsonl` 使用追加锁保证 `seq` 单调递增。",
+        "",
+        "## 5) PLAN.md 固定入口",
+        "- 根目录 `PLAN.md` 维护当前活跃任务路由。",
+        "- 至少包含：任务、docs 路径、worktree 路径、`_active.json`、`events.jsonl`。",
+        "",
+        "## 6) 回滚与清理",
+        "- 删除工作树：`git worktree remove .worktrees/<branch>`",
+        "- 删除分支：`git branch -D <branch>`",
+        "- 清理残留：`git worktree prune`",
+        "",
+    ])
+
+
+def _ensure_workflow_conventions(repo_root: Path) -> None:
+    conventions_content = _workflow_conventions_content()
+
+    conventions_file = repo_root / "docs" / "workflow" / "CONVENTIONS.md"
+    _write_if_changed(conventions_file, conventions_content)
+
+    claude_file = repo_root / "CLAUDE.md"
+    agents_file = repo_root / "AGENTS.md"
+
+    if claude_file.exists():
+        target_file = claude_file
+    elif agents_file.exists():
+        target_file = agents_file
+    else:
+        target_file = claude_file
+
+    block_content = "\n".join([
+        "## Workflow Conventions",
+        "- Canonical: `docs/tasks/` + `docs/plans/`；机器状态入口为 `docs/tasks/_active.json`。",
+        "- worktree 固定目录 `.worktrees/`，并通过 `git check-ignore -q .worktrees` 校验。",
+        "- docs gate：检测 docs 未提交变更，按规则确认并提交。",
+        "- 事件日志：`.worktrees/<branch>/.task-flow/events.jsonl`（append-only）。",
+        "- 固定入口：根目录 `PLAN.md`。",
+        "- 详细规范：`docs/workflow/CONVENTIONS.md`。",
+    ])
+
+    _upsert_marked_block(
+        target_file,
+        WORKFLOW_CONVENTIONS_BEGIN,
+        WORKFLOW_CONVENTIONS_END,
+        block_content,
+    )
+
+
+def _update_plan_router(
+    repo_root: Path,
+    task_id: str,
+    task_title: str,
+    task_path: str,
+    plan_path: str,
+    worktree_path: str,
+) -> None:
+    plan_file = repo_root / "PLAN.md"
+    block_content = "\n".join([
+        "## Active Task",
+        f"- ID: `{task_id}`",
+        f"- Title: `{task_title}`",
+        "",
+        "## Links",
+        f"- Task: `{task_path}`",
+        f"- Plan: `{plan_path}`",
+        "",
+        "## Worktree",
+        f"- `{worktree_path}`",
+        "",
+        "## Machine-readable State",
+        "- Active Registry: `docs/tasks/_active.json`",
+        f"- Events: `{worktree_path}/.task-flow/events.jsonl`",
+    ])
+
+    _upsert_marked_block(
+        plan_file,
+        PLAN_ROUTER_BEGIN,
+        PLAN_ROUTER_END,
+        block_content,
+    )
 
 
 def _check_initialization(project_root: Optional[Path]) -> bool:
@@ -208,6 +774,9 @@ def cmd_start_task(args):
     project_root = _get_project_root_from_args(args)
     if not _check_initialization(project_root):
         return
+
+    resolved_root = project_root or find_project_root()
+
     tm = get_task_manager(project_root)
     task = tm.get_task(args.task_id)
 
@@ -215,8 +784,9 @@ def cmd_start_task(args):
         print(f"Error: Task {args.task_id} not found", file=sys.stderr)
         sys.exit(1)
 
-    # Resolve project root (handles None case)
-    resolved_root = project_root or find_project_root()
+    if not _run_docs_gate(resolved_root):
+        print("Error: docs gate 未通过，已停止 start-task。", file=sys.stderr)
+        sys.exit(1)
 
     # Load frontmatter to get branch name
     task_file = Path(task["file"])
@@ -230,21 +800,22 @@ def cmd_start_task(args):
         branch_name = args.task_id.lower()
 
     worktree_path = f".worktrees/{branch_name}"
+    worktree_full = resolved_root / worktree_path
 
     # Check if worktree already exists
-    worktree_full = Path(worktree_path)
     if worktree_full.exists():
         print(f"✓ Worktree already exists: {worktree_path}")
-        print(f"  Switching to existing worktree...")
+        print("  Switching to existing worktree...")
     else:
         # Create worktree
         print(f"Creating worktree: {worktree_path}")
         try:
             subprocess.run(
                 ["git", "worktree", "add", worktree_path, "-b", branch_name],
+                cwd=resolved_root,
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
             )
             print(f"✓ Created worktree: {worktree_path}")
             print(f"✓ Created branch: {branch_name}")
@@ -252,32 +823,64 @@ def cmd_start_task(args):
             print(f"Error creating worktree: {e.stderr}", file=sys.stderr)
             sys.exit(1)
 
-        # Sync docs directory if missing in worktree
-        worktree_docs = worktree_full / "docs"
-        main_docs = resolved_root / "docs"
-        if not worktree_docs.exists() and main_docs.exists():
-            if _docs_has_uncommitted_changes(resolved_root):
-                print("⚠️  docs 有未提交变更，已同步到 worktree")
-            print("Syncing docs from main working area...")
-            try:
-                shutil.copytree(main_docs, worktree_docs)
-                print("✓ Synced docs to worktree")
-            except Exception as e:
-                print(f"Warning: Failed to sync docs: {e}", file=sys.stderr)
+    # verify-only: never copy docs into worktree
+    worktree_docs = worktree_full / "docs"
+    if not worktree_docs.exists():
+        print(
+            f"Error: worktree 缺少 docs 目录（{worktree_docs}）。"
+            "已停止，避免复制 docs 造成双事实源。",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    task_path = _resolve_task_relative_path(task_file, resolved_root)
+    plan_path = _resolve_plan_path(frontmatter, resolved_root)
+
+    event = _append_event(
+        worktree_root=worktree_full,
+        task_id=args.task_id,
+        event_type="task_started",
+        data={
+            "branch": branch_name,
+            "worktree": worktree_path,
+        },
+    )
+
+    _upsert_active_registry(
+        repo_root=resolved_root,
+        task_id=args.task_id,
+        task_path=task_path,
+        plan_path=plan_path,
+        branch_name=branch_name,
+        worktree_path=worktree_path,
+        status="In Progress",
+        started_at=event["ts"],
+        last_event_seq=event["seq"],
+    )
+
+    _ensure_workflow_conventions(resolved_root)
+    _update_plan_router(
+        repo_root=resolved_root,
+        task_id=args.task_id,
+        task_title=task["title"],
+        task_path=task_path,
+        plan_path=plan_path,
+        worktree_path=worktree_path,
+    )
 
     # Update task status
     tm.update_task(
         args.task_id,
         status="In Progress",
         worktree=worktree_path,
-        branch=branch_name
+        branch=branch_name,
     )
 
     print(f"\n✓ Task {args.task_id} is now In Progress")
-    print(f"\nNext steps:")
+    print("\nNext steps:")
     print(f"  1. cd {worktree_path}")
-    print(f"  2. Review the Execution Order in the task file")
-    print(f"  3. Start implementing!")
+    print("  2. 检查 docs/tasks/_active.json 活跃任务注册")
+    print(f"  3. 查看 {worktree_path}/.task-flow/events.jsonl 事件流")
 
 
 def cmd_update_task(args):
