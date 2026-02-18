@@ -66,9 +66,25 @@ set_pipe() {
   run_tmux pipe-pane -t "$target" "cat >> '$logfile'"
 }
 
-MAIN_TARGET="${PROJECT}-main:chat.0"
-SIDE_TARGET="${PROJECT}-side:compare.0"
-OPS_TARGET="${PROJECT}-ops:ops.0"
+resolve_primary_pane() {
+  local window_target="$1"
+  local pane_id=""
+
+  while IFS= read -r pane_id; do
+    break
+  done < <(run_tmux list-panes -t "$window_target" -F '#{pane_id}')
+
+  if [[ -z "$pane_id" ]]; then
+    echo "No panes found for target: $window_target" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "$pane_id"
+}
+
+MAIN_TARGET="$(resolve_primary_pane "${PROJECT}-main:chat")"
+SIDE_TARGET="$(resolve_primary_pane "${PROJECT}-side:compare")"
+OPS_TARGET="$(resolve_primary_pane "${PROJECT}-ops:ops")"
 
 case "$MODE" in
   l1)
