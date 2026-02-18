@@ -30,4 +30,14 @@ if grep -Fq 'create-vibe-sessions.sh" "#{socket_path}" "sc"' "$CONF_FILE"; then
   exit 1
 fi
 
+# C-v must pass pane_current_path through to create script for correct startup dir.
+grep -Fq '"" "$PPATH"' "$CONF_FILE"
+
+# C-v must read TMUX_REPO_ROOT via tmux variable format, not environ:
+grep -Fq 'REPO="#{TMUX_REPO_ROOT}"' "$CONF_FILE"
+if grep -Fq 'REPO="#{environ:TMUX_REPO_ROOT}"' "$CONF_FILE"; then
+  echo 'FAIL: C-v binding must use #{TMUX_REPO_ROOT}, not #{environ:TMUX_REPO_ROOT}' >&2
+  exit 1
+fi
+
 echo "PASS: plugin upgrade ports test passed"

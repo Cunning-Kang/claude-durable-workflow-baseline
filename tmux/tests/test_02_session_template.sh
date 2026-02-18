@@ -6,8 +6,11 @@ SOCKET="tmux-layout-$$"
 PROJECT="sc"
 TASK_ID="TASK-001"
 
+PROJECT_DIR="$(mktemp -d "$REPO_ROOT/.tmux-project-test.XXXXXX")"
+
 cleanup() {
   tmux -L "$SOCKET" kill-server >/dev/null 2>&1 || true
+  rm -rf "$PROJECT_DIR"
 }
 trap cleanup EXIT
 
@@ -16,6 +19,17 @@ bash "$REPO_ROOT/tmux/scripts/create-vibe-sessions.sh" "$SOCKET" "$PROJECT" "$TA
 
 # Second run should be idempotent and not fail.
 bash "$REPO_ROOT/tmux/scripts/create-vibe-sessions.sh" "$SOCKET" "$PROJECT" "$TASK_ID"
+
+# Path-aware creation: when a project path is passed, new sessions should start there.
+PROJECT_WITH_PATH="scpath"
+bash "$REPO_ROOT/tmux/scripts/create-vibe-sessions.sh" "$SOCKET" "$PROJECT_WITH_PATH" "" "$PROJECT_DIR"
+
+PATH_MAIN_PANE="$(tmux -L "$SOCKET" list-panes -t "${PROJECT_WITH_PATH}-main:chat" -F '#{pane_id}' | head -n 1)"
+PATH_MAIN_DIR="$(tmux -L "$SOCKET" display-message -p -t "$PATH_MAIN_PANE" '#{pane_current_path}')"
+if [[ "$PATH_MAIN_DIR" != "$PROJECT_DIR" ]]; then
+  echo "FAIL: expected $PROJECT_DIR, got $PATH_MAIN_DIR" >&2
+  exit 1
+fi
 
 tmux -L "$SOCKET" has-session -t "${PROJECT}-main"
 tmux -L "$SOCKET" has-session -t "${PROJECT}-side"

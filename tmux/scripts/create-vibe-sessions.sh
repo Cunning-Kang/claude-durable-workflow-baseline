@@ -4,6 +4,11 @@ set -euo pipefail
 SOCKET="${1:?socket required}"
 PROJECT="${2:?project required}"
 TASK_ID="${3:-}"
+PROJECT_PATH="${4:-}"
+
+if [[ -z "$PROJECT_PATH" ]]; then
+  PROJECT_PATH="$PWD"
+fi
 
 MAIN_SESSION="${PROJECT}-main"
 SIDE_SESSION="${PROJECT}-side"
@@ -27,15 +32,15 @@ session_exists() {
 }
 
 if ! session_exists "$MAIN_SESSION"; then
-  run_tmux new-session -d -s "$MAIN_SESSION" -n chat
+  run_tmux new-session -d -c "$PROJECT_PATH" -s "$MAIN_SESSION" -n chat
 fi
 
 if ! session_exists "$SIDE_SESSION"; then
-  run_tmux new-session -d -s "$SIDE_SESSION" -n compare
+  run_tmux new-session -d -c "$PROJECT_PATH" -s "$SIDE_SESSION" -n compare
 fi
 
 if ! session_exists "$OPS_SESSION"; then
-  run_tmux new-session -d -s "$OPS_SESSION" -n ops
+  run_tmux new-session -d -c "$PROJECT_PATH" -s "$OPS_SESSION" -n ops
 fi
 
 OPS_PANES=$("${TMUX_CMD[@]}" list-panes -t "${OPS_SESSION}:ops" 2>/dev/null | wc -l | tr -d ' ')
