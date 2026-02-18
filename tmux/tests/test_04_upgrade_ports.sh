@@ -23,4 +23,11 @@ grep -Eq '^if-shell '\''\[ -n "#\{environ:TMUX_REPO_ROOT\}" \]'\'' '\''source-fi
 grep -Eq '^if-shell '\''\[ -n "#\{environ:TMUX_REPO_ROOT\}" \]'\'' '\''source-file "#\{environ:TMUX_REPO_ROOT\}/tmux/ports/plugins-logging\.conf"'\''$' "$CONF_FILE"
 grep -Eq '^if-shell '\''\[ -n "#\{environ:TMUX_REPO_ROOT\}" \]'\'' '\''source-file "#\{environ:TMUX_REPO_ROOT\}/tmux/ports/plugins-statusline\.conf"'\''$' "$CONF_FILE"
 
+# C-v should derive project from current pane path, not hardcode "sc".
+grep -Fq '#{pane_current_path}' "$CONF_FILE"
+if grep -Fq 'create-vibe-sessions.sh" "#{socket_path}" "sc"' "$CONF_FILE"; then
+  echo 'FAIL: C-v binding must not hardcode project name "sc"' >&2
+  exit 1
+fi
+
 echo "PASS: plugin upgrade ports test passed"
