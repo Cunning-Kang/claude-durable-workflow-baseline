@@ -1,14 +1,8 @@
-# skills-creation
+@~/.claude/standards/universal-claude.md
 
-## Purpose
-Repository baseline for rebuilding and optimizing Claude Code skills.
-
-## Preserved Environment
-- Python virtual environment: `.venv/`
-- Runtime/tooling config: `mise.toml`
-- Claude Code settings: `.claude/settings.json`
-
-## Working Rules
-- Keep repository minimal and reproducible.
-- Add new skill code only when there is a concrete task.
-- Prefer small, reviewable commits.
+## Project Overrides
+ENV_SETUP_CMD: mise install && mise run install
+TEST_CMD: mise run test
+LINT_CMD: mise run lint
+TYPECHECK_CMD: mise run check
+BUILD_CMD: mise run build
