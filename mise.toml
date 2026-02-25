@@ -2,33 +2,32 @@
 python = { version = "3.10", virtualenv = ".venv" }
 
 [env]
-PYTHONPATH = "./.claude/skills/task-flow/src"
 VIRTUAL_ENV = ".venv"
 
-[tasks.test]
-description = "Run tests"
-run = "python -m pytest .claude/skills/task-flow/tests -v"
-
-[tasks.test-coverage]
-description = "Run tests with coverage"
-run = "python -m pytest .claude/skills/task-flow/tests --cov=.claude/skills/task-flow/src --cov-report=term-missing --cov-report=html"
-
 [tasks.install]
-description = "Install dependencies"
-run = "pip install -r .claude/skills/task-flow/requirements.txt"
+description = "Install Python dependencies if present"
+run = """if [ -f requirements.txt ]; then pip install -r requirements.txt; elif [ -f pyproject.toml ]; then pip install -e .; elif [ -f .claude/skills/task-flow/requirements.txt ]; then pip install -r .claude/skills/task-flow/requirements.txt; else echo 'No dependency manifest found, skipping install'; fi"""
 
-[tasks.dev]
-description = "Install development dependencies"
-run = "pip install -r .claude/skills/task-flow/requirements.txt && pip install pytest pytest-cov pytest-mock black pylint mypy"
+[tasks.test]
+description = "Run project tests if present"
+run = """if [ -d tests ]; then python -m pytest tests -v; elif [ -d .claude/skills/task-flow/tests ]; then python -m pytest .claude/skills/task-flow/tests -v; else echo 'No tests directory found, skipping tests'; fi"""
 
 [tasks.format]
-description = "Format code with black"
-run = "black .claude/skills/task-flow/src .claude/skills/task-flow/tests"
+description = "Format Python code when available"
+run = """if [ -d src ]; then python -m black src tests; elif [ -d .claude/skills/task-flow/src ]; then python -m black .claude/skills/task-flow/src .claude/skills/task-flow/tests; else echo 'No format targets found, skipping format'; fi"""
 
 [tasks.lint]
-description = "Lint code with pylint"
-run = "pylint --errors-only --disable=import-error .claude/skills/task-flow/src"
+description = "Lint Python code when available"
+run = """if [ -d src ]; then python -m pylint --errors-only --disable=import-error src; elif [ -d .claude/skills/task-flow/src ]; then python -m pylint --errors-only --disable=import-error .claude/skills/task-flow/src; else echo 'No lint targets found, skipping lint'; fi"""
 
 [tasks.check]
-description = "Run type checking with mypy"
-run = "mypy .claude/skills/task-flow/src/cli.py --ignore-missing-imports --disable-error-code=import-untyped"
+description = "Run type checks when available"
+run = """if [ -f pyproject.toml ]; then python -m mypy src --ignore-missing-imports; elif [ -f .claude/skills/task-flow/src/cli.py ]; then python -m mypy .claude/skills/task-flow/src/cli.py --ignore-missing-imports --disable-error-code=import-untyped; else echo 'No type-check target found, skipping check'; fi"""
+
+[tasks.test-coverage]
+description = "Run coverage if tests are present"
+run = """if [ -d tests ]; then python -m pytest tests --cov=. --cov-report=term-missing --cov-report=html; elif [ -d .claude/skills/task-flow/tests ]; then python -m pytest .claude/skills/task-flow/tests --cov=.claude/skills/task-flow/src --cov-report=term-missing --cov-report=html; else echo 'No tests directory found, skipping coverage'; fi"""
+
+[tasks.dev]
+description = "Install common development dependencies"
+run = "pip install pytest pytest-cov pytest-mock black pylint mypy"
