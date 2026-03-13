@@ -48,8 +48,6 @@ worktrees/
 .claude/
 !.claude/
 !.claude/skills/
-!.claude/skills/task-flow/
-!.claude/skills/task-flow/**
 .claude/settings.json
 .claude/**/__pycache__/
 .claude/**/__pycache__/**
