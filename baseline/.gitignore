@@ -1,0 +1,7 @@
+# Claude Code working directory
+.claude/
+
+# Editor and system files
+*.swp
+*.swo
+.DS_Store
