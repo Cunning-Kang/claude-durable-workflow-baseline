@@ -1,6 +1,10 @@
 # Claude Code 可移植运行方案
 
-> 状态: 正式 | 版本: 1.0.0 | 日期: 2026-03-20
+> 状态: **背景参考（已降级）** | 版本: 1.0.0 | 日期: 2026-03-20
+>
+> **注意**: 本文档已降级为背景参考。
+> **`/clear` 后的正式入口是 `docs/claude-one-command-bootstrap.md`。**
+> 本文档内容与 bootstrap 文档重复，仅保留作为架构背景说明。
 
 ---
 
@@ -111,11 +115,12 @@ Superpowers 插件 ────────── 主控层（行为约束）
 
 | 文档 | 角色 |
 |------|------|
-| `docs/claude-global-operating-model.md` | 完整方案背景与资产分类 |
-| `docs/claude-operating-model-hardening.md` | 强化过程记录 |
-| `docs/claude-one-command-bootstrap.md` | **单一入口操作手册**（本方案核心） |
+| `docs/claude-one-command-bootstrap.md` | **唯一正式 operator 入口** |
+| `docs/claude-global-operating-model.md` | 背景：完整方案背景与资产分类 |
+| `docs/claude-operating-model-hardening.md` | 背景：强化过程记录 |
+| `docs/claude-source-repo-publication-report.md` | 背景：source repo 发布核验报告 |
 | `~/.claude/standards/core-standard.md` | 全局运行时标准 |
 
 ---
 
-> 本文档为可移植化定稿的极简入口。完整操作手册见 `docs/claude-one-command-bootstrap.md`。
+> 本文档已降级为背景参考。**正式入口是 `docs/claude-one-command-bootstrap.md`。**

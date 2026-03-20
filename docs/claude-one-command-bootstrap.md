@@ -128,15 +128,23 @@ source repo (canonical distribution source)
 │   ├── CLAUDE.md                 (global runtime surface reference)
 │   ├── standards/core-standard.md
 │   ├── guides/orchestration-extension.md
-│   └── commands/finish-branch.md
-├── distribution/commands/
-│   └── init-claude-workflow.md   → copy to ~/.claude/commands/
+│   ├── commands/finish-branch.md
+│   └── README.md                 (source repo 内部自述，无需复制)
+├── distribution/
+│   ├── commands/
+│   │   └── init-claude-workflow.md   → copy to ~/.claude/commands/
+│   └── scripts/
+│       └── init-claude-workflow.sh  (内部脚本，非 operator 入口)
 └── baseline/                     → init-claude-workflow 的 source
-    ├── docs/                    (spec templates)
-    ├── memory/                  (MEMORY.md)
-    ├── claude/                 (claude-snippet.md)
-    └── docs/workflow/          (review-protocol, execution-contract, etc.)
+    ├── docs/specs/_template/    (spec templates: index, plan, spec, review, verify, tasks/)
+    ├── docs/workflow/          (review-protocol, execution-contract, memory-protocol, etc.)
+    ├── memory/                  (MEMORY.md, patterns.md, gotchas.md)
+    └── claude/                 (claude-snippet.md)
 ```
+
+> **注**: `distribution/scripts/init-claude-workflow.sh` 是 source repo 内部脚本，
+> `global/README.md` 是 source repo 内部自述文件，两者均非 operator 入口，
+> 不需要在主项目 repo 中复制。
 
 ---
 
