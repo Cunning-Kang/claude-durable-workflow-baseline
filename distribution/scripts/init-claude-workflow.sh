@@ -40,7 +40,8 @@ error()   { printf "${RED}[ERROR]${NC} %s\n" "$*"; }
 info "Checking git repository..."
 if ! git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     error "Not a git repository: $REPO_ROOT"
-    error "Run 'git init' first, then re-execute this script."
+    error "Run the following command to initialize:"
+    error "  cd $(basename "$REPO_ROOT") && git init && claude /init-claude-workflow"
     exit 1
 fi
 info "Git repository confirmed: $REPO_ROOT"
@@ -130,7 +131,7 @@ mkdir -p "$REPO_ROOT/.claude"
 # Process all baseline items
 while IFS= read -r item; do
     copy_baseline_item "$item" "$REPO_ROOT/${item#$BASELINE_DIR/}"
-done < <(find "$BASELINE_DIR" -type f -o -type d | sort)
+done < <(find "$BASELINE_DIR" -mindepth 1 \( -type f -o -type d \) | sort)
 
 # Step 4: Write version marker
 if [[ $CONFLICTED -eq 0 ]]; then
