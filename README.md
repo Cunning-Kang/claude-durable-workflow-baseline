@@ -57,9 +57,28 @@ See [docs/claude-one-command-bootstrap.md](docs/claude-one-command-bootstrap.md)
 ## What `/init-claude-workflow` does not do
 - It does not sync this baseline repo (manual `git pull` to upgrade)
 - It does not upgrade an already-initialized repo
-- It does not create feature instances
+- It does not create feature instances (see `/new-feature` below)
 - It does not infer project commands
 - It does not overwrite local modifications by default
+
+## Starting a new feature
+
+```bash
+# After /init-claude-workflow, instantiate a feature spec skeleton:
+/new-feature <feature-slug>
+
+# Example:
+/new-feature user-auth
+# → creates docs/specs/user-auth/ from _template/
+# → replaces <feature-slug> placeholders automatically
+```
+
+This runs `distribution/scripts/instantiate-feature.sh`, which:
+- Copies `baseline/docs/specs/_template/` to `docs/specs/<feature-slug>/`
+- Replaces `<feature-slug>` in all generated files
+- Skips if the feature directory already exists (never overwrites)
+
+After instantiation, fill in `spec.md`, `plan.md`, and the task files, then use the Superpowers `/brainstorming` skill to start planning.
 
 ## Directory structure
 
@@ -71,8 +90,12 @@ baseline/                        ← baseline assets for /init-claude-workflow
   memory/                       (MEMORY.md, patterns.md, gotchas.md)
 
 distribution/
-  commands/init-claude-workflow.md   ← slash command entry
-  scripts/init-claude-workflow.sh    ← actual bootstrap script
+  commands/
+    init-claude-workflow.md            ← /init-claude-workflow entry
+    new-feature.md                     ← /new-feature entry
+  scripts/
+    init-claude-workflow.sh            ← bootstrap script
+    instantiate-feature.sh             ← _template instantiation script
 
 global/                         ← portable user-level assets
   CLAUDE.md                     → copy to ~/.claude/CLAUDE.md
