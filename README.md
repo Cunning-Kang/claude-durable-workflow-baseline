@@ -5,7 +5,7 @@ A minimal baseline source repo for Claude Code durable workflow setup.
 ## What this repo is
 - A single source of truth for the durable workflow baseline
 - A distribution source for repo-local workflow protocols, spec templates, and memory skeleton files
-- The source for `/init-claude-workflow` command content and bootstrap script
+- The source for `/init-claude-workflow` and `/new-feature` command content plus their bootstrap scripts
 
 ## What this repo is not
 - Not a plugin runtime
@@ -29,8 +29,15 @@ cp -n ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
 # 3. 复制命令入口
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-workflow.md \
    ~/.claude/commands/init-claude-workflow.md
+cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/new-feature.md \
+   ~/.claude/commands/new-feature.md
 
-# 4. 在新 repo 中初始化
+# 4. 复制 supporting scripts 到固定 runtime 路径
+mkdir -p ~/.claude/scripts
+cp ~/.claude/baselines/durable-workflow-v1/distribution/scripts/*.sh \
+   ~/.claude/scripts/
+
+# 5. 在新 repo 中初始化
 cd /path/to/new-repo
 git init  # if not already a git repo
 claude    # start Claude Code
@@ -44,8 +51,10 @@ See [docs/claude-one-command-bootstrap.md](docs/claude-one-command-bootstrap.md)
 ## How distribution works
 1. Clone this repository to your local cache: `~/.claude/baselines/durable-workflow-v1/`
 2. Copy `global/*` to `~/.claude/` for global runtime surface
-3. Copy `distribution/commands/init-claude-workflow.md` to `~/.claude/commands/`
-4. Run `/init-claude-workflow` in any new repo to initialize baseline files
+3. Copy `distribution/commands/init-claude-workflow.md` and `distribution/commands/new-feature.md` to `~/.claude/commands/`
+4. Copy `distribution/scripts/*.sh` to `~/.claude/scripts/` as the fixed runtime script location
+5. Run `/init-claude-workflow` in any new repo to initialize baseline files
+6. Run `/new-feature <feature-slug>` when you need a feature spec instance
 
 ## What `/init-claude-workflow` does
 - Verifies the current directory is a git repository
@@ -73,8 +82,9 @@ See [docs/claude-one-command-bootstrap.md](docs/claude-one-command-bootstrap.md)
 # → replaces <feature-slug> placeholders automatically
 ```
 
-This runs `distribution/scripts/instantiate-feature.sh`, which:
-- Copies `baseline/docs/specs/_template/` to `docs/specs/<feature-slug>/`
+This runs `~/.claude/scripts/instantiate-feature.sh`, which:
+- Reads template files from `~/.claude/baselines/durable-workflow-v1/baseline/docs/specs/_template/`
+- Copies them to `docs/specs/<feature-slug>/`
 - Replaces `<feature-slug>` in all generated files
 - Skips if the feature directory already exists (never overwrites)
 

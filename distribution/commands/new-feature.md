@@ -1,33 +1,40 @@
-name: new-feature
+---
 description: |
   Create a new feature spec directory from the _template skeleton.
-
-  Use this when starting any new feature, bugfix, or refactor that needs
-  a spec/plan/review/verify structure.
-
-  What it does:
-  1. Runs ~/.claude/scripts/instantiate-feature.sh <feature-slug>
-  2. Creates docs/specs/<feature-slug>/ from _template/
-  3. Replaces <feature-slug> placeholders in all generated files
-
-  After instantiation, fill in:
-  - spec.md: Goal, Scope, Acceptance, Non-goals, Risks, Rollback
-  - plan.md: Execution Order, Steps, Risks/Blockers
-  - tasks/: Rename T01-example.md to match your first step
-  - review.md: Fill in Reviewer (before starting implementation)
-  - verify.md: Add verification commands for each acceptance condition
-
-  Does NOT overwrite existing files or create git commits.
-
+  Invokes ~/.claude/scripts/instantiate-feature.sh to create docs/specs/<feature-slug>/
+  from the canonical baseline cache at ~/.claude/baselines/durable-workflow-v1.
+  Use this after /init-claude-workflow when starting any new feature, bugfix, or refactor
+  that needs a spec/plan/review/verify structure.
 allowed-tools:
   - Bash
   - Read
-  - Glob
-  - Grep
-
+  - Write
+  - Edit
 argument-hint: <feature-slug>
+---
 
-example: |
-  /new-feature user-auth
-  /new-feature payment-gateway
-  /new-feature fix-session-timeout
+Usage: Run `/new-feature <feature-slug>` directly — it invokes the script automatically.
+
+What it does:
+1. Confirm a feature slug was provided.
+2. Invoke `~/.claude/scripts/instantiate-feature.sh <feature-slug>`.
+3. Read template files from the canonical baseline cache at `~/.claude/baselines/durable-workflow-v1/baseline/docs/specs/_template/`
+   (or `CLAUDE_WORKFLOW_BASELINE_PATH` if explicitly set).
+4. Create `docs/specs/<feature-slug>/` from `_template/`.
+5. Replace `<feature-slug>` placeholders in all generated files.
+6. Skip if the feature directory already exists.
+
+After instantiation, fill in:
+- `spec.md`: Goal, Scope, Acceptance, Non-goals, Risks, Rollback
+- `plan.md`: Execution Order, Steps, Risks/Blockers
+- `tasks/T01-example.md`: Rename to match your first implementation step
+- `review.md`: Fill in Reviewer before starting implementation
+- `verify.md`: Add verification commands for each acceptance condition
+
+Then continue with the Superpowers `/brainstorming` skill.
+
+## Non-goals
+- Do not sync the baseline cache.
+- Do not upgrade an initialized repo.
+- Do not overwrite an existing feature directory.
+- Do not create git commits automatically.

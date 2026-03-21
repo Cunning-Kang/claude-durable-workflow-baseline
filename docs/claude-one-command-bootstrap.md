@@ -43,7 +43,7 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-wor
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/new-feature.md \
    ~/.claude/commands/new-feature.md
 
-# 复制 workflow 脚本到 ~/.claude/scripts/（供命令调用）
+# 复制 workflow supporting scripts 到固定 runtime 路径 ~/.claude/scripts/
 mkdir -p ~/.claude/scripts
 cp ~/.claude/baselines/durable-workflow-v1/distribution/scripts/*.sh \
    ~/.claude/scripts/
@@ -79,7 +79,7 @@ claude
 /init-claude-workflow
 ```
 
-如果 `~/.claude/baselines/durable-workflow-v1/` 不存在，先执行步骤 2（克隆 + 复制全局资产）。
+如果 `~/.claude/baselines/durable-workflow-v1/` 不存在，先执行步骤 2（克隆 + 复制命令与脚本）。
 
 ---
 
@@ -96,7 +96,7 @@ claude
 | 场景 | 入口命令 |
 |------|----------|
 | 初始化新项目 | `/init-claude-workflow` |
-| 初始化新 feature | `/new-feature` |
+| 初始化新 feature | `/new-feature <feature-slug>` |
 | 开始任务 | `/brainstorming` |
 | 写 spec/plan | `/writing-plans` |
 | 实现 | `/test-driven-development` |
