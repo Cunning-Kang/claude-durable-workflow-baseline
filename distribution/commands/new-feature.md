@@ -5,8 +5,8 @@ description: |
   Use this when starting any new feature, bugfix, or refactor that needs
   a spec/plan/review/verify structure.
 
-  Steps:
-  1. Runs distribution/scripts/instantiate-feature.sh <feature-slug>
+  What it does:
+  1. Runs ~/.claude/scripts/instantiate-feature.sh <feature-slug>
   2. Creates docs/specs/<feature-slug>/ from _template/
   3. Replaces <feature-slug> placeholders in all generated files
 

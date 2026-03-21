@@ -38,6 +38,15 @@ cp -n ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
 # 复制 init-claude-workflow 命令到 ~/.claude/commands/
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-workflow.md \
    ~/.claude/commands/init-claude-workflow.md
+
+# 复制 new-feature 命令到 ~/.claude/commands/
+cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/new-feature.md \
+   ~/.claude/commands/new-feature.md
+
+# 复制 workflow 脚本到 ~/.claude/scripts/（供命令调用）
+mkdir -p ~/.claude/scripts
+cp ~/.claude/baselines/durable-workflow-v1/distribution/scripts/*.sh \
+   ~/.claude/scripts/
 ```
 
 ### 步骤 3: 在每个新 repo 中运行入口命令
@@ -86,6 +95,8 @@ claude
 
 | 场景 | 入口命令 |
 |------|----------|
+| 初始化新项目 | `/init-claude-workflow` |
+| 初始化新 feature | `/new-feature` |
 | 开始任务 | `/brainstorming` |
 | 写 spec/plan | `/writing-plans` |
 | 实现 | `/test-driven-development` |
@@ -135,9 +146,11 @@ source repo (canonical distribution source)
 │   └── README.md                 (source repo 内部自述，无需复制)
 ├── distribution/
 │   ├── commands/
-│   │   └── init-claude-workflow.md   → copy to ~/.claude/commands/
+│   │   ├── init-claude-workflow.md  → copy to ~/.claude/commands/
+│   │   └── new-feature.md           → copy to ~/.claude/commands/
 │   └── scripts/
-│       └── init-claude-workflow.sh  (内部脚本，bootstrap 实际执行逻辑)
+│       ├── init-claude-workflow.sh  (内部脚本) → copy to ~/.claude/scripts/
+│       └── instantiate-feature.sh   (feature 初始化脚本) → copy to ~/.claude/scripts/
 └── baseline/                     → init-claude-workflow 的 source
     ├── docs/specs/_template/    (spec templates: index, plan, spec, review, verify, tasks/)
     ├── docs/workflow/          (review-protocol, execution-contract, memory-protocol, etc.)
