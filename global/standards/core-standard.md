@@ -85,38 +85,11 @@ If the user chooses a higher-risk path after pushback, proceed only within polic
 
 ---
 
-## 4) Task Framing and State
+## 4) Task Scope
 
-### Task Levels
+Scope work in proportion to risk and keep traceability proportional to the change.
 
-- **L0**: small, local, reversible, no contract change.
-- **L1**: default level for non-trivial work.
-- **L2**: multi-module change, public interface or schema change, high-risk operation as defined in §7, or scope that expands beyond initial boundaries during clarification.
-
-### Minimum Traceability
-
-For **L1** and **L2**, keep these visible:
-- `Goal`
-- `Scope`
-- `Acceptance`
-- `Assumptions`
-
-For **L2**, also keep:
-- `Non-goals`
-- `Risks`
-- `Rollback`
-- `Execution order`
-
-### State Backend
-
-- Prefer project task tools when available.
-- Fall back to inline status reporting when they are not.
-- Never keep two authoritative trackers at once.
-
-Checkpoint:
-- at meaningful phase changes,
-- before high-risk operations,
-- after any required gate failure.
+Use one authoritative task state at a time. Prefer project-native tracking when available and avoid duplicating status across systems.
 
 ---
 
@@ -131,72 +104,11 @@ Checkpoint:
 
 ## 6) Verification and Definition of Done
 
-A task is not complete until all **applicable required gates** pass.
+A task is not complete until all applicable verification gates pass: Environment, Test, Static, Traceability, and Review.
 
-### Required Gates
+Use project-defined verification commands when present. If a relevant command is unavailable or a meaningful automated check does not exist, say so explicitly and use the best available manual evidence.
 
-1. **Environment** - required tools, workspace, and prerequisites are available.
-2. **Test** - changed behavior is verified when behavior changes.
-3. **Static** - lint, typecheck, and build pass when relevant and available.
-4. **Traceability** - what changed, why, and how it was verified are recorded.
-5. **Review** - required when policy or risk requires a review path independent of the implementation path.
-
-### Applicability
-
-- Use project commands directly when present:
-  - `ENV_SETUP_CMD`
-  - `TEST_CMD`
-  - `LINT_CMD`
-  - `TYPECHECK_CMD`
-  - `BUILD_CMD`
-- Run the applicable subset for the change.
-- If a command is unavailable or irrelevant, say so explicitly.
-- If no meaningful automated verification exists, perform manual verification and report the evidence.
-
-### Review Policy
-
-`REVIEW_POLICY=standard`
-- Review is **required** for:
-  - public interface changes,
-  - schema changes,
-  - high-risk operations,
-  - irreversible changes.
-- Review is **recommended** otherwise.
-
-`REVIEW_POLICY=strict`
-- Review is **required** for all **L1** and **L2** changes.
-- Review is optional for **L0** unless risk escalates.
-
-### Review Requirements
-
-When review is required, `PASS` or `FAIL` requires independent review and recorded review evidence.
-
-A review is independent only if the reviewer did not implement the reviewed change.
-Self-review does not satisfy this gate unless a higher-precedence policy explicitly says otherwise.
-
-The review evidence must identify:
-- `Reviewer`: <identity>
-- `Reference`: <message, task, or artifact containing the review result>
-
-Without independent review and recorded review evidence:
-- `PASS` is invalid
-- `FAIL` is invalid
-- `BLOCKED` is required
-
-When review is required:
-- `PASS` means independent review completed and the recorded evidence contains no blocking findings.
-- `FAIL` means independent review completed and the recorded evidence contains blocking findings.
-- `BLOCKED` means required independent review cannot currently be completed with recorded evidence.
-
-When review is required, `N/A` is invalid.
-
-If review is `BLOCKED`, status remains `In Progress` unless a higher-precedence policy explicitly permits an alternative review method.
-
-### Completion Rule
-
-- Any required gate that fails, remains inconclusive, or is blocked keeps status at `In Progress`.
-- Any gate marked `PASS` must have matching evidence.
-- Missing evidence invalidates the completion claim.
+Review is required for public interface changes, schema changes, high-risk operations, irreversible changes, or when a higher-precedence policy says so. When required, review must be independent and evidenced.
 
 ---
 
@@ -214,12 +126,7 @@ High-risk actions include:
 - secret file mutation,
 - irreversible schema migrations.
 
-When a high-risk action is authorized, record:
-
-Risk Acceptance:
-- `Operation`: <action>
-- `Authorization`: <where it was confirmed>
-- `Rollback`: <command or "none - irreversible">
+When a high-risk action is authorized, record the operation, where it was authorized, and the rollback path.
 
 ### Tool Failure Rule
 
@@ -242,55 +149,3 @@ Never invent results after a failed call.
 - Do not mix unrelated changes in one commit.
 
 ---
-
-## 9) Completion Contract
-
-Any completion claim must include enough information to verify that the claim is true.
-
-Minimum required content:
-- `Scope` - what was done
-- `Changed` - files or areas affected
-- `Verification` - command evidence, manual evidence, and review evidence when applicable
-- `Gates` - status for each relevant gate (`env`, `test`, `static`, `traceability`, `review`)
-- `Risks` - remaining risks or `None`
-- `Assumptions` - material assumptions or `None`
-- `Rollback` - rollback path or `N/A` (required for L2)
-
-Formatting rules:
-- Completion claims must satisfy §6.
-- Mark non-applicable gates as `N/A`.
-- Keep the format concise, but preserve the evidence-to-gate mapping.
-
----
-
-## 10) Override Keys and Defaults
-
-These are the globally recognized keys that projects may override. Projects should use only keys that materially change execution:
-
-```yaml
-DEFAULT_BRANCH:
-ENV_SETUP_CMD:
-TEST_CMD:
-LINT_CMD:
-TYPECHECK_CMD:
-BUILD_CMD:
-TASK_STATE_BACKEND: auto   # auto | inline
-REVIEW_POLICY: standard    # standard | strict
-USER_REPLY_LANGUAGE: auto
-COMMIT_LANGUAGE: en
-PR_LANGUAGE: en
-```
-
-If a key is unset in a project, use the defaults below or runtime defaults. Mention that only when it materially affects behavior.
-
-
-```yaml
-DEFAULT_BRANCH: main
-TASK_STATE_BACKEND: auto
-REVIEW_POLICY: standard
-USER_REPLY_LANGUAGE: auto
-COMMIT_LANGUAGE: en
-PR_LANGUAGE: en
-```
-
-Project-specific command keys (`ENV_SETUP_CMD`, `TEST_CMD`, `LINT_CMD`, `TYPECHECK_CMD`, `BUILD_CMD`) remain intentionally unset at global level.

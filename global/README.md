@@ -1,18 +1,20 @@
 # Global Distribution Layer
 
-This directory is the canonical source for user-level Claude Code durable workflow capabilities.
+This directory is a thin portable user-level runtime surface — portable assets that seed `~/.claude/*`, not a behavior control layer.
 
 ## Purpose
-- Provide the formal global package that installs into `~/.claude/*`
+- Serve as the canonical source for portable user-level assets installed into `~/.claude/*`
 - Keep cross-repo durable entrypoints versioned outside any single target repo
-- Separate user-level capabilities from repo-local baseline files
+- Separate user-level portable surface from repo-local baseline files
 
-## v1 contents
+## v1 contents (recommended distribution)
 - `CLAUDE.md`
 - `standards/core-standard.md`
 - `guides/orchestration-extension.md`
-- `skills/spec-execute/SKILL.md`
-- `commands/finish-branch.md`
+
+## Historical / transitional
+- `skills/spec-execute/README.md` — migration note only; the competing `spec-execute` skill is no longer distributed
+- `commands/finish-branch.md` — removed from the distribution surface because `/finish-branch` belongs to Superpowers
 
 ## Deferred to repo layer
 - `docs/workflow/*`
@@ -34,18 +36,20 @@ This directory is the canonical source for user-level Claude Code durable workfl
 
 ## Relationship to other layers
 - `baseline/` remains the repo-local baseline package
-- `global/` is the user-level capability package
+- `global/` is the thin portable user-level runtime surface (not a behavior control layer)
 - installed target for `global/` is `~/.claude/*`
 - installed target for `baseline/` is the target repo itself
 
 ## Installation
 ```bash
 # Sync this repo to local cache
-git clone <source-repo-url> ~/.claude/baselines/durable-workflow/
+git clone <source-repo-url> ~/.claude/baselines/durable-workflow-v1/
 
-# Copy global/ to ~/.claude/
-cp -n ~/.claude/baselines/durable-workflow/global/* ~/.claude/
+# Copy the thin global surface to ~/.claude/
+cp -n ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
 ```
+
+The copied surface is intentionally limited to `CLAUDE.md`, `standards/`, and `guides/`. Workflow entrypoints such as `spec-execute` and `/finish-branch` are not distributed from this layer.
 
 ## Current stage
 - v1 canonical distribution layer is present

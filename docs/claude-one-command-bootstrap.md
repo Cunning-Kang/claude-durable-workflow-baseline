@@ -11,7 +11,7 @@
 /init-claude-workflow
 ```
 
-这是唯一入口。它负责：
+这是新机器 / 新 repo 初始化的唯一 bootstrap 入口。它负责：
 - 在当前 repo 初始化 baseline/、docs/specs/_template/、docs/workflow/、memory/
 - 不覆盖已存在文件
 - 输出 next step
@@ -101,7 +101,7 @@ claude
 | 写 spec/plan | `/writing-plans` |
 | 实现 | `/test-driven-development` |
 | 验证完成 | `/verification-before-completion` |
-| 结束分支 | `/finish-branch` |
+| 分支收尾评估 | `/finish-branch`（由 Superpowers 提供） |
 | 沉淀记忆 | `/memory-reflection` |
 | 查询增强层 | `docs/specs/_template/`、`docs/workflow/`、`memory/` |
 
@@ -114,13 +114,13 @@ claude
 - 所有 skill 入口（brainstorming, writing-plans, TDD, etc.）
 - `/finish-branch`、`/memory-reflection`
 
-**增强层（本地知识）**
+**增强层（知识 / 协议 / 骨架层）**
 - `docs/specs/_template/` — durable spec 模板
 - `docs/workflow/` — 执行协议（review, memory, execution）
 - `memory/` — 项目知识沉淀
 - `baseline/` — repo 初始化 baseline
 
-增强层不控制行为，只提供 Superpowers 覆盖不到的 durable 知识复利。
+增强层不控制行为，只提供 Superpowers 主控层覆盖不到的 durable 知识复利，是被动知识结构而非第二控制层。
 
 ---
 
@@ -142,21 +142,26 @@ source repo (canonical distribution source)
 │   ├── CLAUDE.md                 (global runtime surface reference)
 │   ├── standards/core-standard.md
 │   ├── guides/orchestration-extension.md
-│   ├── commands/finish-branch.md
 │   └── README.md                 (source repo 内部自述，无需复制)
 ├── distribution/
 │   ├── commands/
 │   │   ├── init-claude-workflow.md  → copy to ~/.claude/commands/
 │   │   └── new-feature.md           → copy to ~/.claude/commands/
-│   └── scripts/
-│       ├── init-claude-workflow.sh  (内部脚本) → copy to ~/.claude/scripts/
-│       └── instantiate-feature.sh   (feature 初始化脚本) → copy to ~/.claude/scripts/
+│   ├── scripts/
+│   │   ├── init-claude-workflow.sh  (内部脚本) → copy to ~/.claude/scripts/
+│   │   └── instantiate-feature.sh   (feature 初始化脚本) → copy to ~/.claude/scripts/
+│   ├── hooks/                     (Phase 3 · source-only · opt-in · 不被 init-claude-workflow 自动安装)
+│   │   └── project/               (project-scope deterministic gate templates)
+│   └── settings-snippets/          (Phase 3 · source-only · opt-in · 不被 init-claude-workflow 自动安装)
+│       └── project/               (project-scope 配置片段模板，与配对 hook 协同)
 └── baseline/                     → init-claude-workflow 的 source
     ├── docs/specs/_template/    (spec templates: index, plan, spec, review, verify, tasks/)
     ├── docs/workflow/          (review-protocol, execution-contract, memory-protocol, etc.)
     ├── memory/                  (MEMORY.md, patterns.md, gotchas.md)
     └── claude/                 (claude-snippet.md)
 ```
+
+> **注意**：`global/commands/`（含原 `finish-branch.md`）不在分发范围内，详见 `global/README.md` 的 Historical / transitional 说明。`/finish-branch` 能力现由 Superpowers 承接。
 
 ---
 

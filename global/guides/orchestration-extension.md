@@ -1,174 +1,124 @@
 # Orchestration Extension
 
 > Global on-demand extension for orchestration-heavy work
-> Scope: expand the core standard only when delegation, fanout, reconciliation, or execution ordering materially affects execution
+> Scope: help decide whether delegation, fanout, reconciliation, or execution ordering is justified
 > POLICY_PRECEDENCE: global-core > this-extension
 
 ---
 
 ## 1. Role of This Guide
 
-This guide expands the compact execution defaults in `~/.claude/standards/core-standard.md`.
+This guide supplements the compact defaults in `~/.claude/standards/core-standard.md`.
 
-Use this guide only when deciding whether orchestration is justified. Consulting this guide does not itself justify delegation, parallelism, or planner use.
+Use it only when deciding whether orchestration is justified. It does not create a second execution protocol, does not replace built-in routing, and does not redefine configured custom subagents.
 
-Do not consult this guide merely because a task is L2, large, multi-file, or architecture-adjacent.
-
-**This is an on-demand extension, not a second always-on standard.**
+**This is an on-demand decision guide, not a second control surface.**
 
 ---
 
-## 2. Default Execution Path
-
-Prefer the simplest workable path:
-
-1. do trivial local work inline,
-2. prefer `execution-implementer` as the typical path for bounded non-trivial execution,
-3. use `mechanical-transformer` only for explicit deterministic rewrites,
-4. use `orchestrator-planner` only when bounded execution cannot safely start without first resolving approach, decomposition, reconciliation, or ordering.
-
-This guide does not override built-in routing or a more fitting configured custom subagent.
-Task level alone is not a routing signal.
-
----
-
-## 3. Consult Triggers
+## 2. When to Consult It
 
 Consult this guide when one or more of the following is true:
 
-- more than one subtask or subagent may be required before execution can safely begin,
-- outputs from multiple workstreams may need reconciliation before execution can proceed,
+- more than one workstream may be required before safe execution can begin,
+- outputs from multiple workstreams may need reconciliation,
 - execution ordering or dependency sequencing may materially affect correctness,
-- bounded execution may not yet be safe to start.
+- the task boundary is not yet stable enough for bounded execution.
 
-Skip this guide for trivial local work that is clearly better done inline.
-
----
-
-## 4. Agent Intent
-
-Agent intent for the user-level custom subagents in `~/.claude/agents/` is encoded in those definitions.
-This guide supplements Claude Code's built-in behavior and configured custom subagents; it does not replace them or redefine runtime precedence.
-
-The routing system is intentionally asymmetric:
-- `execution-implementer` is the typical user-level path for bounded non-trivial execution,
-- `mechanical-transformer` is a narrow fast path for explicit rewrite-rule work,
-- `orchestrator-planner` is an exception layer for blocking orchestration problems.
+Skip this guide for trivial local work or already-bounded execution.
 
 ---
 
-## 5. Escalation and Downgrade Rules
+## 3. Decision Heuristics
 
-Escalation and downgrade heuristics are embedded in each agent's self-routing rules in `~/.claude/agents/`. When escalating or downgrading, record a brief reason. One sentence is enough if it is specific.
+Prefer the simplest path that preserves correctness.
 
-Good reasons to escalate to `orchestrator-planner`:
-- multiple viable approaches remain and the trade-off materially affects execution,
+- Stay inline when the work is trivial or coordination would cost more than execution.
+- Prefer a bounded execution path when scope is already stable.
+- Escalate only when approach selection, reconciliation, or ordering is the blocking problem.
+
+Task size alone is not a routing signal.
+Detailed agent routing and intent live in agent definitions, not in this guide.
+
+---
+
+## 4. Delegation and Parallelism
+
+Delegate only when the subtask is:
+
+- **bounded** — scope is defined before delegation starts,
+- **independent** — it can complete without constant steering,
+- **recoverable** — failure does not force total redesign,
+- **worth the overhead** — coordination cost is lower than inline cost.
+
+Do not delegate when:
+
+- the work includes a high-risk operation as defined in `~/.claude/standards/core-standard.md`,
+- execution still needs live architectural steering,
+- the task is trivial,
+- failure would force full replanning.
+
+Default fanout is **1 active workstream**.
+Increase to **2** only when workstreams are clearly independent and integration remains cheap.
+Treat **3+ active workstreams** as exceptional.
+If unsure, stay serial.
+
+---
+
+## 5. Escalation and Downgrade
+
+Escalate when:
+
+- multiple viable approaches materially affect execution,
 - the task boundary cannot yet be stabilized,
 - reconciliation across outputs is required before safe execution,
 - dependency ordering is itself the blocking problem.
 
-Bad reasons to escalate:
-- the task is merely large,
+Do not escalate merely because:
+
+- the task is large,
 - the task touches multiple files,
 - the task is architecture-adjacent but already bounded,
 - the task modifies an already-specified shared interface.
 
 Downgrade as soon as a simpler path becomes valid.
+When changing path, record a brief reason.
 
 ---
 
-## 6. Delegation Checklist
+## 6. Recovery Signals
 
-Delegate only when the subtask is:
-- **bounded** - scope is defined before delegation starts,
-- **independent** - it can complete without constant orchestration,
-- **recoverable** - failure does not destroy the main plan,
-- **worth the overhead** - coordination cost is lower than inline cost.
-
-Do not delegate when:
-- the work includes a high-risk operation as defined in `~/.claude/standards/core-standard.md`,
-- execution requires live architectural steering,
-- the task is trivial and coordination would cost more than doing it directly,
-- failure would force total replanning.
-
-Delegation never removes verification obligations. Required verification still applies after delegated work returns.
-
-Default check:
-
-> If this subtask fails, can I recover cleanly without redesigning the whole task?
-
-If the answer is no, do not delegate it yet.
-
----
-
-## 7. Parallelism and Fanout
-
-Default fanout is **1 active workstream**.
-
-Increase to **2** only when:
-- workstreams are clearly independent,
-- edit surfaces are unlikely to collide,
-- merge order is simple,
-- review and reconciliation remain cheap.
-
-Treat **3+ active workstreams** as exceptional.
-Use them only when:
-- decomposition is already clear,
-- ownership boundaries are stable,
-- output integration is easy to define in advance.
-
-Reduce fanout immediately when:
-- files or interfaces begin to overlap,
-- agents need repeated cross-coordination,
-- integration becomes the dominant cost,
-- review burden grows faster than throughput.
-
-If you are unsure whether to parallelize, stay serial.
-
----
-
-## 8. Recovery and Failure Handling
-
-### Tool or agent failure
-
-Follow the tool failure rule in `~/.claude/standards/core-standard.md`.
-
+If tool or agent failure occurs, follow the tool failure rule in `~/.claude/standards/core-standard.md`.
 Do not pretend the missing result is implied.
 
-### Low-confidence output
+If output returns low confidence:
 
-If an agent returns low-confidence output:
 - narrow the task,
 - reduce scope,
-- escalate only if the ambiguity is real,
-- or return to clarification.
+- clarify when ambiguity is real,
+- escalate only if the uncertainty is genuinely orchestration-related.
 
-### Integration failure
+If integration cost becomes dominant:
 
-If parallel work no longer integrates cheaply:
 - stop expanding fanout,
-- collapse back to serial integration in the main thread,
+- collapse back to serial integration,
 - re-sequence the remaining work.
 
-### Context pressure
-
 If context pressure rises:
+
 - stop adding new workstreams,
 - prefer bounded delegation or explicit checkpoints,
-- protect safe completion of the accepted scope before exploring more.
+- protect safe completion of the accepted scope first.
 
 ---
 
-## 9. Common Anti-Patterns
+## 7. Common Anti-Patterns
 
 Avoid these failures:
 
-- using `orchestrator-planner` for routine bounded execution,
-- using `mechanical-transformer` when meaning materially affects correctness,
+- treating this guide as always-on policy,
+- escalating because of abstract complexity instead of a concrete blocker,
 - parallelizing work that is only superficially independent,
-- increasing fanout without a real throughput gain,
-- escalating because of abstract complexity instead of a concrete blocking uncertainty,
-- keeping a weak path alive after integration cost has already turned negative,
-- treating this guide as always-on policy instead of on-demand expansion.
-
----
+- increasing fanout without stable ownership boundaries,
+- keeping fanout alive after integration cost has already turned negative,
+- using orchestration to avoid making the task boundary explicit.
