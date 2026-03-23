@@ -67,7 +67,7 @@ claude    # 启动 Claude Code
 - `docs/workflow/memory-protocol.md`
 - `docs/workflow/native-task-translation.md`
 - `memory/MEMORY.md`
-- `baseline/claude/claude-snippet.md`
+- `claude/claude-snippet.md`
 
 ---
 
@@ -172,6 +172,6 @@ source repo (canonical distribution source)
 - [ ] `docs/specs/_template/spec.md` 存在
 - [ ] `docs/workflow/` 存在（至少含 review-protocol.md）
 - [ ] `memory/MEMORY.md` 存在
-- [ ] `baseline/claude/claude-snippet.md` 存在
+- [ ] `claude/claude-snippet.md` 存在
 - [ ] Superpowers 插件已激活
 - [ ] `~/.claude/CLAUDE.md` 存在（引用 core-standard）
