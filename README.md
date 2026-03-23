@@ -5,7 +5,8 @@ A minimal baseline source repo for Claude Code durable workflow setup.
 ## What this repo is
 - A single source of truth for the durable workflow baseline
 - A distribution source for repo-local workflow protocols, spec templates, and memory skeleton files
-- The source for `/init-claude-workflow` and `/new-feature` command content plus their bootstrap scripts
+- A baseline source repo and distribution source for durable workflow assets
+- The source for `/init-claude-workflow` and `/new-feature` command content plus bootstrap scripts
 
 ## What this repo is not
 - Not a plugin runtime
@@ -107,11 +108,10 @@ distribution/
     init-claude-workflow.sh            ← bootstrap script
     instantiate-feature.sh             ← _template instantiation script
 
-global/                         ← portable user-level assets
+global/                         ← thin portable user-level runtime surface (not a control layer)
   CLAUDE.md                     → copy to ~/.claude/CLAUDE.md
   standards/core-standard.md
   guides/orchestration-extension.md
-  commands/finish-branch.md
 
 docs/
   claude-one-command-bootstrap.md   ← operator guide
