@@ -21,11 +21,13 @@ A minimal baseline source repo for Claude Code durable workflow setup.
 
 ```bash
 # 1. 克隆到本地 baseline cache
+# 重要：scripts 硬编码了 ~/.claude/baselines/durable-workflow-v1 路径。
+# 如需自定义位置，可设置 CLAUDE_WORKFLOW_BASELINE_PATH 环境变量指向你的克隆目录。
 git clone https://github.com/Cunning-Kang/claude-durable-workflow-baseline.git \
   ~/.claude/baselines/durable-workflow-v1
 
-# 2. 复制全局资产
-cp -n ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
+# 2. 复制全局资产（-n 不覆盖已有文件，-r 递归复制目录）
+cp -rn ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
 
 # 3. 复制命令入口
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-workflow.md \
