@@ -1,0 +1,20 @@
+// Merge this snippet into <project>/.claude/settings.json after explicitly adopting
+// .claude/hooks/taskcompleted-verification-evidence-gate/hook.mjs in that project.
+// This is source-only example configuration, not live baseline wiring.
+
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Checking durable verification evidence",
+            "timeout": 30,
+            "command": "env \\\n  TASKCOMPLETED_VERIFICATION_EVIDENCE_ARTIFACT_GLOBS='docs/specs/*/verify.md' \\\n  TASKCOMPLETED_VERIFICATION_EVIDENCE_TARGET_TEMPLATE='Task: {{task_id}} {{task_subject}}' \\\n  TASKCOMPLETED_VERIFICATION_EVIDENCE_SECTION_KEYS='Evidence,Verification' \\\n  TASKCOMPLETED_VERIFICATION_EVIDENCE_RECORD_KEYS='Command,Check,Result,Date' \\\n  TASKCOMPLETED_VERIFICATION_EVIDENCE_PLACEHOLDER_MARKERS='TODO,FIXME,fill in,replace me,your command here,your result here' \\\n  \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/taskcompleted-verification-evidence-gate/hook.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

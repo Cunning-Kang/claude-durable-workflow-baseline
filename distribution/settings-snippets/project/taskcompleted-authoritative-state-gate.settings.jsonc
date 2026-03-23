@@ -1,0 +1,19 @@
+// Merge this snippet into <project>/.claude/settings.json after explicitly adopting
+// .claude/hooks/taskcompleted-authoritative-state-gate/hook.mjs in that project.
+// This is source-only example configuration, not live baseline wiring.
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Checking authoritative task closure state",
+            "timeout": 30,
+            "command": "env TASKCOMPLETED_AUTHORITATIVE_STATE_TRACKER_GLOBS='docs/specs/*/index.md' TASKCOMPLETED_AUTHORITATIVE_STATE_SURFACE_PATHS='docs/specs/auth/tasks.md' TASKCOMPLETED_AUTHORITATIVE_STATE_TARGET_TEMPLATE='Task ID: {{task_id}}' TASKCOMPLETED_AUTHORITATIVE_STATE_OPEN_MARKERS='Current,ready,in_progress' TASKCOMPLETED_AUTHORITATIVE_STATE_CLOSED_MARKERS='done,completed,closed' \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/taskcompleted-authoritative-state-gate/hook.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}

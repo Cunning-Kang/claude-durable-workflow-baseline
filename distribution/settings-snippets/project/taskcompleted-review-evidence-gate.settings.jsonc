@@ -1,0 +1,19 @@
+// Merge this snippet into <project>/.claude/settings.json after explicitly adopting
+// .claude/hooks/taskcompleted-review-evidence-gate/hook.mjs in that project.
+// This is source-only example configuration, not live baseline wiring.
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Checking review evidence gate",
+            "timeout": 30,
+            "command": "env TASKCOMPLETED_REVIEW_EVIDENCE_GATE_SIGNAL_GLOBS='docs/reviews/*.md' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_ARTIFACT_GLOBS='docs/reviews/**/*.md' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_TARGET_TEMPLATE='Task ID: {{task_id}}' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_REVIEWER_FIELD='Reviewer' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_REFERENCE_FIELD='Reference' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_OUTCOME_FIELD='Outcome' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_PLACEHOLDER_MARKERS='TBD,TODO,placeholder' TASKCOMPLETED_REVIEW_EVIDENCE_GATE_PASS_TOKENS='PASS' \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/taskcompleted-review-evidence-gate/hook.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}
