@@ -14,6 +14,12 @@ Use it only when deciding whether orchestration is justified. It does not create
 
 **This is an on-demand decision guide, not a second control surface.**
 
+### Terminology (minimum definitions)
+
+- **bounded execution** — a task or workstream whose scope is fixed before delegation starts
+- **workstream** — one parallel line of work with a defined scope
+- **fanout** — delegating to multiple workstreams simultaneously
+
 ---
 
 ## 2. When to Consult It
@@ -104,7 +110,7 @@ If integration cost becomes dominant:
 - collapse back to serial integration,
 - re-sequence the remaining work.
 
-If context pressure rises:
+If general context pressure rises (increased memory or token usage from too many parallel workstreams):
 
 - stop adding new workstreams,
 - prefer bounded delegation or explicit checkpoints,

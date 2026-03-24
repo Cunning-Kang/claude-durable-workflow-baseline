@@ -1,6 +1,6 @@
 # Hooks Scope — Three-Layer Reference
 
-> Status: Phase 3 Boundary Anchor | Date: 2026-03-22
+> Status: Current | Date: 2026-03-22
 > Purpose: Define scope boundaries and decision rules for hooks distributed from this repo.
 
 ---
@@ -16,7 +16,7 @@ Hooks that live in `~/.claude/hooks/` and run at user level, across all projects
 - Installed once, active for all repos using this baseline
 - Examples: global lint helpers, commit-msg normalization, workspace-wide time-tracking triggers
 
-**Planned Phase 3 source location:** `distribution/hooks/user/` — once the Phase 3 skeleton is materialized, this path holds source files only; users still copy them manually and opt in explicitly.
+**Source location:** `distribution/hooks/user/` — source files only; users copy manually to `~/.claude/hooks/` and opt in explicitly.
 
 **Prohibited:**
 - No automatic `~/.claude/` installation via bootstrap
@@ -31,10 +31,10 @@ Hooks that live in `<project>/.claude/hooks/` and run scoped to a single project
 
 **Characteristics:**
 - Project-specific enforcement or conventions
-- Intended for project adoption through the baseline flow once the Phase 3 distribution skeleton exists
+- Intended for project adoption through explicit project-level opt-in per the distribution README
 - Examples: project-specific CI precondition checks, repo-local test helpers
 
-**Planned Phase 3 source location:** `distribution/hooks/project/` — target path for source-only project hooks, still opt-in per project rather than default-on.
+**Source location:** `distribution/hooks/project/` — source files only; copy manually to `<project>/.claude/hooks/` per project, opt-in not default-on.
 
 **Prohibited:**
 - Not installed globally; tied to the project repo
@@ -45,14 +45,14 @@ Hooks that live in `<project>/.claude/hooks/` and run scoped to a single project
 
 ### 1.3 `local example only` — Reference Implementations
 
-Hooks that exist as learning references in documentation-adjacent locations such as `global/skills/`, or in a future Phase 3 example-only path if one is added. They are NOT installed automatically and do not ship as active distribution output.
+Hooks that exist as learning references in `distribution/hooks/` or equivalent example-only locations. They are NOT installed automatically and do not ship as active distribution output.
 
 **Characteristics:**
 - Documentation/reference only
 - User reads and copies what they need, manually
 - Examples: annotated hook templates, commented enforcement snippets
 
-**Reference surface:** `global/skills/*/hooks/` or an equivalent example-only location if Phase 3 later adds one — never part of any install path.
+**Reference surface:** `distribution/hooks/` — never part of any install path.
 
 **Prohibited:**
 - Never installed automatically
@@ -87,9 +87,9 @@ Is it project-agnostic AND intended to run in ALL repos?
 
 | Scope | Source location | Install method | Auto-installed? | Lives in |
 |-------|-----------------|----------------|-----------------|----------|
-| `user` | `distribution/hooks/user/` (Phase 3 target) | Manual copy to `~/.claude/hooks/` after explicit adoption | **No** | `~/.claude/hooks/` |
-| `project` | `distribution/hooks/project/` (Phase 3 target) | Project adopts into `<project>/.claude/hooks/` through an explicit init/copy step once supported | **No** (opt-in per project) | `<project>/.claude/hooks/` |
-| `local example only` | `global/skills/*/hooks/` or equivalent example-only path | User reads and copies manually if needed | **No** | Source repo only |
+| `user` | `distribution/hooks/user/` | Manual copy to `~/.claude/hooks/` after explicit adoption | **No** | `~/.claude/hooks/` |
+| `project` | `distribution/hooks/project/` | Manual copy to `<project>/.claude/hooks/` — opt-in per project | **No** | `<project>/.claude/hooks/` |
+| `local example only` | `distribution/hooks/` | User reads and copies manually if needed | **No** | Source repo only |
 
 ---
 
@@ -111,7 +111,7 @@ Hooks are **not** globally enabled by default because:
 
 ## 5. Relationship with Settings Snippets
 
-Settings snippets follow the same three-layer scope and opt-in principle as hooks. In Phase 3, their intended source surface is `distribution/settings-snippets/`, but this document treats that as target layout rather than current implementation.
+Settings snippets follow the same three-layer scope and opt-in principle as hooks. Their source surface is `distribution/settings-snippets/`.
 
 | Layer | Purpose | Install target | Auto-installed? |
 |-------|---------|----------------|-----------------|
@@ -159,4 +159,3 @@ Before accepting any new hook into this repo:
 - D-003: Hooks must be layered as user / project / local example only
 - D-006: Descriptive boundary docs belong in `docs/reference/`
 - R-002: Hooks mis-globalization risk — only source/snippets; opt-in per layer
-- Phase 3 plan: `docs/refactor/2026-03-baseline-refactor/plan.md`

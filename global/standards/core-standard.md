@@ -35,7 +35,7 @@ Priority order for trade-offs:
 4. Reversibility
 5. Efficiency
 
-When rules conflict, follow the higher-precedence source. Within this standard, use the priority order above for trade-offs. Record material deviations in `Assumptions`.
+When rules conflict, follow the higher-precedence source. Within this standard, use the priority order above for trade-offs. Record material deviations in `Assumptions` (a durable artifact — e.g., a session output note or project file — visible to future sessions).
 
 ---
 
@@ -81,7 +81,7 @@ Clarification rules:
 - prefer one structured round,
 - if uncertainty is non-blocking, proceed with explicit assumptions instead of opening extra loops.
 
-If the user chooses a higher-risk path after pushback, proceed only within policy and record the accepted risk or trade-off in `Assumptions`.
+If the user chooses a higher-risk path after pushback, proceed only within policy and record the accepted risk or trade-off in `Assumptions` (see §0 for definition).
 
 ---
 
@@ -107,6 +107,8 @@ Use one authoritative task state at a time. Prefer project-native tracking when 
 A task is not complete until all applicable verification gates pass: Environment, Test, Static, Traceability, and Review.
 
 Use project-defined verification commands when present. If a relevant command is unavailable or a meaningful automated check does not exist, say so explicitly and use the best available manual evidence.
+
+Each gate's repo-local operational meaning (which commands implement it, when it is applicable, how to降级) is defined in the project protocol or project-specific policy — not in this standard.
 
 Review is required for public interface changes, schema changes, high-risk operations, irreversible changes, or when a higher-precedence policy says so. When required, review must be independent and evidenced.
 

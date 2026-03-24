@@ -1,6 +1,6 @@
 # Superpowers Boundary — Repository Role Definition
 
-> Status: Phase 1 Boundary Anchor | Date: 2026-03-22
+> Status: Current | Date: 2026-03-22
 > Purpose: Define what this baseline repo is, what it is not, and why it cannot compete with Superpowers.
 
 ---
@@ -30,7 +30,7 @@
 
 Superpowers owns the **primary behavior control layer**. This means:
 
-- All skill entry points (`/brainstorming`, `/writing-plans`, `/test-driven-development`, `/verification-before-completion`, `/finish-branch`, `/memory-reflection`)
+- All skill entry points (`superpowers:brainstorming`, `superpowers:writing-plans`, `superpowers:test-driven-development`, `superpowers:verification-before-completion`, `superpowers:finishing-a-development-branch`)
 - Task orchestration and execution state
 - Agent spawning and routing decisions
 - Any generic workflow automation skill that directs agent behavior
@@ -85,9 +85,9 @@ Hooks distributed from this repo follow a strict three-layer scope:
 
 | Layer | Description | Distribution |
 |-------|-------------|--------------|
-| `user` | User-level hooks (run at user home `~/.claude/hooks/`) | Source only, copy manually |
-| `project` | Project-specific hooks (distributed via `baseline/` in target repos) | Copied by `/init-claude-workflow` |
-| `local example only` | Reference implementations in `global/skills/` | NOT installed automatically; user copies what they need |
+| `user` | User-level hooks (run at user home `~/.claude/hooks/`) | Source only — copy manually to `~/.claude/hooks/` |
+| `project` | Project-specific hooks in `distribution/hooks/project/` | Source only — copy manually to `<project>/.claude/hooks/`; **not** copied by `/init-claude-workflow` |
+| `local example only` | Reference implementations in `distribution/hooks/` | NOT installed automatically; user copies what they need |
 
 ### Core principle
 
@@ -109,9 +109,7 @@ Descriptive boundary and protocol documents live here:
 
 ### Audit Documentation — `docs/audits/`
 
-Audit reports and retrospective analyses live here:
-- Canonical audit path: `docs/audits/2026-03-22-production-baseline-audit-and-refactor-plan.md`
-- `docs/plan/` is no longer an active directory after Phase 1 migration
+Audit reports and retrospective analyses live here. Active audit documents are listed in `docs/audits/` directly.
 
 ### What stays out of this repo
 
@@ -142,6 +140,5 @@ Use this checklist before accepting any new asset into this repo:
 - D-002: Baseline repo does not provide competing generic workflow skills
 - D-003: Hooks must be layered as user / project / local example only, distributed as source/snippets
 - D-006: Descriptive boundary docs belong in `docs/reference/`
-- D-008: Canonical audit path is `docs/audits/2026-03-22-production-baseline-audit-and-refactor-plan.md`
 - R-001: Primary risk is role conflict with Superpowers
 - R-002: Secondary risk is hooks mis-globalization

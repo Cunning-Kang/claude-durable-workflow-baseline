@@ -1,12 +1,12 @@
 # Memory Boundary
 
-**Phase 4 authoritative reference.** All memory content decisions during Phase 4 (P4-T02–P4-T06) derive from this document.
+**Authoritative reference for memory content classification.**
 
 ---
 
 ## 1. Purpose
 
-This document defines what belongs in `baseline/memory/*`, what does not, where non-memory content should go instead, and the rules for entering, updating, and removing entries. It is the shared classification standard for Phase 4 memory cleanup and reinforcement.
+This document defines what belongs in `baseline/memory/*`, what does not, where non-memory content should go instead, and the rules for entering, updating, and removing entries.
 
 ---
 
@@ -18,7 +18,7 @@ Specifically, memory captures:
 
 | Category | Description | Example |
 |---|---|---|
-| Stable conventions | How the project is actually done, not just what's in the codebase | `mise run lint && mise run test` gate on every commit |
+| Stable conventions | How the project is actually done, not just what's in the codebase | `mise run lint && mise run test` gate on commit |
 | Durable decisions | Why one approach was chosen over alternatives, with rationale | Why the project avoids global npm installs |
 | Recurring pitfalls | Failures that recur across sessions with known evasion steps | `console.log` buffering in Node.js CI scripts |
 | Reusable patterns | Command sequences, templates, or workflows others can apply directly | `tmux source-file` after editing `.tmux.conf` |
@@ -99,7 +99,7 @@ Git Commit Gate:
 - Workflow patterns with a trigger and a fix (when X, do Y)
 - Recurring implementation approaches with enough context to be applied correctly
 - Verification patterns (how to confirm something is working)
-- Patterns surfaced during Phase 3 hook migration
+- Patterns surfaced during hook migration
 
 **What does NOT go in:**
 - One-liner facts (those belong in `MEMORY.md`)
@@ -127,7 +127,7 @@ Fix: tmux source-file ~/.tmux.conf or mise trust mise.toml.
 - Failure modes that recur across sessions
 - Setup traps that bite repeatedly
 - Misleading assumptions the project has demonstrated
-- Context-mode or hook pitfalls surfaced during Phase 3
+- Context-mode or hook pitfalls surfaced during development
 
 **What does NOT go in:**
 - Current task blockers (one-off)
@@ -247,19 +247,19 @@ Remove or merge an entry when:
 
 **Do not** remove entries merely because they are old. Age is not a removal criterion — recurrence is.
 
-**Before removing any entry**, document what was removed and why, so the decision can be audited during P4-T06.
+**Before removing any entry**, document what was removed and why.
 
 ---
 
 ## 9. Anti-Patterns
 
-The following are known failure modes for memory management. During Phase 4, each of these should be identified and corrected.
+The following are known failure modes for memory management.
 
 ### 9.1 Durability Inflation
 Treating session-specific content as durable. Adding "things I learned today" without applying D1/D2/D3. **Mitigation:** Apply the intake checklist before every addition.
 
 ### 9.2 Memory Bloat
-Entries accumulate indefinitely without review. The file grows but quality does not. **Mitigation:** P4-T06 enforces a consistency review. Apply removal criteria proactively.
+Entries accumulate indefinitely without review. The file grows but quality does not. **Mitigation:** Apply removal criteria proactively.
 
 ### 9.3 Cross-File Duplication
 The same durable fact appearing in two or three memory files. **Mitigation:** Use §5.4 consolidation rules. Every fact lives once.
@@ -281,25 +281,4 @@ Keeping entries for blockers or failures that were truly one-off and will not re
 
 ---
 
-## 10. Phase 4 Acceptance Criteria
-
-`docs/reference/memory-boundary.md` is complete and accepted when:
-
-1. All seven dimensions below are covered with specific, actionable criteria:
-   - [ ] Durable criteria (§4): D1/D2/D3 with explicit questions
-   - [ ] File roles (§5): each file's scope, non-scope, typical entry, and examples
-   - [ ] Routing table (§7): covers all content types with correct destination
-   - [ ] Intake/update/removal (§8): triggering events, checklist, and conditions
-   - [ ] Anti-patterns (§9): all 8 anti-patterns named and described
-   - [ ] Non-memory destinations (§6): explicit routing for all non-memory content
-   - [ ] Cross-file duplication prevention (§5.4)
-
-2. The document does **not** contain any actual memory content (no durable facts about the project belong in this doc)
-
-3. The document is the **authoritative reference** for P4-T02–P4-T06: all subsequent tasks must cite specific sections when making classification decisions
-
-4. `memory-protocol.md` (P4-T02) references this document as the boundary authority — **[satisfied after P4-T02 completes]**
-
----
-
-*This document is the Phase 4 boundary authority. When in doubt, classify against D1/D2/D3 first, then route against §7.*
+*This document is the boundary authority for memory content classification. When in doubt, classify against D1/D2/D3 first, then route against §7.*

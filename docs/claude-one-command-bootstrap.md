@@ -60,14 +60,17 @@ claude    # 启动 Claude Code
 
 ### 完成后得到什么
 
-- `docs/specs/_template/spec.md`
-- `docs/workflow/review-protocol.md`
-- `docs/workflow/review-checklist.md`
-- `docs/workflow/execution-contract.md`
-- `docs/workflow/memory-protocol.md`
-- `docs/workflow/native-task-translation.md`
-- `memory/MEMORY.md`
-- `claude/claude-snippet.md`
+`/init-claude-workflow` copies the **entire `baseline/` tree** from the cache into your repo — nothing is selectively omitted. The following is a representative list of key files, not an exhaustive manifest:
+
+- `docs/specs/_template/` — all spec templates (index, plan, spec, review, verify, tasks/)
+- `docs/workflow/` — review-protocol.md, review-checklist.md, execution-contract.md, memory-protocol.md, native-task-translation.md
+- `memory/` — MEMORY.md, patterns.md, gotchas.md
+- `baseline/claude/claude-snippet.md`
+- `.claude/workflow-baseline-version` — version marker (written after successful init)
+
+Files that already exist in the repo are skipped. Files that exist but differ are reported as conflicts and are **not** overwritten.
+
+> **Note:** `distribution/hooks/` and `distribution/settings-snippets/` are **not** copied by `/init-claude-workflow`. They are source-only opt-in artifacts — see the Source Repo Asset table below.
 
 ---
 
@@ -93,16 +96,20 @@ claude
 
 ### Superpowers 入口映射
 
-| 场景 | 入口命令 |
-|------|----------|
+> **区分说明：**
+> - `/init-claude-workflow`、`/new-feature` 为本仓库 distribution commands（需复制到 `~/.claude/commands/`）
+> - 其余为 Superpowers shipped skills（需 Superpowers 插件）
+
+| 场景 | 入口 |
+|------|------|
 | 初始化新项目 | `/init-claude-workflow` |
 | 初始化新 feature | `/new-feature <feature-slug>` |
-| 开始任务 | `/brainstorming` |
-| 写 spec/plan | `/writing-plans` |
-| 实现 | `/test-driven-development` |
-| 验证完成 | `/verification-before-completion` |
-| 分支收尾评估 | `/finish-branch`（由 Superpowers 提供） |
-| 沉淀记忆 | `/memory-reflection` |
+| 开始任务 | `superpowers:brainstorming` |
+| 写 spec/plan | `superpowers:writing-plans` |
+| 实现 | `superpowers:test-driven-development` |
+| 验证完成 | `superpowers:verification-before-completion` |
+| 分支收尾评估 | `superpowers:finishing-a-development-branch` |
+| 沉淀记忆 | 见增强层 `memory/` 目录（由 Superpowers 提供心智模型） |
 | 查询增强层 | `docs/specs/_template/`、`docs/workflow/`、`memory/` |
 
 ---
@@ -111,8 +118,8 @@ claude
 
 **Superpowers（主控层）**
 - 唯一行为控制面
-- 所有 skill 入口（brainstorming, writing-plans, TDD, etc.）
-- `/finish-branch`、`/memory-reflection`
+- 所有 skill 入口（brainstorming, writing-plans, TDD, finishing-a-development-branch, etc.）
+- Superpowers shipped skills via `superpowers:<skill-name>`
 
 **增强层（知识 / 协议 / 骨架层）**
 - `docs/specs/_template/` — durable spec 模板
@@ -161,7 +168,7 @@ source repo (canonical distribution source)
     └── claude/                 (claude-snippet.md)
 ```
 
-> **注意**：`global/commands/`（含原 `finish-branch.md`）不在分发范围内，详见 `global/README.md` 的 Historical / transitional 说明。`/finish-branch` 能力现由 Superpowers 承接。
+> **注意：** `distribution/hooks/` and `distribution/settings-snippets/` are source-only opt-in artifacts — they are **not** copied by `/init-claude-workflow` and must be adopted manually per the opt-in procedures in those directories.
 
 ---
 

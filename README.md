@@ -96,28 +96,37 @@ After instantiation, fill in `spec.md`, `plan.md`, and the task files, then use 
 ## Directory structure
 
 ```
-baseline/                        ← baseline assets for /init-claude-workflow
+baseline/                        ← copied into new repos by /init-claude-workflow
   claude/claude-snippet.md
   docs/specs/_template/         (spec templates)
-  docs/workflow/                (review, execution, memory protocols)
-  memory/                       (MEMORY.md, patterns.md, gotchas.md)
+  docs/workflow/               (review, execution, memory protocols)
+  memory/                      (MEMORY.md, patterns.md, gotchas.md)
+  .gitignore
 
 distribution/
   commands/
-    init-claude-workflow.md            ← /init-claude-workflow entry
-    new-feature.md                     ← /new-feature entry
+    init-claude-workflow.md    ← /init-claude-workflow entry
+    new-feature.md             ← /new-feature entry
   scripts/
-    init-claude-workflow.sh            ← bootstrap script
-    instantiate-feature.sh             ← _template instantiation script
+    init-claude-workflow.sh    ← bootstrap script
+    instantiate-feature.sh     ← _template instantiation script
+  hooks/                       ← source-only · opt-in · NOT copied by /init-claude-workflow
+    project/                  (project-scope hook templates)
+  settings-snippets/           ← source-only · opt-in · NOT copied by /init-claude-workflow
+    project/                  (project-scope settings fragments)
 
-global/                         ← thin portable user-level runtime surface (not a control layer)
-  CLAUDE.md                     → copy to ~/.claude/CLAUDE.md
+global/                        ← copied to ~/.claude/ (host-wide surface)
+  CLAUDE.md                    (runtime entry — copy to ~/.claude/CLAUDE.md)
   standards/core-standard.md
   guides/orchestration-extension.md
 
 docs/
-  claude-one-command-bootstrap.md   ← operator guide
+  claude-one-command-bootstrap.md  (operator guide)
 ```
+
+**What auto-enters a new repo:** `baseline/` tree (via `/init-claude-workflow`).
+
+**What does NOT auto-enter:** `distribution/hooks/` and `distribution/settings-snippets/` — these are source-only opt-in artifacts you adopt manually.
 
 ## Version
 

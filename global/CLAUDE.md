@@ -1,6 +1,7 @@
 @~/.claude/standards/core-standard.md
 
-## Global Runtime Surface
+## Global Runtime Surface Entry
 
 - For orchestration-heavy work, consult `@~/.claude/guides/orchestration-extension.md`.
-- Prefer a fitting built-in subagent or configured custom subagent before inventing ad-hoc routing.
+
+For tool, routing, and execution defaults, see the files above. This file is the entry point only — it does not add new rules.
