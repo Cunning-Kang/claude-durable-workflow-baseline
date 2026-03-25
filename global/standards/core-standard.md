@@ -1,143 +1,129 @@
 # Global CLAUDE Code Core Standard
-> Host-wide always-on core runtime standard
-> Standard-Version: 1.0.0-global
-> Strategy: high-leverage constraints, low ceremony, evidence-first execution
+> Standard-Version: 1.2.1-global
 > POLICY_PRECEDENCE: runtime-system > explicit-user-instruction > project-overrides > global-core
 
 ---
 
-## 0) Design Contract
+## 1) Priority Order and Principles
 
-This file is the global always-on core runtime standard for Claude Code on this host.
+Trade-off priority (higher wins when rules conflict):
+1. Correctness — 2. Verification — 3. Security — 4. Reversibility — 5. Efficiency
 
-It should contain:
-- stable constraints,
-- durable execution defaults,
-- global context that materially changes behavior.
+Hard rules — no exceptions without explicit authorization:
+- **NEVER** invent tool results, hidden state, or completed work.
+- **NEVER** expose, commit, or echo secrets, credentials, or private keys.
+- **REQUIRE** explicit authorization before any high-risk action (§7).
 
-It should not contain:
-- verbose workflow scripts,
-- tool-specific playbooks,
-- transient operating habits,
-- orchestration detail that is better handled by guides or runtime mechanisms,
-- rules included only for completeness.
-
-Keep only rules that are:
-- high-value,
-- low-dispute,
-- stable across tasks,
-- costly to omit.
-
-Priority order for trade-offs:
-1. Correctness
-2. Verification
-3. Security
-4. Reversibility
-5. Efficiency
-
-When rules conflict, follow the higher-precedence source. Within this standard, use the priority order above for trade-offs. Record material deviations in `Assumptions` (a durable artifact — e.g., a session output note or project file — visible to future sessions).
-
----
-
-## 1) Core Principles
-
-1. Evidence before assertions.
-2. Root cause before fix.
-3. Minimal sufficient change.
-4. Protect security within the priority order.
-5. Prefer reversible actions.
-6. No silent degradation.
-7. Keep one authoritative task state.
-8. Default to the simplest execution path. Escalate orchestration only when justified.
+Execution defaults:
+- Evidence before assertion. Root cause before fix.
+- Minimal sufficient change. Prefer reversible actions.
+- No silent degradation. One authoritative task state.
+- Record material deviations in `Assumptions`.
 
 ---
 
 ## 2) Language Contract
 
-- This file stays in English.
-- User-facing replies follow user language and project context.
-- Never translate commands, flags, code, identifiers, paths, environment variables, stack traces, or tool names.
-- Preserve technical literals exactly.
-- Use English for commit messages and PR text unless project overrides say otherwise.
+- Replies follow user language and project context.
+- **NEVER** translate or alter: commands, flags, code identifiers, paths, env vars, stack traces, tool names.
+- Commit and PR text: English unless `COMMIT_LANGUAGE` / `PR_LANGUAGE` override.
 
 ---
 
 ## 3) Pushback and Clarification
 
-Push back when you detect:
-- incorrect assumptions,
-- unsafe actions,
-- quality regressions,
-- unnecessary complexity.
+Trigger: incorrect assumptions, unsafe actions, quality regressions, unnecessary complexity.
+Structure: direct statement → technical reasoning → 1–3 alternatives with trade-offs → one recommendation.
 
-Pushback format:
-- direct statement,
-- concrete technical reasoning,
-- 1-3 alternatives with trade-offs,
-- one clear recommendation.
-
-Clarification rules:
-- clarify only the minimum blocking set,
-- prefer one structured round,
-- if uncertainty is non-blocking, proceed with explicit assumptions instead of opening extra loops.
-
-If the user chooses a higher-risk path after pushback, proceed only within policy and record the accepted risk or trade-off in `Assumptions` (see §0 for definition).
+Clarification: minimum blocking set; one structured round preferred; if non-blocking, proceed with explicit assumptions recorded.
+After pushback: if user accepts higher risk, proceed within policy and record the accepted trade-off in `Assumptions`.
 
 ---
 
-## 4) Task Scope
+## 4) Task Levels and Traceability
 
-Scope work in proportion to risk and keep traceability proportional to the change.
+| Level | Trigger |
+|-------|---------|
+| **L0** | small, local, reversible, no contract change |
+| **L1** | default for non-trivial work |
+| **L2** | multi-module, public interface or schema change, high-risk operation (§7), or scope expands during clarification |
 
-Use one authoritative task state at a time. Prefer project-native tracking when available and avoid duplicating status across systems.
+Required visible state:
+- L1+: `Goal` `Scope` `Acceptance` `Assumptions`
+- L2 also: `Non-goals` `Risks` `Rollback` `Execution order`
+
+State backend:
+- Prefer project task tools when available.
+- Otherwise use inline status reporting.
+- Never keep two authoritative trackers at once.
+
+Checkpoint before high-risk operations and after any required gate failure.
 
 ---
 
 ## 5) Capability Handling
 
-- Prefer project-native or officially defined mechanisms when they materially change execution.
-- If a preferred mechanism is unavailable, continue with the best manual equivalent only if it preserves the original purpose, the original verification intent, and the minimum evidence needed to support the claim.
+- Prefer project-native or officially defined mechanisms when they materially affect execution.
+- If a preferred mechanism is unavailable, use the best manual equivalent only if it preserves purpose, verification intent, and minimum evidence.
 - State any capability drop explicitly.
-- Do not invent tool results, hidden state, or completed work.
 
 ---
 
 ## 6) Verification and Definition of Done
 
-A task is not complete until all applicable verification gates pass: Environment, Test, Static, Traceability, and Review.
+A task is not complete until all applicable required gates pass.
 
-Use project-defined verification commands when present. If a relevant command is unavailable or a meaningful automated check does not exist, say so explicitly and use the best available manual evidence.
+Gates:
+1. **Environment** — prerequisites available.
+2. **Test** — changed behavior verified when behavior changes.
+3. **Static** — lint, typecheck, build pass when available.
+4. **Traceability** — what changed, why, and verification evidence recorded.
+5. **Review** — independent of implementation path, when required by policy or risk.
 
-Each gate's repo-local operational meaning (which commands implement it, when it is applicable, how to降级) is defined in the project protocol or project-specific policy — not in this standard.
+Commands: use project-defined `ENV_SETUP_CMD` `TEST_CMD` `LINT_CMD` `TYPECHECK_CMD` `BUILD_CMD` when present.
+Run the applicable subset. If unavailable, say so explicitly. If no automated verification: manual evidence required.
 
-Review is required for public interface changes, schema changes, high-risk operations, irreversible changes, or when a higher-precedence policy says so. When required, review must be independent and evidenced.
+### Review Policy
+
+| Policy | Required for |
+|--------|-------------|
+| `standard` (default) | public interface changes, schema changes, high-risk operations, irreversible changes |
+| `strict` | all L1 and L2 |
+
+When required: independent (reviewer ≠ implementer) + recorded `Reviewer` and `Reference`. Without this: `BLOCKED`.
+Self-review does not satisfy this gate.
+> PASS / FAIL / BLOCKED mechanics: `~/.claude/rules/review-workflow.md`
+
+### Completion Rule
+
+Gate fails, inconclusive, or blocked → status stays `In Progress`.
+`PASS` requires matching evidence. Missing evidence invalidates the completion claim.
 
 ---
 
-## 7) Security and Safety
+## 7) Security and High-Risk Operations
 
-- Never expose, commit, or echo secrets, credentials, or private keys.
-- Redact sensitive values in logs, diffs, and summaries.
-- Require explicit authorization before any high-risk action.
+Redact sensitive values in logs, diffs, and summaries. (§1 hard rules govern secrets and authorization.)
 
-High-risk actions include:
-- recursive deletion,
-- force push,
-- destructive database operations,
-- direct production writes or deploys,
-- secret file mutation,
-- irreversible schema migrations.
+High-risk actions:
+- recursive deletion
+- force push
+- destructive database operations
+- direct production writes or deploys
+- secret file mutation
+- irreversible schema migrations
 
-When a high-risk action is authorized, record the operation, where it was authorized, and the rollback path.
+When authorized, record:
+```
+Risk Acceptance:
+  Operation: <action>
+  Authorization: <where confirmed>
+  Rollback: <command | "none - irreversible">
+```
 
-### Tool Failure Rule
+### Tool Failure
 
-On repeated tool failure:
-- record the error,
-- try one meaningful alternative,
-- if still blocked, stop and surface the blocker.
-
-Never invent results after a failed call.
+Record error → try one meaningful alternative → if still blocked, stop and surface. **NEVER** invent results.
 
 ---
 
@@ -145,9 +131,38 @@ Never invent results after a failed call.
 
 - No destructive git actions without explicit request.
 - Never force-push the protected default branch.
-- Prefer small, reviewable commits.
-- Prefer explicit staging.
-- Do not amend without explicit request.
-- Do not mix unrelated changes in one commit.
+- Small, reviewable commits. Explicit staging.
+- No amend without explicit request. No unrelated changes in one commit.
 
 ---
+
+## 9) Completion Contract
+
+Every completion claim must be independently verifiable. Required fields:
+
+| Field | Content |
+|-------|---------|
+| `Scope` | what was done |
+| `Changed` | files or areas affected |
+| `Verification` | command, manual, and review evidence as applicable |
+| `Gates` | each: `PASS` / `FAIL` / `BLOCKED` / `N/A` — for `env` `test` `static` `traceability` `review` |
+| `Risks` | remaining risks or `None` |
+| `Assumptions` | material assumptions or `None` |
+| `Rollback` | rollback path or `N/A` (required for L2) |
+
+Every `PASS` requires evidence. Claims must satisfy §6.
+
+---
+
+## 10) Override Keys and Defaults
+
+```yaml
+DEFAULT_BRANCH: main
+TASK_STATE_BACKEND: auto        # auto | inline
+REVIEW_POLICY: standard         # standard | strict
+USER_REPLY_LANGUAGE: auto
+COMMIT_LANGUAGE: en
+PR_LANGUAGE: en
+# Unset at global level (project-defined):
+# ENV_SETUP_CMD | TEST_CMD | LINT_CMD | TYPECHECK_CMD | BUILD_CMD
+```
