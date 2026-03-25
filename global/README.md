@@ -11,10 +11,19 @@ This directory is a thin portable user-level runtime surface — portable assets
 - `CLAUDE.md`
 - `standards/core-standard.md`
 - `guides/orchestration-extension.md`
+- `rules/review-workflow.md`
 
 ## Historical / transitional
 - `skills/spec-execute/README.md` — migration note only; the competing `spec-execute` skill is no longer distributed
 - `commands/finish-branch.md` — removed from the distribution surface because `/finish-branch` belongs to Superpowers
+
+## rules/
+
+Supplemental workflow rules loaded on-demand by reference.
+
+- `review-workflow.md` — PASS/FAIL/BLOCKED mechanics for the review gate (referenced by core-standard.md §6)
+
+These are not standalone policies; they extend core-standard.md with specific operational mechanics.
 
 ## Deferred to repo layer
 - `docs/workflow/*`
