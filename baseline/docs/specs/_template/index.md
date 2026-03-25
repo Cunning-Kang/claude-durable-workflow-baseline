@@ -5,7 +5,7 @@ level: L1
 spec: ./spec.md
 plan: ./plan.md
 current: T01
-last_updated: YYYY-MM-DD
+last_updated: [YYYY-MM-DD]
 ---
 
 # <feature-slug>

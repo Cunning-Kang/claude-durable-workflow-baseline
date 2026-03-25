@@ -1,6 +1,6 @@
 # Superpowers Boundary — Repository Role Definition
 
-> Status: Current | Date: 2026-03-22
+> Status: Current | Date: 2026-03-20
 > Purpose: Define what this baseline repo is, what it is not, and why it cannot compete with Superpowers.
 
 ---

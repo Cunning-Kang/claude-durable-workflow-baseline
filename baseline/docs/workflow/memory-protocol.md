@@ -1,6 +1,6 @@
 # Memory Protocol
 
-> **Boundary authority:** [`docs/reference/memory-boundary.md`](../../reference/memory-boundary.md) defines what belongs in memory and how to classify it. This protocol defines the **process** of writing, updating, and removing entries — it does not redefine classification.
+> **Boundary authority:** [`docs/reference/memory-boundary.md`](../../../docs/reference/memory-boundary.md) defines what belongs in memory and how to classify it. This protocol defines the **process** of writing, updating, and removing entries — it does not redefine classification.
 
 ---
 

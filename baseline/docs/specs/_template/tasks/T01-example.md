@@ -4,7 +4,7 @@ title: Example durable task
 status: ready
 level: L1
 plan_ref: Step 1
-updated: YYYY-MM-DD
+updated: [YYYY-MM-DD]
 verify: null
 review: null
 decision: null

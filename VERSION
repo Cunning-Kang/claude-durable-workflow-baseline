@@ -2,3 +2,18 @@ baseline-version: 1.2.1
 release-date: 2026-03-20
 source-repo: https://github.com/Cunning-Kang/claude-durable-workflow-baseline
 cache-path: ~/.claude/baselines/durable-workflow-v1
+
+---
+## Version History
+
+### v1.2.1 (2026-03-20)
+- Restructured core-standard.md to v1.2.1-global
+- Removed context-mode routing rules
+- Added subagent preference guidance
+- Completed text-layer fix chain
+
+### v1.0.0 (2026-03-XX)
+- Initial stable release
+- Added H-01/H-02/H-03 project hook templates
+- Established baseline skeleton
+- Published distribution docs
