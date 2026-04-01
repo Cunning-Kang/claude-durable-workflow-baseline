@@ -1,6 +1,11 @@
+---
+alwaysApply: true
+---
+
 # Review Workflow — PASS / FAIL / BLOCKED Mechanics
 
-> Supplement to core-standard.md §6 — load when review gate is triggered.
+> Core review gate semantics — always loaded as part of the review gate protocol.
+> Extends core-standard.md §6 with specific operational mechanics.
 
 ---
 

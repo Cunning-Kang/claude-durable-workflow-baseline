@@ -58,6 +58,7 @@ See [docs/claude-one-command-bootstrap.md](docs/claude-one-command-bootstrap.md)
 4. Copy `distribution/scripts/*.sh` to `~/.claude/scripts/` as the fixed runtime script location
 5. Run `/init-claude-workflow` in any new repo to initialize baseline files
 6. Run `/new-feature <feature-slug>` when you need a feature spec instance
+7. (Optional) Copy `distribution/agents/*.md` to `~/.claude/agents/` for custom subagent definitions
 
 ## What `/init-claude-workflow` does
 - Verifies the current directory is a git repository
@@ -114,11 +115,19 @@ distribution/
     project/                  (project-scope hook templates)
   settings-snippets/           ← source-only · opt-in · NOT copied by /init-claude-workflow
     project/                  (project-scope settings fragments)
+  agents/                     ← source-only · opt-in · NOT auto-installed
+    README.md                (installation and routing protocol guide)
+    orchestrator-planner.md
+    execution-implementer.md
+    mechanical-transformer.md
+    technical-writer.md
+    product-manager.md
 
 global/                        ← copied to ~/.claude/ (host-wide surface)
   CLAUDE.md                    (runtime entry — copy to ~/.claude/CLAUDE.md)
   standards/core-standard.md
   guides/orchestration-extension.md
+  rules/review-workflow.md
 
 docs/
   claude-one-command-bootstrap.md  (operator guide)
@@ -126,7 +135,7 @@ docs/
 
 **What auto-enters a new repo:** `baseline/` tree (via `/init-claude-workflow`).
 
-**What does NOT auto-enter:** `distribution/hooks/` and `distribution/settings-snippets/` — these are source-only opt-in artifacts you adopt manually.
+**What does NOT auto-enter:** `distribution/hooks/`, `distribution/settings-snippets/`, and `distribution/agents/` — these are source-only opt-in artifacts you adopt manually.
 
 ## Version
 
