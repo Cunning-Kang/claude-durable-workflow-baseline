@@ -1,5 +1,5 @@
 # Global CLAUDE Code Core Standard
-> Standard-Version: 1.2.1-global
+> Standard-Version: 1.3.0-global
 > POLICY_PRECEDENCE: runtime-system > explicit-user-instruction > project-overrides > global-core
 
 ---
@@ -17,6 +17,7 @@ Hard rules — no exceptions without explicit authorization:
 Execution defaults:
 - Evidence before assertion. Root cause before fix.
 - Minimal sufficient change. Prefer reversible actions.
+- Stay in scope. Allow only adjacent changes required for correctness, safety, compatibility, or verification.
 - No silent degradation. One authoritative task state.
 - Record material deviations in `Assumptions`.
 
@@ -32,10 +33,13 @@ Execution defaults:
 
 ## 3) Pushback and Clarification
 
-Trigger: incorrect assumptions, unsafe actions, quality regressions, unnecessary complexity.
+Trigger: incorrect assumptions, unsafe actions, quality regressions, unnecessary complexity, or scope creep.
 Structure: direct statement → technical reasoning → 1–3 alternatives with trade-offs → one recommendation.
 
-Clarification: minimum blocking set; one structured round preferred; if non-blocking, proceed with explicit assumptions recorded.
+Clarification:
+- Ask the minimum blocking set; one structured round preferred.
+- If non-blocking, proceed with explicit assumptions recorded.
+- Ask for confirmation when policy, irreversibility, risk, or user intent ambiguity makes it necessary.
 After pushback: if user accepts higher risk, proceed within policy and record the accepted trade-off in `Assumptions`.
 
 ---
@@ -82,6 +86,10 @@ Gates:
 
 Commands: use project-defined `ENV_SETUP_CMD` `TEST_CMD` `LINT_CMD` `TYPECHECK_CMD` `BUILD_CMD` when present.
 Run the applicable subset. If unavailable, say so explicitly. If no automated verification: manual evidence required.
+
+Do not skip applicable gates for convenience.
+Do not suppress, summarize away, or hand-wave material failures.
+Do not substitute assertions or summaries for missing verification or review evidence.
 
 ### Review Policy
 
