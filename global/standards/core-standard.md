@@ -1,10 +1,10 @@
 # Global CLAUDE Code Core Standard
-> Standard-Version: 1.3.0-global
-> POLICY_PRECEDENCE: runtime-system > explicit-user-instruction > project-overrides > global-core
-
 ---
 
 ## 1) Priority Order and Principles
+
+Policy precedence (higher overrides lower on conflict):
+runtime-system > explicit-user-instruction > project-overrides > global-core
 
 Trade-off priority (higher wins when rules conflict):
 1. Correctness — 2. Verification — 3. Security — 4. Reversibility — 5. Efficiency
@@ -18,7 +18,7 @@ Execution defaults:
 - Evidence before assertion. Root cause before fix.
 - Minimal sufficient change. Prefer reversible actions.
 - Stay in scope. Allow only adjacent changes required for correctness, safety, compatibility, or verification.
-- No silent degradation. One authoritative task state.
+- No silent degradation. Never maintain two authoritative task trackers simultaneously.
 - Record material deviations in `Assumptions`.
 
 ---
@@ -40,6 +40,7 @@ Clarification:
 - Ask the minimum blocking set; one structured round preferred.
 - If non-blocking, proceed with explicit assumptions recorded.
 - Ask for confirmation when policy, irreversibility, risk, or user intent ambiguity makes it necessary.
+
 After pushback: if user accepts higher risk, proceed within policy and record the accepted trade-off in `Assumptions`.
 
 ---
@@ -56,10 +57,9 @@ Required visible state:
 - L1+: `Goal` `Scope` `Acceptance` `Assumptions`
 - L2 also: `Non-goals` `Risks` `Rollback` `Execution order`
 
-State backend:
-- Prefer project task tools when available.
-- Otherwise use inline status reporting.
-- Never keep two authoritative trackers at once.
+State backend (governed by `TASK_STATE_BACKEND`):
+- `auto`: prefer project task tools when available, otherwise inline.
+- `inline`: always use inline status reporting.
 
 Checkpoint before high-risk operations and after any required gate failure.
 
@@ -68,6 +68,7 @@ Checkpoint before high-risk operations and after any required gate failure.
 ## 5) Capability Handling
 
 - Prefer project-native or officially defined mechanisms when they materially affect execution.
+- For agent routing: prefer a fitting built-in or configured custom subagent before inventing ad-hoc routing.
 - If a preferred mechanism is unavailable, use the best manual equivalent only if it preserves purpose, verification intent, and minimum evidence.
 - State any capability drop explicitly.
 
@@ -91,16 +92,14 @@ Do not skip applicable gates for convenience.
 Do not suppress, summarize away, or hand-wave material failures.
 Do not substitute assertions or summaries for missing verification or review evidence.
 
-### Review Policy
+### Review Policy (governed by `REVIEW_POLICY`)
 
 | Policy | Required for |
 |--------|-------------|
 | `standard` (default) | public interface changes, schema changes, high-risk operations, irreversible changes |
 | `strict` | all L1 and L2 |
 
-When required: independent (reviewer ≠ implementer) + recorded `Reviewer` and `Reference`. Without this: `BLOCKED`.
-Self-review does not satisfy this gate.
-> PASS / FAIL / BLOCKED mechanics: `~/.claude/rules/review-workflow.md`
+Read `~/.claude/rules/review-workflow.md` for independence requirements and PASS / FAIL / BLOCKED mechanics.
 
 ### Completion Rule
 
@@ -138,7 +137,7 @@ Record error → try one meaningful alternative → if still blocked, stop and s
 ## 8) Git Rules
 
 - No destructive git actions without explicit request.
-- Never force-push the protected default branch.
+- Never force-push the branch named in `DEFAULT_BRANCH`.
 - Small, reviewable commits. Explicit staging.
 - No amend without explicit request. No unrelated changes in one commit.
 
@@ -146,7 +145,7 @@ Record error → try one meaningful alternative → if still blocked, stop and s
 
 ## 9) Completion Contract
 
-Every completion claim must be independently verifiable. Required fields:
+Every completion claim must be verifiable from evidence alone. Required fields:
 
 | Field | Content |
 |-------|---------|
@@ -158,7 +157,7 @@ Every completion claim must be independently verifiable. Required fields:
 | `Assumptions` | material assumptions or `None` |
 | `Rollback` | rollback path or `N/A` (required for L2) |
 
-Every `PASS` requires evidence. Claims must satisfy §6.
+Claims must satisfy §6.
 
 ---
 
@@ -168,7 +167,6 @@ Every `PASS` requires evidence. Claims must satisfy §6.
 DEFAULT_BRANCH: main
 TASK_STATE_BACKEND: auto        # auto | inline
 REVIEW_POLICY: standard         # standard | strict
-USER_REPLY_LANGUAGE: auto
 COMMIT_LANGUAGE: en
 PR_LANGUAGE: en
 # Unset at global level (project-defined):

@@ -10,7 +10,7 @@ This directory is a thin portable user-level runtime surface — portable assets
 ## v1 contents (recommended distribution)
 - `CLAUDE.md` — Runtime entry point; uses `@~/.claude/` paths references, after installation to `~/.claude/`
 - `standards/core-standard.md`
-- `guides/ororchestration-extension.md`
+- `guides/orchestration-extension.md`
 - `rules/review-workflow.md`
 
 ## rules/

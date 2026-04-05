@@ -1,8 +1,6 @@
 # Orchestration Extension
 
-> Global on-demand extension for orchestration-heavy work
-> Scope: help decide whether delegation, fanout, reconciliation, or execution ordering is justified
-> POLICY_PRECEDENCE: global-core > this-extension
+> When this guide conflicts with core-standard.md, core-standard.md wins.
 
 ---
 

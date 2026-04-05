@@ -1,11 +1,6 @@
----
-alwaysApply: true
----
-
 # Review Workflow — PASS / FAIL / BLOCKED Mechanics
 
-> Core review gate semantics — always loaded as part of the review gate protocol.
-> Extends core-standard.md §6 with specific operational mechanics.
+> Core review gate semantics — loaded via CLAUDE.md. Extends core-standard.md §6 with specific operational mechanics.
 
 ---
 

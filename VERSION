@@ -1,10 +1,28 @@
-baseline-version: 1.2.1
-release-date: 2026-03-20
+baseline-version: 1.4.0
+release-date: 2026-04-05
 source-repo: https://github.com/Cunning-Kang/claude-durable-workflow-baseline
 cache-path: ~/.claude/baselines/durable-workflow-v1
 
 ---
 ## Version History
+
+### v1.4.0 (2026-04-05)
+- Updated global/ runtime surface with scope discipline and verification hardening
+- Added review-workflow.md as always-loaded rule (PASS/FAIL/BLOCKED mechanics)
+- Added two-tier agent routing protocol (core chain + domain specialists)
+- Added 5 custom agent definitions under distribution/agents/
+- Restructured CLAUDE.md to explicit @include for core-standard and review-workflow
+- Simplified orchestration-extension.md header and conflict precedence
+- Corrected version inconsistencies and path references
+
+### v1.3.0 (2026-04-05)
+- Upgraded core-standard.md to v1.3.0-global with scope discipline and verification hardening
+- Added review-workflow.md as always-loaded rule (PASS/FAIL/BLOCKED mechanics)
+- Added two-tier agent routing protocol (core chain + domain specialists)
+- Added 5 custom agent definitions under distribution/agents/
+- Restructured CLAUDE.md to explicit @include for core-standard and review-workflow
+- Simplified orchestration-extension.md header and conflict precedence
+- Corrected version inconsistencies and path references
 
 ### v1.2.1 (2026-03-20)
 - Restructured core-standard.md to v1.2.1-global
