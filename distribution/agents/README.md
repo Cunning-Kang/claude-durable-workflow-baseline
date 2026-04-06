@@ -22,17 +22,17 @@ These agents use explicit `subagent_type` references for reliable handoffs withi
 
 ### Tier 2 — Generic Escalation (description-based)
 
-All agents share a universal fallback for routing outside their scope:
+All agents share a universal return protocol for handing off when their task boundary is reached:
 
-> If a task is outside your scope, return to the main thread with: (a) what was attempted, (b) what capability is needed, (c) why you cannot complete it. The main thread will match to an appropriate agent via description-based routing.
+> Return to the main thread with: (1) what was completed, (2) what capability is needed next — specify the agent name if known, or describe the domain capability needed, (3) why this agent cannot resolve the remainder. Do not attempt to invoke other agents directly.
 
-New agents only need a precise `description` frontmatter and Tier 2 self-routing — no edits to existing agent files required.
+New agents only need a precise `description` frontmatter and a return protocol — no edits to existing agent files required.
 
 ## Adding a New Agent
 
 1. Create a new `.md` file in this directory
 2. Set frontmatter: `name` (kebab-case), `description` (precise capability statement), `tools`, `model`
-3. Write the agent body with role definition, explicit non-goals, and Tier 2 self-routing
+3. Write the agent body with role definition, explicit non-goals, and a return protocol
 4. Done — no edits to existing agents needed
 
 ## Installation

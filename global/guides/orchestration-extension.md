@@ -57,7 +57,7 @@ Delegate only when the subtask is:
 
 Do not delegate when:
 
-- the work includes a high-risk operation as defined in `~/.claude/standards/core-standard.md`,
+- the work includes a high-risk operation as defined in core-standard.md §7,
 - execution still needs live architectural steering,
 - the task is trivial,
 - failure would force full replanning.
@@ -92,7 +92,7 @@ When changing path, record a brief reason.
 
 ## 6. Recovery Signals
 
-If tool or agent failure occurs, follow the tool failure rule in `~/.claude/standards/core-standard.md`.
+If tool or agent failure occurs, follow the tool failure rule in core-standard.md §7.
 Do not pretend the missing result is implied.
 
 If output returns low confidence:
@@ -108,7 +108,7 @@ If integration cost becomes dominant:
 - collapse back to serial integration,
 - re-sequence the remaining work.
 
-If general context pressure rises (increased memory or token usage from too many parallel workstreams):
+If coordination overhead dominates actual execution time across workstreams:
 
 - stop adding new workstreams,
 - prefer bounded delegation or explicit checkpoints,

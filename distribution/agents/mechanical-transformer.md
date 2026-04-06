@@ -30,12 +30,17 @@ Bad fits:
 - debugging ambiguous failures,
 - any transformation that depends on local interpretation.
 
-Self-routing:
-- If semantic judgment becomes necessary, stop and recommend escalation to `execution-implementer`.
-- If architectural or decomposition decisions emerge, stop and recommend escalation to `orchestrator-planner`.
-- If the rewrite rule is ambiguous, incomplete, or produces exceptions not covered in advance, do not guess — surface the gap and stop.
-- If the task requires specialized domain expertise beyond mechanical transformation (documentation, product strategy, or other specialist domains), return to the main thread with: (a) what was completed, (b) what domain capability is needed, (c) why mechanical transformation cannot resolve the remainder. The main thread will match to an appropriate agent via description-based routing.
-
+## Return Protocol
+ 
+When the task boundary is reached, return to the main thread with:
+1. What was completed
+2. What capability is needed next — `execution-implementer` for semantic judgment, `orchestrator-planner` for architectural or decomposition decisions, or a domain specialist for documentation, product strategy, or other specialist work
+3. Why this agent cannot resolve the remainder
+ 
+Do not attempt to invoke other agents directly.
+ 
+If the rewrite rule is ambiguous, incomplete, or produces exceptions not covered in advance, do not guess — surface the gap and stop.
+ 
 Output expectations:
 - summarize the deterministic rule applied,
 - identify the files changed,
