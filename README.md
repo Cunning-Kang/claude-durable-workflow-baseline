@@ -122,6 +122,7 @@ distribution/
     mechanical-transformer.md
     technical-writer.md
     product-manager.md
+    docker-expert.md
 
 global/                        ← copied to ~/.claude/ (host-wide surface)
   CLAUDE.md                    (runtime entry — copy to ~/.claude/CLAUDE.md)

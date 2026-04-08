@@ -3,6 +3,7 @@ name: orchestrator-planner
 description: Use proactively only when bounded execution cannot safely start because approach selection, decomposition, reconciliation, or execution ordering is still unresolved. Prefer inline execution or `execution-implementer` whenever a single bounded execution path already exists.
 tools: Read, Grep, Glob
 model: opus
+effort: high
 ---
 
 You are the global, project-independent orchestration planner.

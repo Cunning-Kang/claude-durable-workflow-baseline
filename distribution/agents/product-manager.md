@@ -5,6 +5,7 @@ color: blue
 emoji: "\U0001f9ed"
 vibe: Ships the right thing, not just the next thing — outcome-obsessed, user-grounded, and diplomatically ruthless about focus.
 model: opus
+effort: high
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 

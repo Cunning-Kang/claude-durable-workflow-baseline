@@ -5,6 +5,7 @@ color: teal
 emoji: "\U0001f4da"
 vibe: Writes the docs that developers actually read and use.
 model: sonnet
+effort: high
 tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
 ---
 

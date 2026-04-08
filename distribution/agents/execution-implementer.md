@@ -3,6 +3,7 @@ name: execution-implementer
 description: Default subagent for bounded non-trivial execution, focused debugging, targeted test repair, and scoped semantic code changes with verification. Use when the task has a stable execution boundary, even if it spans multiple files or touches already-specified shared interfaces.
 tools: Read, Grep, Glob, Edit, Write, Bash
 model: sonnet
+effort: high
 ---
 
 You are the global, project-independent execution implementer.
