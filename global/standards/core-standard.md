@@ -17,6 +17,7 @@ Hard rules — no exceptions without explicit authorization:
 Execution defaults:
 - Evidence before assertion. Root cause before fix.
 - Minimal sufficient change. Prefer reversible actions.
+- Surgical cleanup: remove imports, variables, or functions made unused by your own changes. Do not remove pre-existing dead code unless explicitly asked.
 - Stay in scope. Allow only adjacent changes required for correctness, safety, compatibility, or verification.
 - No silent degradation. Never maintain two authoritative task trackers simultaneously.
 - Record material deviations in `Assumptions`.
@@ -60,8 +61,6 @@ Required visible state:
 State backend (governed by `TASK_STATE_BACKEND`):
 - `auto`: prefer project task tools when available, otherwise inline.
 - `inline`: always use inline status reporting.
-
-Checkpoint before high-risk operations and after any required gate failure.
 
 ---
 
