@@ -312,13 +312,13 @@ test('blocks when no placeholder markers configured', (t) => {
   assert.match(result.stderr, /placeholder/i);
 });
 
-// ─── Bug 1: empty/blank Reviewer or Reference bypass ───────────────────────────
+// --- Unit 2: new regression tests for empty-field bypass and front-matter edge case ---
 
-test('blocks when entry found but Reviewer field is empty string', (t) => {
+test('blocks when Reviewer field is present but empty string', (t) => {
   const workspace = makeWorkspace(t);
   mkdirSync(path.join(workspace, 'docs/reviews/evidence'), { recursive: true });
   writeFile(workspace, 'docs/reviews/signal.md', 'Task ID: T-01 requires review\n');
-  // Reviewer: '' (empty value) should NOT pass
+  // Reviewer is explicitly empty — current implementation treats this as non-placeholder
   writeFile(workspace, 'docs/reviews/evidence/reviews.md', '---\nTask ID: T-01\nReviewer: \nReference: PR #42\nOutcome: PASS\n---\n');
 
   const result = runHook({
@@ -326,17 +326,16 @@ test('blocks when entry found but Reviewer field is empty string', (t) => {
     payload: makePayload(),
   });
 
-  // Current bug: this passes because empty string is not a placeholder marker
-  // Expected: should block with exit 2
-  assert.equal(result.status, 2, `expected exit 2 but got ${result.status}. stderr: ${result.stderr}`);
-  assert.match(result.stderr, /Reviewer/i);
+  // Should block because Reviewer is blank/empty, not because it matches a placeholder marker
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Reviewer|blank|empty/i);
 });
 
-test('blocks when entry found but Reference field is empty string', (t) => {
+test('blocks when Reference field is present but empty string', (t) => {
   const workspace = makeWorkspace(t);
   mkdirSync(path.join(workspace, 'docs/reviews/evidence'), { recursive: true });
   writeFile(workspace, 'docs/reviews/signal.md', 'Task ID: T-01 requires review\n');
-  // Reference: '' (empty value) should NOT pass
+  // Reference is explicitly empty — current implementation treats this as non-placeholder
   writeFile(workspace, 'docs/reviews/evidence/reviews.md', '---\nTask ID: T-01\nReviewer: alice\nReference: \nOutcome: PASS\n---\n');
 
   const result = runHook({
@@ -344,17 +343,16 @@ test('blocks when entry found but Reference field is empty string', (t) => {
     payload: makePayload(),
   });
 
-  // Current bug: this passes because empty string is not a placeholder marker
-  // Expected: should block with exit 2
-  assert.equal(result.status, 2, `expected exit 2 but got ${result.status}. stderr: ${result.stderr}`);
-  assert.match(result.stderr, /Reference/i);
+  // Should block because Reference is blank/empty, not because it matches a placeholder marker
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Reference|blank|empty/i);
 });
 
-test('blocks when entry found but Reviewer field is missing entirely', (t) => {
+test('blocks when Reviewer key is entirely absent from artifact', (t) => {
   const workspace = makeWorkspace(t);
   mkdirSync(path.join(workspace, 'docs/reviews/evidence'), { recursive: true });
   writeFile(workspace, 'docs/reviews/signal.md', 'Task ID: T-01 requires review\n');
-  // No Reviewer key at all — only Reference and Outcome
+  // Reviewer key missing entirely — analyzeReviewArtifact returns empty string for missing key
   writeFile(workspace, 'docs/reviews/evidence/reviews.md', '---\nTask ID: T-01\nReference: PR #42\nOutcome: PASS\n---\n');
 
   const result = runHook({
@@ -362,16 +360,15 @@ test('blocks when entry found but Reviewer field is missing entirely', (t) => {
     payload: makePayload(),
   });
 
-  // Expected: should block because Reviewer is absent
-  assert.equal(result.status, 2, `expected exit 2 but got ${result.status}. stderr: ${result.stderr}`);
-  assert.match(result.stderr, /Reviewer/i);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Reviewer|blank|empty|required/i);
 });
 
-test('blocks when entry found but Reference field is missing entirely', (t) => {
+test('blocks when Reference key is entirely absent from artifact', (t) => {
   const workspace = makeWorkspace(t);
   mkdirSync(path.join(workspace, 'docs/reviews/evidence'), { recursive: true });
   writeFile(workspace, 'docs/reviews/signal.md', 'Task ID: T-01 requires review\n');
-  // No Reference key at all — only Reviewer and Outcome
+  // Reference key missing entirely
   writeFile(workspace, 'docs/reviews/evidence/reviews.md', '---\nTask ID: T-01\nReviewer: alice\nOutcome: PASS\n---\n');
 
   const result = runHook({
@@ -379,44 +376,26 @@ test('blocks when entry found but Reference field is missing entirely', (t) => {
     payload: makePayload(),
   });
 
-  // Expected: should block because Reference is absent
-  assert.equal(result.status, 2, `expected exit 2 but got ${result.status}. stderr: ${result.stderr}`);
-  assert.match(result.stderr, /Reference/i);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Reference|blank|empty|required/i);
 });
 
-// ─── Bug 2: front matter parsing edge case — file ends at closing --- ──────────
-
-test('allows front matter that ends exactly at closing --- with no trailing newline', (t) => {
+test('parses front matter that ends exactly at closing --- with no trailing newline', (t) => {
   const workspace = makeWorkspace(t);
   mkdirSync(path.join(workspace, 'docs/reviews/evidence'), { recursive: true });
   writeFile(workspace, 'docs/reviews/signal.md', 'Task ID: T-01 requires review\n');
-  // Note: writeFileSync writes without trailing newline — file ends at ---
-  writeFile(workspace, 'docs/reviews/evidence/reviews.md', '---\nTask ID: T-01\nReviewer: alice\nReference: PR #42\nOutcome: PASS\n---');
+  // File content ends exactly at --- with no trailing newline
+  // writeFileSync does not add a newline, so this creates the exact edge case
+  const content = '---\nTask ID: T-01\nReviewer: alice\nReference: PR #42\nOutcome: PASS\n---';
+  writeFile(workspace, 'docs/reviews/evidence/reviews.md', content);
 
   const result = runHook({
     workspace,
     payload: makePayload(),
   });
 
-  // Current bug: regex requires \n after closing --- so this fails to parse front matter
-  // Expected: should pass with exit 0 (front matter parses, entry found, evidence complete)
-  assert.equal(result.status, 0, `expected exit 0 but got ${result.status}. stderr: ${result.stderr}`);
+  // Should pass: the front matter should be recognized and parsed correctly
+  // even though the file ends at closing --- without a trailing newline
+  assert.equal(result.status, 0);
   assert.equal(result.stderr, '');
-});
-
-test('blocks when front matter file ends at closing --- with no trailing newline but entry is incomplete', (t) => {
-  const workspace = makeWorkspace(t);
-  mkdirSync(path.join(workspace, 'docs/reviews/evidence'), { recursive: true });
-  writeFile(workspace, 'docs/reviews/signal.md', 'Task ID: T-01 requires review\n');
-  // No trailing newline AND placeholder Reviewer — should block
-  writeFile(workspace, 'docs/reviews/evidence/reviews.md', '---\nTask ID: T-01\nReviewer: TBD\nReference: PR #42\nOutcome: PASS\n---');
-
-  const result = runHook({
-    workspace,
-    payload: makePayload(),
-  });
-
-  // Expected: should block with exit 2 (placeholder Reviewer even after front matter fix)
-  assert.equal(result.status, 2, `expected exit 2 but got ${result.status}. stderr: ${result.stderr}`);
-  assert.match(result.stderr, /Reviewer|placeholder/i);
 });

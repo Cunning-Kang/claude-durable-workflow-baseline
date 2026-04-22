@@ -113,14 +113,22 @@ function isPlaceholder(value, markers) {
   return markers.some((marker) => lower === marker.toLowerCase().trim());
 }
 
+function isBlank(value) {
+  if (value == null) return true;
+  if (typeof value !== 'string') return false;
+  return value.trim().length === 0;
+}
+
 function parseFrontMatter(content) {
-  // Match: opening ---, content, closing ---, optional body
-  // Handles files that end exactly at closing --- with no trailing newline
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---(\r?\n([\s\S]*))?$/);
+  // Two forms:
+  // 1. Standard: front matter with a body after closing ---
+  // 2. Edge case: front matter with no body, file ends at closing --- (no trailing newline)
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---(\r?\n?)([\s\S]*)$/);
   if (!fmMatch) return null;
 
   const [, frontMatter, , body] = fmMatch;
-  return { frontMatter, body: body ?? '' };
+  // body is empty string when file ends at closing --- with no trailing content
+  return { frontMatter, body };
 }
 
 function parseYaml(content) {
@@ -259,15 +267,6 @@ function analyzeReviewArtifact(filePath, needle, reviewerField, referenceField, 
   const reference = referenceKey ? String(entry[referenceKey] ?? '') : '';
   const outcome = outcomeKey ? String(entry[outcomeKey] ?? '') : '';
 
-  // Bug 1 fix: reject absent or blank (empty/whitespace-only) reviewer/reference
-  // even when they are not placeholder markers
-  if (!reviewerKey || reviewer.trim() === '') {
-    fail(`Blocked: Reviewer field is missing or blank in ${filePath}.`);
-  }
-  if (!referenceKey || reference.trim() === '') {
-    fail(`Blocked: Reference field is missing or blank in ${filePath}.`);
-  }
-
   return {
     found: true,
     filePath,
@@ -354,8 +353,16 @@ function main() {
 
   const [selectedEntry] = matchedEntries;
 
+  if (isBlank(selectedEntry.reviewer)) {
+    fail(`Blocked: Reviewer field is blank or missing.`);
+  }
+
   if (isPlaceholder(selectedEntry.reviewer, config.placeholderMarkers)) {
     fail(`Blocked: Reviewer field is placeholder.`);
+  }
+
+  if (isBlank(selectedEntry.reference)) {
+    fail(`Blocked: Reference field is blank or missing.`);
   }
 
   if (isPlaceholder(selectedEntry.reference, config.placeholderMarkers)) {
