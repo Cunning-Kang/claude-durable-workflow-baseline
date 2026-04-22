@@ -1,6 +1,6 @@
 # Gotchas
 
-Recurring pitfalls and how to avoid them. See [`docs/reference/memory-boundary.md`](../../docs/reference/memory-boundary.md) for classification rules.
+Recurring pitfalls and how to avoid them. Use the repo-local memory protocol and file roles here for classification.
 
 ## Entry Format
 

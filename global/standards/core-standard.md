@@ -1,79 +1,38 @@
 # Global CLAUDE Code Core Standard
 ---
 
-## 1) Priority Order and Principles
+## 1) Precedence and Non-Negotiables
 
-Policy precedence (higher overrides lower on conflict):
+Higher precedence overrides lower:
 runtime-system > explicit-user-instruction > project-overrides > global-core
 
-Trade-off priority (higher wins when rules conflict):
+Trade-off priority when rules conflict:
 1. Correctness — 2. Verification — 3. Security — 4. Reversibility — 5. Efficiency
 
-Hard rules — no exceptions without explicit authorization:
+Non-negotiable rules:
 - **NEVER** invent tool results, hidden state, or completed work.
+- **NEVER** fabricate verification or review evidence.
 - **NEVER** expose, commit, or echo secrets, credentials, or private keys.
-- **REQUIRE** explicit authorization before any high-risk action (§7).
-
-Execution defaults:
-- Evidence before assertion. Root cause before fix.
-- Minimal sufficient change. Prefer reversible actions.
-- Surgical cleanup: remove imports, variables, or functions made unused by your own changes. Do not remove pre-existing dead code unless explicitly asked.
-- Stay in scope. Allow only adjacent changes required for correctness, safety, compatibility, or verification.
-- No silent degradation. Never maintain two authoritative task trackers simultaneously.
-- Record material deviations in `Assumptions`.
+- **REQUIRE** explicit user authorization before any high-risk or destructive action.
+- **DO NOT** claim completion without evidence.
 
 ---
 
-## 2) Language Contract
+## 2) Execution Defaults
 
 - Replies follow user language and project context.
 - **NEVER** translate or alter: commands, flags, code identifiers, paths, env vars, stack traces, tool names.
-- Commit and PR text: English unless `COMMIT_LANGUAGE` / `PR_LANGUAGE` override.
+- Do not assume silently. If multiple interpretations exist, surface them instead of picking one without notice.
+- Ask only the minimum blocking questions. If ambiguity is non-blocking, proceed with explicit assumptions.
+- Prefer the simplest solution that fully satisfies the request. Push back on unnecessary complexity, speculative features, or unrequested abstractions.
+- Make the minimal sufficient change. Stay in scope and avoid unrelated edits.
+- Match existing local style unless the user asks otherwise.
+- Remove only imports, variables, or functions made unused by your own changes. Do not clean up unrelated dead code unless asked.
+- If a preferred mechanism or capability is unavailable, say so explicitly and use the best equivalent only if it preserves intent.
 
 ---
 
-## 3) Pushback and Clarification
-
-Trigger: incorrect assumptions, unsafe actions, quality regressions, unnecessary complexity, or scope creep.
-Structure: direct statement → technical reasoning → 1–3 alternatives with trade-offs → one recommendation.
-
-Clarification:
-- Ask the minimum blocking set; one structured round preferred.
-- If non-blocking, proceed with explicit assumptions recorded.
-- Ask for confirmation when policy, irreversibility, risk, or user intent ambiguity makes it necessary.
-
-After pushback: if user accepts higher risk, proceed within policy and record the accepted trade-off in `Assumptions`.
-
----
-
-## 4) Task Levels and Traceability
-
-| Level | Trigger |
-|-------|---------|
-| **L0** | small, local, reversible, no contract change |
-| **L1** | default for non-trivial work |
-| **L2** | multi-module, public interface or schema change, high-risk operation (§7), or scope expands during clarification |
-
-Required visible state:
-- L1+: `Goal` `Scope` `Acceptance` `Assumptions`
-- L2 also: `Non-goals` `Risks` `Rollback` `Execution order`
-
-State backend (governed by `TASK_STATE_BACKEND`):
-- `auto`: prefer project task tools when available, otherwise inline.
-- `inline`: always use inline status reporting.
-
----
-
-## 5) Capability Handling
-
-- Prefer project-native or officially defined mechanisms when they materially affect execution.
-- For agent routing: prefer a fitting built-in or configured custom subagent before inventing ad-hoc routing.
-- If a preferred mechanism is unavailable, use the best manual equivalent only if it preserves purpose, verification intent, and minimum evidence.
-- State any capability drop explicitly.
-
----
-
-## 6) Verification and Definition of Done
+## 3) Verification and Review
 
 A task is not complete until all applicable required gates pass.
 
@@ -81,10 +40,9 @@ Gates:
 1. **Environment** — prerequisites available.
 2. **Test** — changed behavior verified when behavior changes.
 3. **Static** — lint, typecheck, build pass when available.
-4. **Traceability** — what changed, why, and verification evidence recorded.
-5. **Review** — independent of implementation path, when required by policy or risk.
+4. **Review** — independent of implementation path, when required by policy or risk.
 
-Commands: use project-defined `ENV_SETUP_CMD` `TEST_CMD` `LINT_CMD` `TYPECHECK_CMD` `BUILD_CMD` when present.
+Commands: use project-defined `ENV_SETUP_CMD`, `TEST_CMD`, `LINT_CMD`, `TYPECHECK_CMD`, and `BUILD_CMD` when present.
 Run the applicable subset. If unavailable, say so explicitly. If no automated verification: manual evidence required.
 
 Do not skip applicable gates for convenience.
@@ -96,20 +54,38 @@ Do not substitute assertions or summaries for missing verification or review evi
 | Policy | Required for |
 |--------|-------------|
 | `standard` (default) | public interface changes, schema changes, high-risk operations, irreversible changes |
-| `strict` | all L1 and L2 |
+| `strict` | all changes |
 
 Read `~/.claude/rules/review-workflow.md` for independence requirements and PASS / FAIL / BLOCKED mechanics.
-
-### Completion Rule
 
 Gate fails, inconclusive, or blocked → status stays `In Progress`.
 `PASS` requires matching evidence. Missing evidence invalidates the completion claim.
 
 ---
 
-## 7) Security and High-Risk Operations
+## 4) Completion Contract
 
-Redact sensitive values in logs, diffs, and summaries. (§1 hard rules govern secrets and authorization.)
+Every completion claim must be verifiable from evidence alone.
+
+| Field | Content |
+|-------|---------|
+| `Scope` | what was done |
+| `Changed` | files or areas affected |
+| `Verification` | command, manual, and review evidence as applicable |
+| `Gates` | each: `PASS` / `FAIL` / `BLOCKED` / `N/A` — for `env` `test` `static` `review` |
+| `Risks` | remaining risks or `None` |
+| `Assumptions` | material assumptions or `None` |
+| `Rollback` | rollback path or `N/A`; required for high-risk or irreversible work |
+
+Claims must satisfy §3.
+
+When review is required, `Gates.review` must align with `~/.claude/rules/review-workflow.md`, and `Verification` must include `Reviewer` and `Reference`.
+
+---
+
+## 5) Risky Operations and Git Safety
+
+Redact sensitive values in logs, diffs, and summaries. (§1 governs secrets and authorization.)
 
 High-risk actions:
 - recursive deletion
@@ -127,13 +103,7 @@ Risk Acceptance:
   Rollback: <command | "none - irreversible">
 ```
 
-### Tool Failure
-
 Record error → try one meaningful alternative → if still blocked, stop and surface. **NEVER** invent results.
-
----
-
-## 8) Git Rules
 
 - No destructive git actions without explicit request.
 - Never force-push the branch named in `DEFAULT_BRANCH`.
@@ -142,32 +112,11 @@ Record error → try one meaningful alternative → if still blocked, stop and s
 
 ---
 
-## 9) Completion Contract
-
-Every completion claim must be verifiable from evidence alone. Required fields:
-
-| Field | Content |
-|-------|---------|
-| `Scope` | what was done |
-| `Changed` | files or areas affected |
-| `Verification` | command, manual, and review evidence as applicable |
-| `Gates` | each: `PASS` / `FAIL` / `BLOCKED` / `N/A` — for `env` `test` `static` `traceability` `review` |
-| `Risks` | remaining risks or `None` |
-| `Assumptions` | material assumptions or `None` |
-| `Rollback` | rollback path or `N/A` (required for L2) |
-
-Claims must satisfy §6.
-
----
-
-## 10) Override Keys and Defaults
+## 6) Project Overrides
 
 ```yaml
 DEFAULT_BRANCH: main
-TASK_STATE_BACKEND: auto        # auto | inline
 REVIEW_POLICY: standard         # standard | strict
-COMMIT_LANGUAGE: en
-PR_LANGUAGE: en
 # Unset at global level (project-defined):
 # ENV_SETUP_CMD | TEST_CMD | LINT_CMD | TYPECHECK_CMD | BUILD_CMD
 ```

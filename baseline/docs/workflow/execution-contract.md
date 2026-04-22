@@ -53,10 +53,11 @@ Apply only the gates relevant to the task:
 - **Environment** — required tools, workspace, and prerequisites are available
 - **Test** — changed behavior is verified
 - **Static** — lint, typecheck, or build passes when relevant
-- **Traceability** — changed files, evidence, and status updates are recorded
 - **Review** — only when required by project policy or task risk
 
 Use project-defined verification commands first when they exist. If a meaningful automated check is unavailable, say so explicitly and record the best available manual evidence instead.
+
+Changed files, evidence, and durable status updates are recorded through the active task artifact and its linked review or verify records, not as a separate gate.
 
 ## Durable update rule
 Only make mechanical milestone updates that are already supported by the durable task schema in the current repo. Typical examples include:

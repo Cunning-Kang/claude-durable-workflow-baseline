@@ -1,6 +1,6 @@
 # Patterns
 
-Reusable patterns that others can apply directly. See [`docs/reference/memory-boundary.md`](../../docs/reference/memory-boundary.md) for classification rules.
+Reusable patterns that others can apply directly. Use the repo-local memory protocol and file roles here for classification.
 
 ## Entry Format
 
@@ -21,7 +21,7 @@ Why:    <why this approach works>
 
 - One-liner facts (→ `MEMORY.md`)
 - Pitfall descriptions (→ `gotchas.md`)
-- Protocol definitions (→ `baseline/docs/workflow/`)
+- Protocol definitions (→ `docs/workflow/`)
 - Hook behavior (→ hook source files or `docs/reference/hooks-scope.md`)
 - One-off experiences without demonstrated reuse
 
@@ -29,7 +29,7 @@ Why:    <why this approach works>
 
 When a durable pattern is confirmed:
 1. Verify D1/D2/D3 (recurrence, reusability, actionability)
-2. Route via [`docs/reference/memory-boundary.md`](../../docs/reference/memory-boundary.md) §7
+2. Route using the repo-local memory protocol and file roles
 3. Write in entry format above
 4. Do not duplicate `MEMORY.md` or `gotchas.md`
 

@@ -5,6 +5,13 @@ Define the repo-local review gate for durable work without introducing a second 
 
 This protocol decides **when review is required, what evidence the reviewer needs, and how the outcome is recorded**. It does not own execution order, planning, or verification strategy.
 
+## Repo-local task levels
+These levels are repo-local metadata for durable baseline artifacts. They do not redefine global completion gates.
+
+- `L0` — small, local, reversible work with no public interface or schema change
+- `L1` — default durable work tracked in repo artifacts
+- `L2` — public interface or schema change, high-risk or irreversible work, or work that needs explicit rollback or review planning
+
 ## When review is required
 Review is required when any of the following is true:
 - the task is L2

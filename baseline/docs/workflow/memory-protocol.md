@@ -1,6 +1,6 @@
 # Memory Protocol
 
-> **Boundary authority:** [`docs/reference/memory-boundary.md`](../../../docs/reference/memory-boundary.md) defines what belongs in memory and how to classify it. This protocol defines the **process** of writing, updating, and removing entries — it does not redefine classification.
+> This protocol defines the repo-local process for deciding what belongs in memory and how to write, update, and remove entries.
 
 ---
 
@@ -15,7 +15,7 @@ Write to memory **only after** one of these triggering events:
 | Blocking issue resolved | Root cause was durable; solution is reusable |
 | New convention established | Team agreed on a stable pattern via discussion |
 
-If a triggering event occurred but the content does not satisfy D1/D2/D3 (recurrence, reusability, actionability), do not write to memory. See boundary §4 and §7 for routing.
+If a triggering event occurred but the content does not satisfy D1/D2/D3 (recurrence, reusability, actionability), do not write to memory. Route it using the repo-local memory files and protocol.
 
 ---
 
@@ -73,15 +73,15 @@ These are known memory writing failures:
 | AP-2 | **Memory Bloat** — entries accumulate without review | Apply removal criteria proactively |
 | AP-3 | **Cross-File Duplication** — same fact in two files | Consolidate; each fact lives once |
 | AP-4 | **Memory as Task Log** — feature progress, session summaries | Route to feature spec / issue tracker |
-| AP-5 | **Protocol Dumping** — writing protocol definitions into memory | Protocol content goes in `baseline/docs/workflow/` |
+| AP-5 | **Protocol Dumping** — writing protocol definitions into memory | Protocol content goes in `docs/workflow/` |
 | AP-6 | **Hook/Command Content in Memory** | Hooks belong in hook source files or `docs/reference/hooks-scope.md` |
 | AP-7 | **Vague Entries** — "be careful with X" without enough context | Rewrite to be specific and actionable, or delete |
 | AP-8 | **One-Off Retention** — keeping entries for failures that will not recur | Remove; one-off is a removal signal |
 
-For full descriptions and the boundary authority that governs classification, see [`docs/reference/memory-boundary.md`](../../reference/memory-boundary.md).
+Use this protocol together with the repo-local memory files when classifying entries.
 
 ---
 
 ## 6. What This Document Is Not
 
-This protocol does not redefine D1/D2/D3 or contain durable memory content itself. Its job is the **process** of writing — classification criteria live in the boundary authority.
+This protocol does not contain durable memory content itself. Its job is the **process** of writing; the active memory files hold the durable content.

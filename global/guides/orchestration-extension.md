@@ -57,7 +57,7 @@ Delegate only when the subtask is:
 
 Do not delegate when:
 
-- the work includes a high-risk operation as defined in core-standard.md §7,
+- the work includes a high-risk operation as defined in core-standard.md,
 - execution still needs live architectural steering,
 - the task is trivial,
 - failure would force full replanning.
@@ -92,7 +92,7 @@ When changing path, record a brief reason.
 
 ## 6. Recovery Signals
 
-If tool or agent failure occurs, follow the tool failure rule in core-standard.md §7.
+If tool or agent failure occurs, follow the tool failure rule in core-standard.md.
 Do not pretend the missing result is implied.
 
 If output returns low confidence:

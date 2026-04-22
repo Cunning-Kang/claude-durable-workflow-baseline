@@ -1,8 +1,8 @@
 ---
 description: |
   Initialize the durable workflow baseline in the current repo from the local baseline cache.
-  Invokes ~/.claude/scripts/init-claude-workflow.sh which copies baseline files
-  (docs/specs/_template/, docs/workflow/, memory/, baseline/) without creating feature state.
+  Invokes ~/.claude/scripts/init-claude-workflow.sh which copies the cached baseline package contents
+  (docs/specs/_template/, docs/workflow/, memory/, claude/) into the repo root without creating feature state.
   Use this as the first and only entry command for any new project.
 allowed-tools:
   - Bash

@@ -17,7 +17,7 @@ This directory is a thin portable user-level runtime surface — portable assets
 
 Always-applied workflow rules. These rules load in every session unconditionally.
 
-- `review-workflow.md` — PASS/FAIL/BLOCKED mechanics for the review gate (referenced by core-standard.md §6)
+- `review-workflow.md` — PASS/FAIL/BLOCKED mechanics for the review gate defined in core-standard.md
 
 These are not standalone policies; they extend core-standard.md with specific operational mechanics.
 

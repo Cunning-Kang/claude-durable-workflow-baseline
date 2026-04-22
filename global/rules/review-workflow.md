@@ -1,6 +1,6 @@
-# Review Workflow — PASS / FAIL / BLOCKED Mechanics
+# Review Gate Semantics — PASS / FAIL / BLOCKED
 
-> Core review gate semantics — loaded via CLAUDE.md. Extends core-standard.md §6 with specific operational mechanics.
+> Canonical semantics for the review gate defined in core-standard.md.
 
 ---
 

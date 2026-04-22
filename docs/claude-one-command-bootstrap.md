@@ -33,7 +33,7 @@ git clone https://github.com/Cunning-Kang/claude-durable-workflow-baseline.git \
   ~/.claude/baselines/durable-workflow-v1
 
 # 复制全局 portable 资产到 ~/.claude/
-cp -n ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
+cp -rn ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
 
 # 复制 init-claude-workflow 命令到 ~/.claude/commands/
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-workflow.md \
@@ -60,12 +60,12 @@ claude    # 启动 Claude Code
 
 ### 完成后得到什么
 
-`/init-claude-workflow` copies the **entire `baseline/` tree** from the cache into your repo — nothing is selectively omitted. The following is a representative list of key files, not an exhaustive manifest:
+`/init-claude-workflow` copies the **contents of the cached `baseline/` package** into your repo root — it does not create a top-level `baseline/` directory in the target repo. The following is a representative list of key files, not an exhaustive manifest:
 
 - `docs/specs/_template/` — all spec templates (index, plan, spec, review, verify, tasks/)
 - `docs/workflow/` — review-protocol.md, review-checklist.md, execution-contract.md, memory-protocol.md, native-task-translation.md
 - `memory/` — MEMORY.md, patterns.md, gotchas.md
-- `baseline/claude/claude-snippet.md`
+- `claude/claude-snippet.md`
 - `.claude/workflow-baseline-version` — version marker (written after successful init)
 
 Files that already exist in the repo are skipped. Files that exist but differ are reported as conflicts and are **not** overwritten.
@@ -149,6 +149,7 @@ source repo (canonical distribution source)
 │   ├── CLAUDE.md                 (global runtime surface reference)
 │   ├── standards/core-standard.md
 │   ├── guides/orchestration-extension.md
+│   ├── rules/review-workflow.md
 │   └── README.md                 (source repo 内部自述，无需复制)
 ├── distribution/
 │   ├── commands/

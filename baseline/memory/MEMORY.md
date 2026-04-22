@@ -1,6 +1,6 @@
 # Project Memory
 
-Durable cross-session lessons for this project. See [`docs/reference/memory-boundary.md`](../../docs/reference/memory-boundary.md) for classification rules (D1/D2/D3, file roles, routing table).
+Durable cross-session lessons for this project. Use the repo-local memory protocol and file roles here for classification rules (D1/D2/D3 and routing).
 
 ## This File Is For
 
@@ -12,7 +12,7 @@ Durable cross-session lessons for this project. See [`docs/reference/memory-boun
 
 - Pattern explanations → [`patterns.md`](patterns.md)
 - Pitfall descriptions that need explanation → [`gotchas.md`](gotchas.md)
-- Protocol/rule definitions → [`baseline/docs/workflow/`](baseline/docs/workflow/)
+- Protocol/rule definitions → [`docs/workflow/`](../docs/workflow/)
 - One-off notes, task logs, session summaries, or speculative content
 
 ## Current Status
