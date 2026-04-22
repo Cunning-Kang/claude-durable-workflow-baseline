@@ -126,13 +126,17 @@ function parseEvidenceRecords(sectionLines, recordKeys) {
     }
 
     if (keyMatched) {
-      if (currentKey && currentValue.trim()) {
+      if (currentKey && (currentValue.trim() || currentRecord[currentKey] !== undefined)) {
         currentRecord[currentKey] = currentValue.trim();
       }
       currentKey = keyMatched;
       const pattern = new RegExp(`^(${keyMatched})\\s*[:=]\\s*(.*)`, 'i');
       const match = strippedLine.match(pattern);
       currentValue = match ? match[2] : '';
+      if (currentValue === '') {
+        // Field line with no value - record it as blank
+        currentRecord[currentKey] = '';
+      }
     } else if (currentKey) {
       const listItemPattern = /^[-*]\s+(.*)/;
       const listMatch = line.match(listItemPattern);
@@ -148,10 +152,11 @@ function parseEvidenceRecords(sectionLines, recordKeys) {
     }
   }
 
-  if (currentKey && currentValue.trim()) {
+  if (currentKey && (currentValue.trim() || currentRecord[currentKey] !== undefined)) {
     currentRecord[currentKey] = currentValue.trim();
   }
 
+  // Push record if it has any keys (including blank fields recorded during parsing)
   if (Object.keys(currentRecord).length > 0) {
     records.push(currentRecord);
   }
@@ -232,8 +237,13 @@ function main() {
   }
 
   const matchingArtifacts = artifactFiles.filter((filePath) => {
-    const content = readFileSync(filePath, 'utf8');
-    return content.includes(targetNeedle);
+    try {
+      const content = readFileSync(filePath, 'utf8');
+      return content.includes(targetNeedle);
+    } catch {
+      // File does not exist or is not readable - treat as non-matching
+      return false;
+    }
   });
 
   if (matchingArtifacts.length === 0) {

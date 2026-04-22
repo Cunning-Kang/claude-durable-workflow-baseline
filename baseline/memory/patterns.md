@@ -22,7 +22,7 @@ Why:    <why this approach works>
 - One-liner facts (→ `MEMORY.md`)
 - Pitfall descriptions (→ `gotchas.md`)
 - Protocol definitions (→ `docs/workflow/`)
-- Hook behavior (→ hook source files or `docs/reference/hooks-scope.md`)
+- Hook behavior (→ hook source files or `memory-protocol.md` in `docs/workflow/`)
 - One-off experiences without demonstrated reuse
 
 ## How to Add

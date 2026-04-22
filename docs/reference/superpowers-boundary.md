@@ -1,6 +1,6 @@
 # Superpowers Boundary — Repository Role Definition
 
-> Status: Current | Date: 2026-03-20
+> Status: Current | Date: 2026-04-05
 > Purpose: Define what this baseline repo is, what it is not, and why it cannot compete with Superpowers.
 
 ---
@@ -107,9 +107,9 @@ Descriptive boundary and protocol documents live here:
 - This file (`superpowers-boundary.md`) — role and boundary definition
 - Any protocol-oriented reference docs (not audit reports)
 
-### Audit Documentation — `docs/audits/`
+### Audit Documentation (not yet populated)
 
-Audit reports and retrospective analyses live here. Active audit documents are listed in `docs/audits/` directly.
+Audit reports and retrospective analyses belong here (not yet populated).
 
 ### What stays out of this repo
 
