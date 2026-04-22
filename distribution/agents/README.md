@@ -52,7 +52,7 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/orchestrator-plan
 | `orchestrator-planner` | opus | high | Resolve blocking uncertainty before execution | Tier 1 (core chain) |
 | `execution-implementer` | sonnet | high | Bounded implementation, debugging, test repair | Tier 1 (core chain) |
 | `mechanical-transformer` | haiku | high | Deterministic mechanical rewrites | Tier 1 (core chain) |
-| `technical-writer` | sonnet | high | Technical documentation and developer content | Tier 2 (domain specialist) |
+| `technical-writer` | haiku | high | Technical documentation and developer content | Tier 2 (domain specialist) |
 | `product-manager` | opus | high | Product strategy and requirements | Tier 2 (domain specialist) |
 | `docker-expert` | sonnet | high | Production Docker images and orchestration | Tier 2 (domain specialist) |
 

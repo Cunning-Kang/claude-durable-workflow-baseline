@@ -9,7 +9,7 @@ allowed-tools:
   - Read
   - Write
   - Edit
-argument-hint: [--dry-run | --print-patch | --force-template]
+argument-hint: [--help]
 ---
 
 Usage: Run `/init-claude-workflow` directly — it invokes the script automatically.
@@ -19,7 +19,7 @@ What it does:
 2. Resolve the local baseline cache path.
 3. Read the cached baseline package.
 4. Create any missing baseline files in the current repo.
-5. For existing files that differ, do not overwrite them; produce patch suggestions instead.
+5. For existing files that differ, report them as conflicts without overwriting.
 6. Write or update `.claude/workflow-baseline-version` only if safe to do so.
 7. Summarize:
    - files created

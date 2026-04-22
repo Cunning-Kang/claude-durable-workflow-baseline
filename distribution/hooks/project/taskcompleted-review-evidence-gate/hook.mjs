@@ -114,11 +114,13 @@ function isPlaceholder(value, markers) {
 }
 
 function parseFrontMatter(content) {
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+  // Match: opening ---, content, closing ---, optional body
+  // Handles files that end exactly at closing --- with no trailing newline
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---(\r?\n([\s\S]*))?$/);
   if (!fmMatch) return null;
 
-  const [, frontMatter, body] = fmMatch;
-  return { frontMatter, body };
+  const [, frontMatter, , body] = fmMatch;
+  return { frontMatter, body: body ?? '' };
 }
 
 function parseYaml(content) {
@@ -256,6 +258,15 @@ function analyzeReviewArtifact(filePath, needle, reviewerField, referenceField, 
   const reviewer = reviewerKey ? String(entry[reviewerKey] ?? '') : '';
   const reference = referenceKey ? String(entry[referenceKey] ?? '') : '';
   const outcome = outcomeKey ? String(entry[outcomeKey] ?? '') : '';
+
+  // Bug 1 fix: reject absent or blank (empty/whitespace-only) reviewer/reference
+  // even when they are not placeholder markers
+  if (!reviewerKey || reviewer.trim() === '') {
+    fail(`Blocked: Reviewer field is missing or blank in ${filePath}.`);
+  }
+  if (!referenceKey || reference.trim() === '') {
+    fail(`Blocked: Reference field is missing or blank in ${filePath}.`);
+  }
 
   return {
     found: true,
