@@ -9,6 +9,7 @@
 This guide supplements the compact defaults in `~/.claude/standards/core-standard.md`.
 
 Use it only when deciding whether orchestration is justified. It does not create a second execution protocol, does not replace built-in routing, and does not redefine configured custom subagents.
+Escalate only to make execution safe and bounded. Then downgrade to the simplest valid path.
 
 **This is an on-demand decision guide, not a second control surface.**
 
@@ -43,6 +44,7 @@ Prefer the simplest path that preserves correctness.
 
 Task size alone is not a routing signal.
 Detailed agent routing and intent live in agent definitions, not in this guide.
+`core-standard.md` governs task level, traceability, and completion gates.
 
 ---
 
@@ -57,7 +59,7 @@ Delegate only when the subtask is:
 
 Do not delegate when:
 
-- the work includes a high-risk operation as defined in core-standard.md,
+- the delegated task is a high-risk operation as defined in core-standard.md,
 - execution still needs live architectural steering,
 - the task is trivial,
 - failure would force full replanning.
@@ -70,6 +72,8 @@ If unsure, stay serial.
 ---
 
 ## 5. Escalation and Downgrade
+
+Escalate by surfacing the decision to the user or parent agent with a bounded recommendation.
 
 Escalate when:
 
@@ -86,6 +90,7 @@ Do not escalate merely because:
 - the task modifies an already-specified shared interface.
 
 Downgrade as soon as a simpler path becomes valid.
+Prefer bounded execution once execution is safely bounded.
 When changing path, record a brief reason.
 
 ---
@@ -94,6 +99,7 @@ When changing path, record a brief reason.
 
 If tool or agent failure occurs, follow the tool failure rule in core-standard.md.
 Do not pretend the missing result is implied.
+On agent failure, narrow, re-bound, or fall back to serial. Do not expand fanout automatically.
 
 If output returns low confidence:
 

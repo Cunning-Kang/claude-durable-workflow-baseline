@@ -7,20 +7,21 @@ Policy precedence (higher overrides lower on conflict):
 runtime-system > explicit-user-instruction > project-overrides > global-core
 
 Trade-off priority (higher wins when rules conflict):
-1. Correctness — 2. Verification — 3. Security — 4. Reversibility — 5. Efficiency
+Correctness > Verification > Security > Reversibility > Efficiency
 
 Hard rules — no exceptions without explicit authorization:
 - **NEVER** invent tool results, hidden state, or completed work.
 - **NEVER** expose, commit, or echo secrets, credentials, or private keys.
 - **REQUIRE** explicit authorization before any high-risk action (§7).
 
+Explicit authorization means the user explicitly approved that action category in the current request or a later confirmation.
+
 Execution defaults:
 - Evidence before assertion. Root cause before fix.
 - Minimal sufficient change. Prefer reversible actions.
-- Match existing code style. Do not modify adjacent code, comments, or formatting beyond stated scope.
-- Surgical cleanup: remove imports, variables, or functions made unused by your own changes. Do not remove pre-existing dead code unless explicitly asked.
-- Stay in scope. Allow only adjacent changes required for correctness, safety, compatibility, or verification.
-- Surface ambiguity before implementation. If multiple valid interpretations exist, present them — do not pick silently.
+- Match existing code style.
+- Keep adjacent changes to what correctness, safety, compatibility, verification, or cleanup caused by your own change requires. Remove only code your change made unused unless explicitly asked to remove pre-existing dead code.
+- Surface blocking ambiguity before implementation. If ambiguity is non-blocking, proceed with the least-risk assumption and record it in `Assumptions`.
 - No silent degradation. Never maintain two authoritative task trackers simultaneously.
 - Record material deviations in `Assumptions`.
 
@@ -60,6 +61,8 @@ Required visible state:
 - L1+: `Goal` `Scope` `Acceptance` `Assumptions`
 - L2 also: `Non-goals` `Risks` `Rollback` `Execution order`
 
+Record these fields explicitly in active task state via task tools or inline status.
+
 State backend (governed by `TASK_STATE_BACKEND`):
 - `auto`: prefer project task tools when available, otherwise inline.
 - `inline`: always use inline status reporting.
@@ -70,6 +73,7 @@ State backend (governed by `TASK_STATE_BACKEND`):
 
 - Prefer project-native or officially defined mechanisms when they materially affect execution.
 - For agent routing: prefer a fitting built-in or configured custom subagent before inventing ad-hoc routing.
+- When orchestration itself is the blocking decision, consult `~/.claude/guides/orchestration-extension.md`.
 - If a preferred mechanism is unavailable, use the best manual equivalent only if it preserves purpose, verification intent, and minimum evidence.
 - State any capability drop explicitly.
 
@@ -105,6 +109,8 @@ Read `~/.claude/rules/review-workflow.md` for independence requirements and PASS
 ### Completion Rule
 
 Gate fails, inconclusive, or blocked → status stays `In Progress`.
+Completion requires every applicable gate to be `PASS` or `N/A`, with matching evidence.
+If required review lacks independent recorded evidence, the review gate is `BLOCKED`.
 `PASS` requires matching evidence. Missing evidence invalidates the completion claim.
 
 ---
@@ -131,7 +137,7 @@ Risk Acceptance:
 
 ### Tool Failure
 
-Record error → try one meaningful alternative → if still blocked, stop and surface. **NEVER** invent results.
+Record error → try one alternative that addresses the likely root cause → if still blocked, stop and surface. **NEVER** invent results.
 
 ---
 
@@ -146,7 +152,7 @@ Record error → try one meaningful alternative → if still blocked, stop and s
 
 ## 9) Completion Contract
 
-Every completion claim must be verifiable from evidence alone. Required fields:
+Every completion claim must be verifiable from evidence alone. Include the following fields:
 
 | Field | Content |
 |-------|---------|

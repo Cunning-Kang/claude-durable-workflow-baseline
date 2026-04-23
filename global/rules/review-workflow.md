@@ -2,17 +2,23 @@
 
 > Canonical semantics for the review gate defined in core-standard.md.
 
+This file defines review gate status only. Whether review is required is determined by `core-standard.md`.
+
 ---
 
 ## Independence Requirement
 
 Independent means: reviewer did not implement the reviewed change.
 Self-review does not satisfy this gate unless a higher-precedence policy explicitly permits it.
+Not independent: the same assistant in a second pass, or a reviewer that edits the implementation.
 
 ## Required Evidence
 
 - `Reviewer`: <identity>
-- `Reference`: <message, task, or artifact containing the review result>
+- `Reviewed scope`: <commit, diff range, or exact files>
+- `Reference`: <message, task, file, PR comment, or other artifact containing the review result>
+
+Review evidence is valid only if `Reviewed scope` matches the current change being claimed as complete.
 
 ## Status Definitions
 
@@ -28,3 +34,4 @@ Without independent review and recorded evidence: `PASS` and `FAIL` are invalid.
 ## Blocked State Rule
 
 `BLOCKED` → status stays `In Progress` unless a higher-precedence policy explicitly permits an alternative.
+When entering `BLOCKED`, state what is required to unblock.
