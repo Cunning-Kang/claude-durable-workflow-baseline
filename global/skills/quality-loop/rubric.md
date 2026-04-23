@@ -143,14 +143,14 @@ Prefer 2 to 4 dimensions per round.
 Pick the ones most likely to improve the current draft.
 Skip dimensions that are already clearly strong unless a later round exposes a dependency.
 
-Common selection pattern:
+Illustrative round pattern only:
 - Round 1: Task fit + Correctness
 - Round 2: Decision value + Real-world feasibility + Assumption handling
 - Round 3: Compression and signal + Reviewer resistance
 
-This pattern is guidance, not a requirement to execute all 3 rounds.
+This pattern is only a quick heuristic.
+The task-type priority guidance below is the primary selection rule.
 If you stop early, still give the highest-priority skipped dimensions a quick check.
-Adjust the pattern when the task type suggests a better emphasis.
 
 ---
 

@@ -117,16 +117,14 @@ Before drafting, extract and keep fixed:
 - evaluation standard
 - likely failure modes
 
-Treat this as **frozen task context**.
+Treat this as the **fixed task definition**.
 
-If refinement reveals that this context was based on a wrong assumption about the user’s goal, correct the task context explicitly before continuing.
-Do not silently drift.
+If refinement reveals that this definition was based on a wrong assumption about the user’s goal, correct the task definition explicitly before continuing.
 
 During refinement:
 - do not drift from the original ask
-- do not silently change the deliverable
+- do not silently change the deliverable or success metric
 - do not optimize for elegance over the user’s real objective
-- do not change the success metric without making it explicit
 
 If the request contains tension or hidden tradeoffs, preserve them as review constraints.
 
@@ -157,8 +155,9 @@ If a sub-question appears during refinement, handle it inside the current round 
 Each round must have a distinct purpose.
 Do not rerun the same review with slightly different wording.
 
-Before each round, re-check the frozen task context from Phase 1.
+Before each round, re-check the fixed task definition from Phase 1.
 Then consult `rubric.md` and select the highest-value dimensions for the task.
+Use the task-type priority lists in `rubric.md` as the primary selection aid; treat any round pattern there as a quick heuristic only.
 If you stop early, make sure no high-priority dimension for the task type was skipped without at least a quick check.
 
 ### Round 1 — correctness and task fit
@@ -226,6 +225,9 @@ Stop early if any of the following is true:
 - the answer already meets the user’s requested standard
 - further rewriting would risk drift, repetition, or dilution
 
+The minimal pass condition in `rubric.md` is the authoritative readiness check.
+The checklist below is optional and supportive only.
+
 Do not use all 3 rounds by default.
 A sharp 1-round answer is better than a bloated 3-round answer.
 
@@ -241,7 +243,7 @@ The final answer should usually:
 - show important tradeoffs
 - surface uncertainty honestly
 - avoid fake certainty and padding
-- stay aligned with the frozen task context
+- stay aligned with the fixed task definition
 
 Preferred output shapes:
 
@@ -286,25 +288,14 @@ The result should feel sharper and more review-resistant than a first pass.
 
 ## Important anti-patterns
 
-Avoid these failures:
+These are reminders of the rules above, not a second source of authority.
 
-### 1. Faux depth
-Do not simulate rigor with abstraction, inflated tone, or meta-commentary.
-
-### 2. Infinite polishing
-Do not keep revising after substantive gains are exhausted.
-
-### 3. Task drift
-Do not refine the answer into a different answer than the user asked for.
-
-### 4. Full rewrites by reflex
-Do not rebuild the whole answer when a few local fixes solve the problem.
-
-### 5. Style over substance
-Do not trade correctness, clarity, or realism for elegance.
-
-### 6. Evidence substitution
-Do not use refinement to paper over missing facts, missing verification, or missing source grounding.
+- faux depth
+- infinite polishing
+- task drift
+- full rewrites by reflex
+- style over substance
+- evidence substitution
 
 ---
 
