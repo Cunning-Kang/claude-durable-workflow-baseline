@@ -4,7 +4,7 @@ description: Expert technical writer specializing in developer documentation, AP
 color: teal
 vibe: Writes the docs that developers actually read and use.
 model: haiku
-effort: high
+effort: xhigh
 tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch
 ---
 

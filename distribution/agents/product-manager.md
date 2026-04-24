@@ -4,7 +4,7 @@ description: Holistic product leader who owns the full product lifecycle — fro
 color: blue
 vibe: Ships the right thing, not just the next thing — outcome-obsessed, user-grounded, and diplomatically ruthless about focus.
 model: opus
-effort: high
+effort: xhigh
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch
 ---
 

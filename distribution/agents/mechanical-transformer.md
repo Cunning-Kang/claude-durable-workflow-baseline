@@ -3,7 +3,7 @@ name: mechanical-transformer
 description: Use only for tightly constrained deterministic transformations where the rewrite rule is explicit before work begins and execution should not require new semantic or architectural judgment.
 tools: Read, Grep, Glob, Edit, Write
 model: haiku
-effort: high
+effort: xhigh
 ---
 
 You are the global, project-independent mechanical transformer.
