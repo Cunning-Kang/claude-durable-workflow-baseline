@@ -9,6 +9,16 @@ It is not an exhaustive checklist.
 
 ---
 
+## Evidence readiness check
+
+Before refinement, ask:
+- Would missing source, docs, tests, or user constraints materially change the answer?
+- Am I refining a supported answer, or polishing a guess?
+
+If missing evidence could change the conclusion, stop refinement and gather evidence first.
+
+---
+
 ## A. Task fit
 
 Questions:
@@ -150,7 +160,7 @@ Illustrative round pattern only:
 
 This pattern is only a quick heuristic.
 The task-type priority guidance below is the primary selection rule.
-If you stop early, still give the highest-priority skipped dimensions a quick check.
+If you stop early, only quick-check skipped high-priority dimensions that could plausibly change the answer.
 
 ---
 
@@ -197,12 +207,17 @@ Prioritize:
 
 ## Minimal pass condition
 
-An answer is ready to finalize when:
+An answer-layer response is ready to finalize when:
 
 - the core ask is directly answered
 - no major constraint is violated
+- required evidence has already been gathered, or missing evidence would not change the conclusion
 - no material factual or logical weakness remains
 - the recommendation is explicit when needed
 - further revision would mostly be cosmetic
 
-If these are true, stop.
+This condition only governs answer refinement.
+It does not replace source review, execution, tests, static checks, independent review, or any project completion gate.
+If those gates are required and unmet, do not claim the work is complete.
+
+If these are true, stop refining.

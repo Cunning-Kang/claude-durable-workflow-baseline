@@ -26,10 +26,11 @@ This is a high-value decision with tradeoffs, hidden assumptions, and execution 
   - verify the answer actually recommends, not just describes
   - check constraints were applied
   - verify the framework characterizations are accurate
-- Round 2:
+- Round 2, only if material weaknesses remain:
   - strengthen tradeoff analysis
   - surface migration, ops, and maintenance risks
-- Round 3:
+- Stop if the recommendation is already direct, supported, and constraint-compliant
+- Optional Round 3, only if the answer became bloated:
   - compress repeated points
   - move the recommendation earlier
 
@@ -59,12 +60,10 @@ This requires judgment, criticism, evidence handling, and resistance to surface-
 - Round 1:
   - remove claims not grounded in the material
   - ensure the judgment is actually supported
-- Round 2:
+- Round 2, only if the conclusion still feels fragile:
   - identify strongest counterarguments
   - separate transferable method from unverifiable claims
-- Round 3:
-  - tighten the conclusion
-  - reduce summary bulk and increase decision value
+- Stop after Round 1 or 2 if further edits would mostly tighten prose
 
 ### Good final shape
 - thesis
@@ -89,11 +88,9 @@ This is a design choice with long-term consequences and hidden maintenance trade
   - recommend one option
 - Round 1:
   - check whether the recommendation matches the real constraints
-- Round 2:
+- Round 2, only if needed:
   - examine reuse frequency, coupling, complexity, and maintenance cost
-- Round 3:
-  - sharpen the decision rule
-  - remove generic filler
+- Stop as soon as the decision rule is clear and defensible
 
 ### Good final shape
 - recommended option
@@ -119,10 +116,10 @@ This is not a casual rewrite; it needs selection pressure and omission disciplin
   - propose a rewritten file
 - Round 1:
   - ensure the draft preserves the essential behavior
-- Round 2:
+- Round 2, only if material instruction risk remains:
   - remove unstable or redundant rules
   - surface conflicts and hidden assumptions
-- Round 3:
+- Final compression pass, only if wording is still bloated:
   - tighten wording
   - reduce verbosity without losing force
 
@@ -178,7 +175,9 @@ Which option is best for me?
 The draft assumes the user wants maximum flexibility, but the real constraint is minimum maintenance.
 
 ### Correct quality-loop action
-In Round 2:
+Before continuing, correct the task definition.
+If that changes the deliverable or success standard, clarify with the user first.
+If the correction is non-blocking, then in the next refinement round:
 - surface the hidden assumption
 - re-rank the options using the real objective
 - update the recommendation
@@ -235,3 +234,56 @@ The root cause is not yet known.
 ### Correct behavior
 Use a debugging or implementation skill first to gather evidence and fix the issue.
 Use quality-loop only if the final explanation or recommendation needs an extra quality pass.
+
+---
+
+## Example 11 — Review gate is required
+
+### User ask
+Use quality-loop and mark the work complete under our review policy.
+
+### Why quality-loop is insufficient
+Quality-loop is self-review.
+It can improve the final explanation or plan, but it does not satisfy an independent review requirement.
+
+### Correct behavior
+Use quality-loop to improve the answer if useful, then either:
+- call an independent reviewer who did not implement or self-review the work, and record the reviewer identity, reviewed scope, and review reference
+- report the review gate as blocked with what is needed to unblock
+
+### Incorrect behavior
+Claim review passed based only on quality-loop rounds or an unrecorded reviewer call.
+
+---
+
+## Example 12 — Code change needs verification first
+
+### User ask
+Fix this bug and tell me it is resolved.
+
+### Actual state
+The cause is unknown and no tests have been run.
+
+### Correct behavior
+Debug and verify first.
+Use quality-loop only on the final explanation if the explanation is high-stakes or likely to be scrutinized.
+
+### Incorrect behavior
+Write a polished hypothesis without reading the code or running relevant checks.
+
+---
+
+## Example 13 — Overtrigger on simple execution
+
+### User ask
+Rename this function to snake_case.
+
+### Why quality-loop should not apply
+The task is a straightforward code transformation.
+The user needs execution, not multi-pass judgment refinement.
+
+### Correct behavior
+Make the change directly, then run the relevant verification if behavior or references could be affected.
+
+### Incorrect behavior
+Start a quality-loop to analyze naming tradeoffs before making the requested edit.

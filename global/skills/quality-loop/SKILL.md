@@ -1,6 +1,6 @@
 ---
 name: quality-loop
-description: Use this skill for high-stakes, complex, ambiguous, or quality-sensitive tasks that benefit from a bounded multi-pass refinement loop. Best for research synthesis, architecture choices, technical strategy, implementation planning, difficult writing, and other outputs where judgment quality matters.
+description: Use this skill only for answer-layer self-refinement when the user needs a high-judgment final answer that is expensive to get wrong: architecture or tooling decisions, technical strategy, research synthesis, implementation plans, instruction/agent design, or important writing that will be scrutinized or directly acted on. Use when the user asks for rigor, tradeoffs, counterarguments, or a decision-ready recommendation. This does not satisfy independent review gates or replace source/test verification. Do not use for simple execution, straightforward code changes, missing-evidence investigations, or tasks where tests/source verification must happen first.
 ---
 
 # Quality Loop
@@ -27,12 +27,12 @@ Reference files:
 
 ## Use this skill when
 
-Use this skill when one or more of the following is true:
+Use this skill when the primary deliverable is a judgment, recommendation, plan, synthesis, or important written answer, and one or more of the following is true:
 
-- the task is high-stakes or expensive to get wrong
-- the task is complex, ambiguous, or multi-constraint
+- the answer is high-stakes or expensive to get wrong
+- the answer is complex, ambiguous, or multi-constraint
 - the user asks for stronger quality, deeper analysis, stricter review, or more rigorous judgment
-- the output will influence implementation, architecture, tool choice, planning, or external communication
+- the answer will influence implementation, architecture, tool choice, planning, or external communication
 - the answer needs tradeoff analysis, counterarguments, prioritization, or risk surfacing
 - the result is likely to be scrutinized by a strong human reviewer or another strong model
 
@@ -40,11 +40,11 @@ Good fits:
 - architecture recommendations
 - tooling / framework comparisons
 - technical strategy
-- implementation planning
+- evidence-supported implementation planning
 - research synthesis
 - prompt / instruction / agent design
 - important user-facing writing
-- any answer where correctness and judgment matter more than speed
+- answers where judgment quality matters more than speed
 
 ---
 
@@ -88,14 +88,21 @@ It does **not** replace:
 Quality-loop rounds are self-review only.
 They do not satisfy any independent review gate or policy requirement.
 
-If another skill is needed to gather evidence or do the work, use that first or alongside this one.
+If independent review is required by the user or project policy, quality-loop can only be followed by one of two outcomes.
+This rule applies only when such a gate is required:
+- an independent reviewer completes the review and the result records reviewer identity, reviewed scope, and review reference
+- the review gate is reported as blocked, with the condition needed to unblock it
+
+If another skill is needed to gather evidence or do the work, use that first.
+Only use quality-loop alongside another skill when the loop is limited to an already-supported answer layer and cannot affect required verification.
 
 ---
 
 ## Core operating model
 
-The loop has five phases:
+The loop has six phases:
 
+0. Evidence readiness
 1. Task representation
 2. First draft
 3. Bounded refinement rounds
@@ -103,6 +110,17 @@ The loop has five phases:
 5. Final integration
 
 The goal is quality convergence, not repeated rewriting.
+
+---
+
+## Phase 0 — Evidence readiness
+
+Before drafting any judgment, ask:
+- Would missing source, docs, tests, or user constraints materially change the answer?
+- Am I about to refine a supported answer, or polish a guess?
+
+If missing evidence could change the conclusion, stop and gather evidence first.
+Do not write a judgmental first draft until the required evidence is available or clearly unnecessary.
 
 ---
 
@@ -120,6 +138,8 @@ Before drafting, extract and keep fixed:
 Treat this as the **fixed task definition**.
 
 If refinement reveals that this definition was based on a wrong assumption about the user’s goal, correct the task definition explicitly before continuing.
+If the correction would change the deliverable or success standard, clarify with the user first.
+If the correction is non-blocking and well-supported, state the assumption explicitly before continuing.
 
 During refinement:
 - do not drift from the original ask
@@ -157,10 +177,18 @@ Do not rerun the same review with slightly different wording.
 
 Before each round, re-check the fixed task definition from Phase 1.
 Then consult `rubric.md` and select the highest-value dimensions for the task.
-Use the task-type priority lists in `rubric.md` as the primary selection aid; treat any round pattern there as a quick heuristic only.
-If you stop early, make sure no high-priority dimension for the task type was skipped without at least a quick check.
+Use the task-type priority lists in `rubric.md` as the primary selection aid.
+Treat the named rounds below as default templates, not mandatory phases.
+The selected rubric dimensions and stop conditions override the template when they indicate that fewer rounds are enough.
+If you stop early, only quick-check skipped high-priority dimensions that could plausibly change the answer.
 
-### Round 1 — correctness and task fit
+For each refinement round, briefly track this internal line:
+`dims / weaknesses / edits / stop?`
+
+If `weaknesses` is empty or only cosmetic, stop instead of running another round.
+Do not expose this log unless the user asks for process notes.
+
+### Default Round 1 — correctness and task fit
 
 Check for:
 - misunderstanding of the request
@@ -172,7 +200,7 @@ Check for:
 
 Fix only material problems.
 
-### Round 2 — depth and decision value
+### Default Round 2 — depth and decision value
 
 Check for:
 - hidden assumptions
@@ -185,7 +213,7 @@ Check for:
 
 Strengthen only where this materially improves decision quality.
 
-### Round 3 — compression and sharpness
+### Default Round 3 — compression and sharpness
 
 Check for:
 - unnecessary verbosity
@@ -212,6 +240,11 @@ In every round:
 - do not inflate tone to fake depth
 
 Increase judgment density, not word count.
+
+Length discipline:
+- If the user gave a length or format constraint, preserve it unless explicitly impossible.
+- Without a user length constraint, the final answer should not be longer than the first adequate draft unless added content fixes a material omission.
+- Prefer replacing weak text over appending caveats.
 
 ---
 
