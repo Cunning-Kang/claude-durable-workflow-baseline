@@ -1,0 +1,82 @@
+[
+  {
+    "query": "我准备在团队评审会上决定 agent workflow 走 plugin、skill 还是 CLAUDE.md 规则。请给我一个能经得起严格反方审查的推荐，重点讲 tradeoff、维护成本和什么时候应该改变结论。",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我审一下这份 implementation plan：我们要把 durable workflow baseline 推给 3 个仓库，要求别跳过证据收集和 review gate。请把它改成 decision-ready 的版本。",
+    "should_trigger": true
+  },
+  {
+    "query": "这段架构判断我想发给另一个强模型 cross-review。请先帮我找最容易被攻击的假设，再压缩成一个更稳的最终建议。",
+    "should_trigger": true
+  },
+  {
+    "query": "我读完一个开源 repo 之后有点被 hype 带偏了。请帮我综合判断它的核心方法是不是值得迁移到我们的 agent tooling，并明确哪些证据不足。",
+    "should_trigger": true
+  },
+  {
+    "query": "请把下面这段给 CTO 的技术策略回复改得更尖锐：不要泛泛最佳实践，要有主张、风险、反对意见和清晰推荐。",
+    "should_trigger": true
+  },
+  {
+    "query": "我们在考虑把 quality checks 做成 hook、slash command 还是常驻 instruction。请给我一个有条件判断的推荐，而不是只列优缺点。",
+    "should_trigger": true
+  },
+  {
+    "query": "我需要一个严格但简短的最终回答：是否应该让 subagents 自动修复 review feedback？请考虑权限、安全、验证和失败模式。",
+    "should_trigger": true
+  },
+  {
+    "query": "下面是我写的 agent instruction，请从遵循率、冲突、过触发和输出膨胀角度做高标准改写。",
+    "should_trigger": true
+  },
+  {
+    "query": "这个 PR 方案会影响多个团队的执行流程。请给一个可以直接用于决策的 recommendation，并说明你最不确定的前提。",
+    "should_trigger": true
+  },
+  {
+    "query": "我想让你更严格一点，不要只总结，帮我判断这个设计文档到底该不该推进，给出可 defend 的结论。",
+    "should_trigger": true
+  },
+  {
+    "query": "把 global/skills/quality-loop/SKILL.md 里的 functionName 改成 function_name。",
+    "should_trigger": false
+  },
+  {
+    "query": "这个测试失败了，先帮我定位 root cause，必要时读代码和跑测试。",
+    "should_trigger": false
+  },
+  {
+    "query": "运行 npm test 看看现在过不过。",
+    "should_trigger": false
+  },
+  {
+    "query": "请 review 当前 diff 是否满足项目 review gate，并给出 PASS/FAIL。",
+    "should_trigger": false
+  },
+  {
+    "query": "读一下这个 API spec，然后告诉我有哪些 endpoint。只要列表。",
+    "should_trigger": false
+  },
+  {
+    "query": "把这段 markdown 的标题层级统一一下，不要改内容。",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我实现一个 logout button，并在浏览器里验证。",
+    "should_trigger": false
+  },
+  {
+    "query": "这个代码看起来不对，先不要写建议，直接查 source 找证据。",
+    "should_trigger": false
+  },
+  {
+    "query": "请用独立 agent 严格审核这个 migration 是否安全。",
+    "should_trigger": false
+  },
+  {
+    "query": "给我一个 grep 命令，找所有 TODO。",
+    "should_trigger": false
+  }
+]
