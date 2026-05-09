@@ -14,15 +14,17 @@ These five agents form the default staged workflow for non-trivial software work
 task-planner -> code-implementer -> test-engineer -> code-reviewer -> main final verification
 ```
 
-| Agent | Model | Max turns | Role |
-|---|---:|---:|---|
-| `task-planner` | opus | 15 | Writes the plan artifact and handoff contract before implementation. |
-| `code-implementer` | sonnet | 35 | Makes the planned code change and runs codegen, formatting, and local smoke checks. |
-| `test-engineer` | sonnet | 25 | Updates test assets, runs relevant tests, and classifies failures conservatively. |
-| `code-reviewer` | haiku | 20 | Reviews final code and test changes plus tester evidence without modifying files. |
-| `deployment-operator` | haiku | 15 | Executes only documented runbook/script/CI operational commands for explicit ops requests. |
+| Agent | Model | Effort | Max turns | Role |
+|---|---:|---:|---:|---|
+| `task-planner` | opus | inherit | 15 | Writes the plan artifact and handoff contract before implementation. |
+| `code-implementer` | sonnet | xhigh | 35 | Makes the planned code change and runs codegen, formatting, and local smoke checks. |
+| `test-engineer` | sonnet | xhigh | 25 | Updates test assets, runs relevant tests, and classifies failures conservatively. |
+| `code-reviewer` | haiku | xhigh | 20 | Reviews final code and test changes plus tester evidence without modifying files. |
+| `deployment-operator` | haiku | xhigh | 15 | Executes only documented runbook/script/CI operational commands for explicit ops requests. |
 
 Legacy names `planner`, `implementer`, `tester`, `reviewer`, and `ops-deploy` were removed rather than kept as aliases to avoid duplicate routing targets. Other existing specialist agents in this directory are separate agents, not aliases for these five core workflow stages.
+
+Claude Code subagent frontmatter supports `effort`. The non-`opus` workflow agents set `effort: xhigh` to compensate for weaker mapped models; actual behavior still depends on the active model's supported effort levels.
 
 ## Main session responsibility
 

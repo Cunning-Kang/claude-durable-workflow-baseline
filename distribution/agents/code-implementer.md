@@ -3,6 +3,7 @@ name: code-implementer
 description: Use after task-planner returns READY, or with a complete self-contained implementation task. Edits production code and required generated or formatted artifacts. Do not use for full test-suite ownership, code review, or deployment.
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: sonnet
+effort: xhigh
 permissionMode: acceptEdits
 color: green
 maxTurns: 35

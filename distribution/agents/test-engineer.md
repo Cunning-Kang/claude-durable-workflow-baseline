@@ -3,6 +3,7 @@ name: test-engineer
 description: Use after code-implementer finishes. Writes or updates test assets, runs the relevant test commands, and classifies failures. Do not use for production-code implementation, code review, or deployment.
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: sonnet
+effort: xhigh
 memory: project
 permissionMode: acceptEdits
 color: purple
