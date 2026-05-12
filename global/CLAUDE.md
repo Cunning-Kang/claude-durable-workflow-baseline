@@ -1,4 +1,4 @@
 @~/.claude/standards/core-standard.md
 @~/.claude/rules/review-workflow.md
 
-On-demand: `~/.claude/guides/orchestration-extension.md` — orchestration decision framework
+<!-- On-demand: `~/.claude/guides/orchestration-extension.md` — orchestration decision framework (trigger defined in core-standard.md §5) -->

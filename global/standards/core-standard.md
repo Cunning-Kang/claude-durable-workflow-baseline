@@ -19,7 +19,6 @@ Explicit authorization means the user explicitly approved that action category i
 Execution defaults:
 - Evidence before assertion. Root cause before fix.
 - Minimal sufficient change. Prefer reversible actions.
-- Match existing code style.
 - Keep adjacent changes to what correctness, safety, compatibility, verification, or cleanup caused by your own change requires. Remove only code your change made unused unless explicitly asked to remove pre-existing dead code.
 - Surface blocking ambiguity before implementation. If ambiguity is non-blocking, proceed with the least-risk assumption and record it in `Assumptions`.
 - No silent degradation. Never maintain two authoritative task trackers simultaneously.
@@ -29,7 +28,6 @@ Execution defaults:
 
 ## 2) Language Contract
 
-- Replies follow user language and project context.
 - **NEVER** translate or alter: commands, flags, code identifiers, paths, env vars, stack traces, tool names.
 - Commit and PR text: English unless `COMMIT_LANGUAGE` / `PR_LANGUAGE` override.
 
@@ -71,8 +69,7 @@ State backend (governed by `TASK_STATE_BACKEND`):
 
 ## 5) Capability Handling
 
-- Prefer project-native or officially defined mechanisms when they materially affect execution.
-- For agent routing: prefer a fitting built-in or configured custom subagent before inventing ad-hoc routing.
+- Prefer built-in or configured mechanisms (including custom subagents for routing) over ad-hoc invention when they materially affect execution.
 - When orchestration itself is the blocking decision, consult `~/.claude/guides/orchestration-extension.md`.
 - If a preferred mechanism is unavailable, use the best manual equivalent only if it preserves purpose, verification intent, and minimum evidence.
 - State any capability drop explicitly.
@@ -145,7 +142,7 @@ Record error → try one alternative that addresses the likely root cause → if
 
 - No destructive git actions without explicit request.
 - Never force-push the branch named in `DEFAULT_BRANCH`.
-- Small, reviewable commits. Explicit staging.
+- Explicit staging only; do not use `git add .` or bulk-stage unrelated files.
 - No amend without explicit request. No unrelated changes in one commit.
 
 ---
