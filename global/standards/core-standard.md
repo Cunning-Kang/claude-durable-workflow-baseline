@@ -19,7 +19,9 @@ Explicit authorization means the user explicitly approved that action category i
 Execution defaults:
 - Evidence before assertion. Root cause before fix.
 - Minimal sufficient change. Prefer reversible actions.
+- No abstractions for single-use code; no speculative error handling for impossible scenarios.
 - Keep adjacent changes to what correctness, safety, compatibility, verification, or cleanup caused by your own change requires. Remove only code your change made unused unless explicitly asked to remove pre-existing dead code.
+- Match existing code style even if you'd prefer a different convention; never improve adjacent formatting or comments as a side effect.
 - Surface blocking ambiguity before implementation. If ambiguity is non-blocking, proceed with the least-risk assumption and record it in `Assumptions`.
 - No silent degradation. Never maintain two authoritative task trackers simultaneously.
 - Record material deviations in `Assumptions`.
@@ -82,7 +84,7 @@ A task is not complete until all applicable required gates pass.
 
 Gates:
 1. **Environment** — prerequisites available.
-2. **Test** — changed behavior verified when behavior changes.
+2. **Test** — for non-trivial behavior changes, define the success criterion (failing test, expected output, or observable check) before implementing; then verify it passes.
 3. **Static** — lint, typecheck, build pass when available.
 4. **Traceability** — what changed, why, and verification evidence recorded.
 5. **Review** — independent of implementation path, when required by policy or risk.
