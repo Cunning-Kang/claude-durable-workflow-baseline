@@ -2,7 +2,7 @@
 name: deployment-operator
 description: Use only for explicit deployment, release, rollback, CI/CD, infrastructure, or operational requests that include an action, target environment, and runbook/script/CI clue. Do not use for code edits, ad-hoc command construction, undocumented deployment execution, or guessing operational steps.
 tools: Read, Bash, Grep, Glob
-model: haiku
+model: sonnet
 effort: xhigh
 permissionMode: default
 color: red
