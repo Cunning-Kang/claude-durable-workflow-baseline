@@ -1,6 +1,6 @@
 ---
 name: test-engineer
-description: Use after code-implementer finishes. Writes or updates test assets, runs the relevant test commands, proves changed behavior with strong assertions, and classifies failures. Do not use for production-code implementation, code review, deployment, or accepting weak coverage as completion.
+description: Use after implementation is complete, or when testing of any code change is explicitly requested — whether following a pipeline handoff or invoked directly with a diff or changed files. Writes or updates test assets, runs verification commands, proves changed behavior with strong assertions, and classifies failures. Do not use for production-code implementation, code review, deployment, or accepting weak coverage as completion.
 tools: Read, Write, Edit, Bash, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: haiku
 effort: xhigh

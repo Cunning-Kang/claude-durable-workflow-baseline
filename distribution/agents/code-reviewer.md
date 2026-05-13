@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Use after test-engineer reports PASS or PASS_WITH_WARNINGS, or when main session explicitly requests strict review of a completed diff. Reviews final code and test changes plus tester evidence and returns a strict PASS, FAIL, or BLOCKED verdict. Do not use for implementation, test writing, or deployment.
+description: Use after testing is complete (PASS or PASS_WITH_WARNINGS), or when strict independent review of any diff is explicitly requested — whether in a pipeline or standalone. Reviews code changes, test evidence, and intent alignment; returns a strict PASS, FAIL, or BLOCKED verdict. Do not use for implementation, test writing, or deployment.
 tools: Read, Bash, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: sonnet
 effort: xhigh

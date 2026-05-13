@@ -1,6 +1,6 @@
 ---
 name: task-planner
-description: Use first for non-trivial features, bug fixes, refactors, or multi-step work when the main session needs a read-only implementation plan. Returns a plan and handoff contract in the Agent result only. Do not use for implementation, testing, review, deployment execution, or writing repo artifacts.
+description: Use for non-trivial features, bug fixes, refactors, or multi-step work that requires a read-only implementation plan — whether coordinating a multi-agent pipeline or invoked directly by a developer. Returns a plan and handoff contract in the Agent result only. Do not use for implementation, testing, review, deployment execution, or writing repo artifacts.
 tools: Read, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: opus
 memory: project
