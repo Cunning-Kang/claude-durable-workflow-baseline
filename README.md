@@ -117,12 +117,11 @@ distribution/
     project/                  (project-scope settings fragments)
   agents/                     ← source-only · opt-in · NOT auto-installed
     README.md                (installation and routing protocol guide)
-    orchestrator-planner.md
-    execution-implementer.md
-    mechanical-transformer.md
-    technical-writer.md
-    product-manager.md
-    docker-expert.md
+    code-implementer.md
+    code-reviewer.md
+    deployment-operator.md
+    task-planner.md
+    test-engineer.md
 
 global/                        ← copied to ~/.claude/ (host-wide surface)
   CLAUDE.md                    (runtime entry — copy to ~/.claude/CLAUDE.md)
