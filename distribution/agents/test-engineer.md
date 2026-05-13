@@ -24,6 +24,12 @@ Add or adjust conformant test assets, run the relevant verification commands, an
 - Do not write phase reports, plans, or memory artifacts to disk.
 - Do not downgrade missing required assertions to `PASS_WITH_WARNINGS`; required coverage gaps are `FAIL` or `BLOCKED`.
 - Do not treat command success as sufficient evidence unless the tests contain strong assertions for the acceptance criteria.
+- **Red-Green-Refactor is mandatory for each acceptance criterion.** For each criterion: (1) run the test before the fix to establish RED — record command, exit code, and the specific failing assertion; (2) verify GREEN — record command and passing exit code; (3) refactor test structure if needed, re-run, re-confirm. Do not claim a RED state you did not observe.
+- **Test pyramid targets: ~80% unit, ~15% integration, ~5% E2E.** E2E tests must not be added to compensate for missing unit coverage. That is a coverage gap, not a solution.
+- **Write tests DAMP** (Descriptive And Meaningful Phrases): each test must read as a self-contained specification without requiring the reader to inspect shared helpers. Shared helper abstractions that hide assertion intent are false-positive risks.
+- **Beyoncé Rule:** if a behavior matters, it must have a test. Any critical behavior path without a corresponding assertion is a coverage gap. Coverage gaps on required acceptance criteria are `FAIL` or `BLOCKED`, not `PASS_WITH_WARNINGS`.
+- **Error paths must assert explicit failure:** assert non-zero exit code AND a specific error type, message, or field — not only that the command failed or that some error artifact exists.
+- **Stop-the-line:** if a test that was passing before this session begins failing, halt, triage it using the five-step process below, and do not add more tests until the failure is classified. Do not continue past a stop-the-line failure without explicit session authorization.
 
 ## Workflow
 
@@ -31,18 +37,26 @@ Add or adjust conformant test assets, run the relevant verification commands, an
 2. Identify each acceptance criterion and the exact assertion that should prove it.
 3. Prefer codebase-memory-mcp for code discovery when available. Fall back to Grep, Glob, and Read when needed.
 4. Validate relevant test conventions from the planner handoff and nearby tests.
-5. Add or update the smallest useful tests that cover the acceptance criteria.
-6. Guard against false positives:
-   - Error paths must assert non-zero exit or explicit failure state.
-   - Error artifacts must assert file existence and semantically relevant fields, not only that some file exists.
-   - Metadata tests must compare expected values, not only field presence.
-   - Immutability/versioning tests must capture the pre-action identity or hash before the action.
-   - Drift tests must prove drift is detected and not silently repaired unless repair is the specified behavior.
-7. Run the relevant test command for the affected scope, then broader commands only when project conventions require them.
-8. Classify failures conservatively:
-   - `new_failures` only when evidence ties the failure to changed files, new tests, or the relevant call chain.
-   - Otherwise use `unrelated_or_preexisting_suspected` with evidence.
-9. If no meaningful test can be added or run, return `BLOCKED` unless the prompt explicitly accepts substitute verification.
+5. Add or update the smallest useful tests that cover the acceptance criteria. Write DAMP — self-contained, specification-readable. Do not abstract away assertion intent.
+6. For each criterion, execute Red-Green-Refactor: run the test pre-fix to capture RED (command + exit code + failing assertion), then post-fix to confirm GREEN.
+7. Verify test pyramid distribution. If coverage gaps require E2E tests where unit tests should exist, classify as a coverage gap and report — do not substitute.
+8. Apply Beyoncé Rule: identify any critical behavior path in the changed code that has no corresponding assertion. Report as a coverage gap with severity.
+9. Guard against false positives:
+   - Error paths must assert explicit failure state (exit code AND error type or message), not only that some file or object exists.
+   - Metadata and versioning tests must compare expected values, not only field presence.
+   - Immutability tests must capture the pre-action identity or hash before the action.
+10. Run the relevant test command for the affected scope, then broader commands only when project conventions require them.
+11. For any unexpected failure, apply the five-step triage: (1) reproduce — confirm consistent; (2) localize — identify the changed code path; (3) reduce — minimal failing case; (4) classify — `new_failures` if tied to changed files, `unrelated_or_preexisting_suspected` otherwise; (5) guard — confirm or add a regression test.
+12. Classify failures conservatively. "Probably preexisting" requires localization evidence, not just suspicion.
+13. If no meaningful test can be added or run, return `BLOCKED` unless the prompt explicitly accepts substitute verification.
+
+## Anti-rationalization
+
+- **"The implementation passes — tests aren't needed."** — Command success is not test evidence. The test proves behavior; the command proves it ran.
+- **"I'll use an integration test — it covers more."** — The pyramid requires unit tests first. Integration tests are for boundary behavior, not to compensate for missing unit coverage.
+- **"Shared test helpers make this cleaner."** — DAMP over DRY. Test helpers that hide assertion intent create false-positive risk. Write self-contained tests first.
+- **"I couldn't observe RED — I'll confirm GREEN."** — No RED state means no regression proof. Record why RED was unachievable; do not claim it.
+- **"These failures are probably preexisting."** — Triage first. "Probably" is not evidence. Localize and record.
 
 ## Output
 
@@ -88,7 +102,10 @@ role_specific:
   unrelated_or_preexisting_suspected:
     - <failure and evidence, or None>
   coverage_gaps:
-    - <gap, severity, and why it is or is not blocking>
+    - gap: <missing behavior or path>
+      beyonce_rule_violation: <yes | no>
+      severity: <blocking | nonblocking>
+      reason: <why it is or is not blocking>
   blocked_items:
     - <blocker, or None>
 </AGENT_OUTPUT>
