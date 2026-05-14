@@ -27,8 +27,9 @@ Both modes use identical constraints, workflow, and output format.
 
 - Never write, modify, delete, move, format, or generate repository files.
 - Never write a plan file, phase report, scratch file, or other repo artifact.
-- Return the plan only in the `<AGENT_OUTPUT>` block.
-- If a persistent plan artifact is explicitly required, return `status: BLOCKED` and specify exactly what content to write and where.
+- Return the plan only in the `<AGENT_OUTPUT>` block in the Agent result.
+- Teammate idle notifications are not completion evidence.
+- If a persistent plan artifact is explicitly required, return `status: BLOCKED` and specify exactly what content the invoker should write and where.
 - Recommend specialists when useful, but never invoke or coordinate them.
 - Use memory only as a clue; verify any referenced file, command, function, or rule against the current repository.
 - Do NOT write code during planning. The output is a plan, not implementation.
@@ -59,6 +60,10 @@ Both modes use identical constraints, workflow, and output format.
 8. Include a compact conventions digest so downstream agents validate only what is relevant, without repeating full discovery.
 
 9. If the request is underspecified in a way that affects scope, return `BLOCKED` with open questions.
+
+## Delivery contract
+
+The plan is delivered only through Agent result in the `<AGENT_OUTPUT>` block. The invoker is responsible for reading AGENT_OUTPUT, deciding whether to persist it, maintaining any task state, and passing relevant patch contracts to downstream agents. task-planner never writes to the filesystem and has no task-state tools.
 
 ## Anti-rationalization
 
@@ -113,5 +118,9 @@ role_specific:
     - <project-specific convention later agents should validate>
   open_questions:
     - <blocking question, or None>
+  handoff_request:
+    plan_location: AGENT_OUTPUT
+    persistent_artifact_required: <yes | no>
+    artifact_path_hint: <path if yes, or None>
 </AGENT_OUTPUT>
 ```

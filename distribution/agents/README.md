@@ -16,10 +16,10 @@ task-planner -> code-implementer -> test-engineer -> code-reviewer -> main final
 
 | Agent | Model | Effort | Max turns | Role |
 |---|---:|---:|---:|---|
-| `task-planner` | opus | inherit | 15 | Writes the plan artifact and handoff contract before implementation. |
-| `code-implementer` | sonnet | xhigh | 35 | Makes the planned code change and runs codegen, formatting, and local smoke checks. |
-| `test-engineer` | sonnet | xhigh | 25 | Updates test assets, runs relevant tests, and classifies failures conservatively. |
-| `code-reviewer` | haiku | xhigh | 20 | Reviews final code and test changes plus tester evidence without modifying files. |
+| `task-planner` | opus | inherit | 15 | Returns the plan and handoff contract in Agent result only. |
+| `code-implementer` | haiku | xhigh | 35 | Makes the planned code change and runs codegen, formatting, and local smoke checks. |
+| `test-engineer` | haiku | xhigh | 25 | Updates test assets, runs relevant tests, and classifies failures conservatively. |
+| `code-reviewer` | sonnet | xhigh | 20 | Reviews final code and test changes plus tester evidence without modifying files. |
 | `deployment-operator` | haiku | xhigh | 15 | Executes only documented runbook/script/CI operational commands for explicit ops requests. |
 
 Legacy names `planner`, `implementer`, `tester`, `reviewer`, and `ops-deploy` were removed rather than kept as aliases to avoid duplicate routing targets. Other existing specialist agents in this directory are separate agents, not aliases for these five core workflow stages.
@@ -74,28 +74,38 @@ Status values are role-specific:
 | Agent | Status values |
 |---|---|
 | `task-planner` | `READY`, `BLOCKED` |
-| `code-implementer` | `DONE`, `BLOCKED` |
+| `code-implementer` | `DONE`, `PARTIAL`, `BLOCKED` |
 | `test-engineer` | `PASS`, `PASS_WITH_WARNINGS`, `FAIL`, `BLOCKED` |
-| `code-reviewer` | `PASS`, `PASS_WITH_WARNINGS`, `FAIL`, `BLOCKED` |
+| `code-reviewer` | `PASS`, `FAIL`, `BLOCKED` |
 | `deployment-operator` | `DONE`, `BLOCKED`, `ABORTED` |
 
 `PASS_WITH_WARNINGS` can proceed only if warnings are non-blocking and the main session records them in final risks or assumptions.
 
-## Tool and evidence policy
+## Delivery protocol
 
-Tool access is least-privilege by role:
+- Final deliverables are returned through Agent result in the `<AGENT_OUTPUT>` block.
+- Teammate idle notifications are not completion evidence.
+- The main session owns task state. Agents without task-state tools must not be asked to update tasks.
+- The main session extracts AGENT_OUTPUT fields and passes relevant context to the next stage.
+- Unrecognized status values must be treated as `BLOCKED`.
 
-- `task-planner`: read/discovery tools plus write access for the plan file.
-- `code-implementer`: edit tools and Bash for codegen, formatting, and local smoke checks.
-- `test-engineer`: edit tools for test assets and Bash for relevant test commands.
-- `code-reviewer`: read-only tools and safe no-write static checks.
-- `deployment-operator`: read plus Bash execution of documented runbook/script/CI commands only.
+## Tool and permission matrix
+
+| Agent | Write/Edit | Bash | MCP codebase | Task state | Git commit |
+|---|---:|---:|---:|---:|---:|
+| `task-planner` | no | no | yes | no | no |
+| `code-implementer` | production/generation only | targeted smoke/codegen only | yes | no | explicit authorization only |
+| `test-engineer` | test assets only | test commands only | yes | no | no |
+| `code-reviewer` | no | no | yes | no | no |
+| `deployment-operator` | no | documented ops only | no | no | no |
+
+Single-writer rule: at most one agent may modify production code files in a pipeline run. The main session remains the sole orchestrator.
 
 When available, code-oriented agents prefer `codebase-memory-mcp` for structural code discovery and fall back to `Grep`, `Glob`, and `Read` when needed. Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
 
 ## Planning artifacts
 
-`task-planner` always writes a plan file. It uses the project’s established planning location when one exists; otherwise it writes `.claude/plans/<task-slug>.md`. Without a project template, the fallback is a one-page plan containing Goal, Scope, Acceptance, Assumptions, Execution order, Target files or areas, and Verification gates.
+`task-planner` returns the plan in AGENT_OUTPUT only. If a persistent plan artifact is required, the invoker extracts the plan from Agent result and writes it explicitly.
 
 Other agents do not write phase reports. They report phase results only through `AGENT_OUTPUT`.
 
