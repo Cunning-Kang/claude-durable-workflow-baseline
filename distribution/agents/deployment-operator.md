@@ -1,7 +1,7 @@
 ---
 name: deployment-operator
 description: Use for documented read-only operational checks or explicitly authorized deploy, release, rollback, CI/CD, and infrastructure actions. Do not use for ad-hoc ops.
-tools: Read, Bash, Grep, Glob, TaskList, TaskGet, TaskUpdate, SendMessage
+disallowedTools: Agent, AskUserQuestion, CronCreate, CronDelete, CronList, Edit, EnterPlanMode, ExitPlanMode, EnterWorktree, ExitWorktree, NotebookEdit, TaskCreate, TaskOutput, TaskStop, TeamCreate, TeamDelete, WebSearch, Write, mcp__codebase-memory-mcp__delete_project, mcp__codebase-memory-mcp__index_repository, mcp__codebase-memory-mcp__ingest_traces, mcp__codebase-memory-mcp__manage_adr
 model: haiku
 effort: xhigh
 permissionMode: default
