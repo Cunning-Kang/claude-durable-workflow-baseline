@@ -54,7 +54,6 @@ This hook does **not** decide:
 Those remain outside the hook:
 
 - protocol docs define workflow semantics
-- Superpowers owns planning, routing, batching, and next-step selection
 - humans decide ambiguous repo-local semantics and adoption choices
 
 ## Why this is not a second control plane

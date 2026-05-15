@@ -35,7 +35,6 @@ These hooks are **source-only distribution, not auto-install**.
 
 1. **Environment dependency** — hooks run in user environments with varying toolchains, privilege levels, and risk tolerances. A hook that works for one user may break another.
 2. **Team boundary differences** — user-level hooks impose one user's preferences on all repos; explicit opt-in respects autonomy.
-3. **Superpowers control surface protection** — automatic hook installation could shadow or override Superpowers behavior (see `docs/reference/superpowers-boundary.md`).
 4. **Opt-in correctness** — deterministic enforcement must be consciously adopted.
 5. **Traceability** — explicit installation makes it clear what is running in a given environment.
 
@@ -49,14 +48,10 @@ Hooks in this directory are **never auto-installed**. They require:
 
 ---
 
-## Relationship with Superpowers
 
 User-level hooks from this repo must **not**:
-- Register competing skill entry points (e.g., `/brainstorming`, `/finish-branch` — the latter was removed from this baseline repo and is owned by Superpowers)
-- Redirect or shadow the primary Superpowers control flow
 - Modify `~/.claude/settings.json` directly
 
-Hooks that compete with Superpowers are prohibited. See `docs/reference/superpowers-boundary.md` and `docs/reference/hooks-scope.md`.
 
 ---
 
@@ -73,6 +68,5 @@ Is it project-agnostic AND intended to run in ALL repos?
 ## References
 
 - `docs/reference/hooks-scope.md` — Three-layer scope reference
-- `docs/reference/superpowers-boundary.md` — Repository role and Superpowers boundary
 - D-003: Hooks must be layered as user / project / local example only
 - R-002: Hooks mis-globalization risk — source/snippets only; opt-in per layer

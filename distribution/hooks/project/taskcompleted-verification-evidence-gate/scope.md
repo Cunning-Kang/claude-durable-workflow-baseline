@@ -44,10 +44,6 @@ The following stay outside this hook:
 
 Verification policy, strategy applicability, and gate selection are defined in protocol docs, not in hooks.
 
-### Superpowers
-
-Planning, routing, batching, and next-step selection are owned by Superpowers. The hook does not interfere with those decisions.
-
 ### Human judgment
 
 Adoption decisions, ambiguous cases, and repo-local semantics remain with humans.

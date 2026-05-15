@@ -62,7 +62,6 @@ Because this repo is a baseline source and distribution source, these issues com
 
 ### Institutional Learnings
 
-- `docs/reference/superpowers-boundary.md` explicitly forbids turning this repo into a competing behavior-control layer; fixes must stay passive, portable, and opt-in.
 - `docs/reference/hooks-scope.md` forbids automatic hook installation and requires user/project/local scope separation.
 - `docs/reference/memory-boundary.md` forbids turning baseline memory into protocol storage or source-repo-only knowledge; distributed memory files must point to valid durable references.
 - `baseline/docs/workflow/execution-contract.md` requires one authoritative state surface and disfavors hidden re-scoping; the remediation should land as bounded units, not an open-ended cleanup campaign.
@@ -331,7 +330,6 @@ flowchart TB
 - Modify: `docs/claude-one-command-bootstrap.md`
 - Modify: `docs/releases/v1.0.0-release-note.md`
 - Modify: `docs/releases/v1.0.0-maintainer-note.md`
-- Modify: `docs/reference/superpowers-boundary.md`
 - Modify: `global/README.md` *(if release-surface cleanup changes the public description of distributed contents)*
 - Delete: `global/skills/`
 - Test: `tests/test_distribution_contract.py`
@@ -345,7 +343,6 @@ flowchart TB
 
 **Patterns to follow:**
 - `README.md` and `VERSION` as current-truth surfaces.
-- `docs/reference/superpowers-boundary.md` and `docs/reference/hooks-scope.md` for public boundary descriptions.
 
 **Test scenarios:**
 - Happy path: `VERSION` still exposes a parseable `baseline-version:` field used by the init script.
@@ -406,7 +403,6 @@ flowchart TB
 - This work updates both adopter-facing and maintainer-facing docs. Reviewers should explicitly check for repo-relative path correctness in all edited markdown files.
 - If Batch 1 changes the preferred installation command wording, the same wording should be reused everywhere instead of paraphrased in multiple docs.
 - Shared mutable truth surfaces span multiple units: `README.md`, `global/README.md`, `docs/claude-one-command-bootstrap.md`, and `tests/test_distribution_contract.py`. When a later unit must revisit one of these files, keep the later edit narrowly additive and explicitly verify it against the earlier unit’s claims.
-- Release-surface cleanup should avoid introducing new policy language that diverges from `docs/reference/superpowers-boundary.md` or `docs/reference/hooks-scope.md`.
 
 ## Sources & References
 
@@ -417,7 +413,6 @@ flowchart TB
 - Related code: `distribution/agents/docker-expert.md`
 - Related code: `baseline/memory/MEMORY.md`
 - Related code: `tests/test_distribution_contract.py`
-- Related docs: `docs/reference/superpowers-boundary.md`
 - Related docs: `docs/reference/hooks-scope.md`
 - Related docs: `docs/reference/memory-boundary.md`
 - Related release docs: `docs/releases/v1.0.0-release-note.md`, `docs/releases/v1.0.0-maintainer-note.md`

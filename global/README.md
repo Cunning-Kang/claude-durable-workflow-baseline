@@ -26,7 +26,6 @@ These are not standalone policies; they extend core-standard.md with specific op
 - `docs/specs/_template/*`
 - repo memory files (`memory/`)
 - feature durable state
-- Superpowers skills (installed separately via marketplace)
 
 ## Must not contain
 - `settings.json`
@@ -37,7 +36,6 @@ These are not standalone policies; they extend core-standard.md with specific op
 - repo memory files
 - feature durable state
 - sync / upgrade / runtime logic
-- Superpowers plugin (installed separately via marketplace)
 
 ## Relationship to other layers
 - `baseline/` remains the repo-local baseline package
@@ -56,6 +54,5 @@ cp -rn ~/.claude/baselines/durable-workflow-v1/global/* ~/.claude/
 
 ## Current stage
 - v1 canonical distribution layer is present
-- Superpowers is the primary behavior control layer (installed separately)
 - manual installation only
 - no auto-sync, no upgrade flow

@@ -20,12 +20,7 @@
 
 ## 新机器（全新主机）
 
-### 步骤 1: 安装 Superpowers 插件
-
-从 Claude Code marketplace 安装 `superpowers` 插件。
-这是唯一必须的全局手动安装。
-
-### 步骤 2: 克隆 source repo 并安装全局资产
+### 步骤 1: 克隆 source repo 并安装全局资产
 
 ```bash
 # 克隆 source repo 到本地 cache
@@ -49,7 +44,7 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/scripts/*.sh \
    ~/.claude/scripts/
 ```
 
-### 步骤 3: 在每个新 repo 中运行入口命令
+### 步骤 2: 在每个新 repo 中运行入口命令
 
 ```bash
 cd /path/to/new-repo
@@ -82,7 +77,7 @@ claude
 /init-claude-workflow
 ```
 
-如果 `~/.claude/baselines/durable-workflow-v1/` 不存在，先执行步骤 2（克隆 + 复制命令与脚本）。
+如果 `~/.claude/baselines/durable-workflow-v1/` 不存在，先执行步骤 1（克隆 + 复制命令与脚本）。
 
 ---
 
@@ -92,52 +87,35 @@ claude
 
 1. 看 `.claude/CLAUDE.md` 或 repo 根目录的 `CLAUDE.md`
 2. 用 `/init-claude-workflow` 初始化新 repo（仅首次）
-3. 用 Superpowers 技能开始工作
 
-### Superpowers 入口映射
 
 > **区分说明：**
 > - `/init-claude-workflow`、`/new-feature` 为本仓库 distribution commands（需复制到 `~/.claude/commands/`）
-> - 其余为 Superpowers shipped skills（需 Superpowers 插件）
 
 | 场景 | 入口 |
 |------|------|
 | 初始化新项目 | `/init-claude-workflow` |
 | 初始化新 feature | `/new-feature <feature-slug>` |
-| 开始任务 | `superpowers:brainstorming` |
-| 写 spec/plan | `superpowers:writing-plans` |
-| 实现 | `superpowers:test-driven-development` |
-| 验证完成 | `superpowers:verification-before-completion` |
-| 分支收尾评估 | `superpowers:finishing-a-development-branch` |
-| 沉淀记忆 | 见增强层 `memory/` 目录（由 Superpowers 提供心智模型） |
 | 查询增强层 | `docs/specs/_template/`、`docs/workflow/`、`memory/` |
 
 ---
 
-## 主控层 vs 增强层边界
+## 仓库边界
 
-**Superpowers（主控层）**
-- 唯一行为控制面
-- 所有 skill 入口（brainstorming, writing-plans, TDD, finishing-a-development-branch, etc.）
-- Superpowers shipped skills via `superpowers:<skill-name>`
-
-**增强层（知识 / 协议 / 骨架层）**
+**知识 / 协议 / 骨架层**
 - `docs/specs/_template/` — durable spec 模板
 - `docs/workflow/` — 执行协议（review, memory, execution）
 - `memory/` — 项目知识沉淀
 - `baseline/` — repo 初始化 baseline
 
-增强层不控制行为，只提供 Superpowers 主控层覆盖不到的 durable 知识复利，是被动知识结构而非第二控制层。
 
 ---
 
 ## 明确不要做的事
 
-1. **不要**在新 repo 中重建主控命令/skills（与 Superpowers 冲突）
-2. **不要**修改 `~/.claude/settings.json` 的 env 配置
-3. **不要**在 Superpowers 已有能力的方向继续造轮子
-4. **不要**将 `docs/workflow/`、`docs/specs/_template/`、`memory/` 作为全局控制层
-5. **不要**增加新的全局 automation 控制层
+1. **不要**修改 `~/.claude/settings.json` 的 env 配置
+2. **不要**将 `docs/workflow/`、`docs/specs/_template/`、`memory/` 作为全局控制层
+3. **不要**增加新的全局 automation 控制层
 
 ---
 
@@ -181,5 +159,4 @@ source repo (canonical distribution source)
 - [ ] `docs/workflow/` 存在（至少含 review-protocol.md）
 - [ ] `memory/MEMORY.md` 存在
 - [ ] `claude/claude-snippet.md` 存在
-- [ ] Superpowers 插件已激活
 - [ ] `~/.claude/CLAUDE.md` 存在（引用 core-standard）

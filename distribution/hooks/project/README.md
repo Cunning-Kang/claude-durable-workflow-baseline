@@ -39,7 +39,6 @@ Project-level hooks are **source-only distribution, not auto-install and not glo
 
 1. **Project boundary respect** — project-level hooks encode team-specific conventions. Global installation crosses team boundaries and imposes one team's preferences on all.
 2. **Non-portability** — a hook appropriate for one project may be irrelevant or harmful in another.
-3. **Superpowers control surface protection** — automatic activation could shadow or override Superpowers behavior (see `docs/reference/superpowers-boundary.md`).
 4. **Opt-in correctness** — enforcement must be consciously adopted per project, not forced on every repo.
 5. **Traceability** — explicit installation makes it clear what is running in a given project.
 
@@ -59,21 +58,17 @@ Hooks in this directory are **never globally enabled by default**. They require:
 
 Installing to `~/.claude/hooks/` converts them to user-level hooks — this is **not** the intended behavior and may cause:
 - Cross-project contamination of hook behavior
-- Conflicts with Superpowers skill entry points
 - Unexpected enforcement in repos that never opted in
 
 If you need global behavior, use `distribution/hooks/user/` instead.
 
 ---
 
-## Relationship with Superpowers
 
 Project-level hooks from this repo must **not**:
 - Register competing skill entry points
-- Redirect or shadow the primary Superpowers control flow
 - Override or shadow hooks in `distribution/hooks/user/`
 
-Hooks that compete with Superpowers or user-level hooks are prohibited. See `docs/reference/superpowers-boundary.md` and `docs/reference/hooks-scope.md`.
 
 ---
 
@@ -135,6 +130,5 @@ All candidates below are **project-scope, source-only, opt-in templates**. They 
 ## References
 
 - `docs/reference/hooks-scope.md` — Three-layer scope reference
-- `docs/reference/superpowers-boundary.md` — Repository role and Superpowers boundary
 - D-003: Hooks must be layered as user / project / local example only
 - R-002: Hooks mis-globalization risk — source/snippets only; opt-in per layer

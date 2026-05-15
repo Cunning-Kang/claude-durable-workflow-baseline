@@ -39,7 +39,6 @@ Project-level settings snippets are **source-only distribution, not auto-install
 
 1. **Project boundary respect** — project-level settings encode repo- or team-specific choices.
 2. **Non-portability** — a fragment appropriate for one project may be irrelevant or harmful in another.
-3. **Superpowers control surface protection** — automatic activation could shadow or override the intended primary control surface.
 4. **Opt-in correctness** — project enforcement must be adopted consciously per repository.
 5. **Traceability** — explicit manual merge makes it clear what is active in a given project.
 
@@ -61,19 +60,16 @@ Snippets in this directory are **never globally enabled by default**. They requi
 Doing so would:
 - Leak project-specific behavior into unrelated repos
 - Blur the user/project scope boundary
-- Increase the chance of conflicts with user-level hooks or Superpowers-managed behavior
 
 If you need portable user-level defaults, use `distribution/settings-snippets/user/` instead.
 
 ---
 
-## Relationship with Hooks and Superpowers
 
 Project-level settings snippets from this repo must **not**:
 - Ship a live `settings.json`
 - Auto-enable hooks without explicit project adoption
 - Register competing skill entry points
-- Redirect or shadow the primary Superpowers control flow
 - Override user-level defaults by pretending to be global policy
 
 A snippet may reference project-level hooks only after the project explicitly adopts both the hook source and the settings fragment.
@@ -141,6 +137,5 @@ All snippets below are **project-scope, snippet-only, opt-in templates**. They a
 ## References
 
 - `docs/reference/hooks-scope.md` — Three-layer scope reference
-- `docs/reference/superpowers-boundary.md` — Repository role and Superpowers boundary
 - D-003: Hooks must be layered as user / project / local example only
 - R-002: Hooks/settings must remain source/snippets only; opt-in per layer

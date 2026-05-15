@@ -51,10 +51,6 @@ This template does **not** implement:
 
 Protocol docs own the workflow meaning around completion, milestone semantics, and durable-record conventions.
 
-### Superpowers
-
-Superpowers owns planning, routing, batching, execution flow, and next-step selection.
-
 ### Human judgment
 
 Humans still decide:

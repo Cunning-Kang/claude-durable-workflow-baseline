@@ -92,7 +92,7 @@ This runs `~/.claude/scripts/instantiate-feature.sh`, which:
 - Replaces `<feature-slug>` in all generated files
 - Skips if the feature directory already exists (never overwrites)
 
-After instantiation, fill in `spec.md`, `plan.md`, and the task files, then use the Superpowers `/brainstorming` skill to start planning.
+After instantiation, fill in `spec.md`, `plan.md`, and the task files, then start planning in Claude Code.
 
 ## Directory structure
 

@@ -39,7 +39,6 @@ This README describes a manual merge workflow only. It does not imply any automa
 
 1. **Environment dependency** — user runtimes vary in toolchains, privilege levels, and local policies.
 2. **Team boundary differences** — a user-level default may be appropriate for one person but not for every project or team.
-3. **Superpowers control surface protection** — default-on settings could shadow or override the intended primary control surface.
 4. **Opt-in correctness** — deterministic enforcement and runtime behavior should be consciously adopted.
 5. **Traceability** — explicit manual merge makes it clear what is active in a given user runtime.
 
@@ -54,13 +53,11 @@ Snippets in this directory are **never auto-merged**. They require:
 
 ---
 
-## Relationship with Hooks and Superpowers
 
 User-level settings snippets from this repo must **not**:
 - Ship a live `settings.json`
 - Auto-enable hooks without explicit user adoption
 - Register competing skill entry points
-- Redirect or shadow the primary Superpowers control flow
 
 A snippet may reference user-level hooks only after the user explicitly adopts both the hook source and the settings fragment.
 
@@ -79,6 +76,5 @@ Is it intended to apply across all repos for one user?
 ## References
 
 - `docs/reference/hooks-scope.md` — Three-layer scope reference
-- `docs/reference/superpowers-boundary.md` — Repository role and Superpowers boundary
 - D-003: Hooks must be layered as user / project / local example only
 - R-002: Hooks/settings must remain source/snippets only; opt-in per layer

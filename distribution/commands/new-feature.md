@@ -31,7 +31,7 @@ After instantiation, fill in:
 - `review.md`: Fill in Reviewer before starting implementation
 - `verify.md`: Add verification commands for each acceptance condition
 
-Then continue with the Superpowers `/brainstorming` skill.
+Then continue planning in Claude Code.
 
 ## Non-goals
 - Do not sync the baseline cache.

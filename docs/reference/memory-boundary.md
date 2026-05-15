@@ -171,7 +171,6 @@ Content that does not belong in `baseline/memory/*` must be routed to the approp
 | Protocol definitions for workflow phases, task states, review gates | `baseline/docs/workflow/memory-protocol.md` and other `baseline/docs/workflow/*.md` files |
 | Hook installation, configuration, or permission behavior | Hook source files or `docs/reference/hooks-scope.md` (exists) |
 | Slash command definitions or command routing | `global/commands/*.md` or `distribution/commands/` |
-| Superpowers skill behavior or capability descriptions | The relevant skill's `SKILL.md` |
 | Feature specifications, implementation plans, design decisions | Feature spec or project issue tracker |
 | Session-specific state, current tasks, in-progress work | Ephemeral — do not persist |
 | Speculative ideas, experiments not yet validated | Human judgment — do not persist until validated |

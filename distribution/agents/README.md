@@ -121,4 +121,3 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~
 - `global/guides/orchestration-extension.md` — orchestration decision guide.
 - `global/standards/core-standard.md` — core verification and review gates.
 - These agents do not replace global runtime principles; they provide opt-in staged collaborators.
-- Superpowers remains the primary behavior control layer.

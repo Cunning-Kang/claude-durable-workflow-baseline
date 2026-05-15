@@ -20,7 +20,6 @@ Hooks that live in `~/.claude/hooks/` and run at user level, across all projects
 
 **Prohibited:**
 - No automatic `~/.claude/` installation via bootstrap
-- No competing with Superpowers skill entry points
 - No modifying `~/.claude/settings.json` directly
 
 ---
@@ -39,7 +38,7 @@ Hooks that live in `<project>/.claude/hooks/` and run scoped to a single project
 **Prohibited:**
 - Not installed globally; tied to the project repo
 - No automatic activation without explicit project adoption
-- No competing with Superpowers or user-level hooks
+- No competing with user-level hooks
 
 ---
 
@@ -76,7 +75,6 @@ Is it project-agnostic AND intended to run in ALL repos?
 ```
 
 **Hard stops — any of these disqualifies a hook from this repo:**
-- Competes with a Superpowers skill entry point
 - Modifies `~/.claude/settings.json` directly
 - Auto-installs into a user's runtime without explicit opt-in
 - Redirects or shadows primary control flow
@@ -101,7 +99,7 @@ Hooks are **not** globally enabled by default because:
 
 2. **Team boundary differences** — project-level hooks encode team-specific conventions. Global installation crosses team boundaries and imposes one team's preferences on all.
 
-3. **Superpowers control surface protection** — automatic hook installation could shadow or override Superpowers behavior, creating a competing control layer (R-002 risk).
+3. **Control surface protection** — automatic hook installation could shadow or override user-level behavior, creating a competing control layer (R-002 risk).
 
 4. **Opt-in correctness** — deterministic enforcement must be consciously adopted. Default-on enforcement is a policy decision that belongs to the user or team, not the distribution source.
 
@@ -123,7 +121,7 @@ Settings snippets follow the same three-layer scope and opt-in principle as hook
 - Both are source/template only, never live config
 - Both must state "why not default global" in their README
 - Both require explicit opt-in before entering a user environment
-- Both must not compete with Superpowers entry points
+- Both must not compete with user-level hook behavior
 
 ---
 
@@ -135,7 +133,6 @@ The following patterns are forbidden in any hook or snippet from this repo:
 - Automatic installation into `~/.claude/` without user action
 - Default-on behavior that runs without opt-in
 - Hooks that register competing skill entry points
-- Hooks that redirect the primary Superpowers control flow
 - Project-level hooks that run without the project's explicit adoption
 
 ---
@@ -150,7 +147,7 @@ Before accepting any new hook into this repo:
 - [ ] Is it source/template only — no live config?
 - [ ] Does it avoid all prohibited patterns in Section 6?
 - [ ] Is it opt-in, not auto-installed?
-- [ ] Does it coexist with Superpowers without competing?
+- [ ] Does it coexist with user-level hooks without competing?
 
 ---
 

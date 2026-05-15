@@ -50,10 +50,6 @@ This template does **not** implement:
 
 Protocol docs own the workflow meaning around review requirements, review semantics, and durable-record conventions.
 
-### Superpowers
-
-Superpowers owns planning, routing, batching, execution flow, and next-step selection.
-
 ### Human judgment
 
 Humans still decide:

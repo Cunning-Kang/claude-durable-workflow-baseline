@@ -44,7 +44,6 @@ H-02 enforces a narrow, declarative boundary: evidence presence. It does not enc
 
 Verification strategy decisions remain with:
 - protocol docs defining workflow semantics
-- Superpowers owning planning, routing, and next-step selection
 - humans deciding ambiguous repo-local semantics and adoption choices
 
 ## Adoption model
