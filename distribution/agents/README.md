@@ -1,94 +1,56 @@
-# Custom Subagent Definitions
+# Custom Agent Definitions
 
-Source-only, opt-in agent definitions for Claude Code. Not auto-installed.
+Source-only, opt-in specialist agent definitions for Claude Code. Not auto-installed.
 
 ## What this is
 
-Reusable, version-controlled subagent definitions that users can adopt by copying to `~/.claude/agents/`. This directory is a distribution source and design guide, not a workflow runtime.
+Reusable, version-controlled agent definitions that users can adopt by copying to `~/.claude/agents/` or a project `.claude/agents/` directory. This directory is a distribution source and design guide, not a workflow runtime.
 
-These agents are standalone collaborators. They can be composed into a staged workflow, but none requires a mandatory pipeline to be useful.
+Each agent is a standalone specialist. Claude Code routes to agents primarily from frontmatter `description`, so descriptions should state the trigger, scope, and negative cases clearly. Prompt bodies define specialist behavior and quality bars; they do not define transport, orchestration, or task-state protocols.
 
-## Baseline collaborators
+## Baseline specialists
 
 | Agent | Model | Effort | Max turns | Role |
 |---|---:|---:|---:|---|
-| `task-planner` | opus | inherit | 15 | Produces read-only implementation plans, task breakdowns, decision points, and handoff suggestions. |
-| `code-implementer` | haiku | xhigh | 35 | Makes bounded code changes, updates focused tests when needed, and reports patch evidence. |
+| `task-planner` | opus | inherit | 15 | Produces read-only implementation plans, task breakdowns, decision points, and acceptance criteria. |
+| `code-implementer` | haiku | xhigh | 35 | Makes bounded code changes and updates focused tests when they directly prove the patch. |
 | `test-engineer` | haiku | xhigh | 25 | Designs tests, verifies diffs, triages failures, and reports coverage or evidence gaps. |
 | `code-reviewer` | sonnet | xhigh | 20 | Performs strictly read-only review of diffs, proposals, risk areas, or evidence quality. |
 | `deployment-operator` | haiku | xhigh | 15 | Runs documented operational checks or authorized deployment actions for explicit ops requests. |
 
-A common development composition is:
+## Agent definition shape
 
-```text
-task-planner -> code-implementer -> test-engineer -> code-reviewer -> main final verification
-```
-
-This is a composition pattern, not a requirement. `deployment-operator` is an opt-in operations specialist, not a default development stage.
-
-## Agent definition skeleton
-
-Each baseline agent uses the same prompt shape:
+Baseline agents use a small, official-style prompt shape:
 
 ```text
 ## Role
 ## What you produce
 ## Workflow
 ## Guardrails
-## Handoff
-## Principles this agent follows
 ```
 
-The shared skeleton creates predictable prompts without forcing every agent into one output schema. Each agent defines role-specific artifacts and handoff needs.
+The sections describe specialist behavior and output quality. They intentionally avoid runtime-specific instructions such as `Agent result`, `SendMessage`, teammate idle notifications, or task-state ownership. Claude Code runtime owns how agent output is routed; the agent owns the work product.
 
-## Main session responsibility
+## Design principles
 
-The main session stays as controller and final verifier:
-
-- Selects and sequences agents.
-- Maintains task state.
-- Owns final verification and user-facing completion claims.
-- Schedules independent read-only specialists when useful.
-- Extracts useful handoff context and passes it to the next collaborator.
-- Treats subagent results as inputs, not completion claims.
-
-## Shared handoff and stop principles
-
-Subagents should make the next useful action clear to the main session. A useful handoff usually names:
-
-- What was produced, changed, found, or verified.
-- Evidence that matters: files, commands, outputs, reviewed scope, observed state, or citations.
-- Unknowns, risks, or unverified claims.
-- Whether the main session can continue, must decide, or should stop.
-- Suggested next collaborator or action when useful.
-
-Do not require a universal field template. Incomplete handoff is not automatically blocked; real blockers are authorization gaps, unsafe guesswork, missing scope, unavailable evidence, destructive actions, or external effects that need user approval.
-
-Teammate idle notifications are not completion evidence.
-
-## Parallelism boundary
-
-Only independent read-only tasks may run in parallel. File-writing work remains serial unless the main session explicitly separates non-overlapping scopes.
-
-For a given change, only one active collaborator should modify production code at a time. If production-code ownership passes between collaborators, the main session must make the handoff explicit and re-run review on the resulting diff.
+- Keep `description` precise: action, scope, and when not to use the agent.
+- Keep prompts role-focused: what the specialist does, how it works, and what it must not do.
+- Do not encode orchestration pipelines in agent definitions.
+- Do not make one specialist depend on another specialist to be useful.
+- Do not add transport-specific handoff protocols unless the agent's explicit purpose is orchestration.
+- Prefer repository evidence over memory or generic stack assumptions.
 
 ## Tool and permission matrix
 
-| Agent | Write/Edit | Bash | MCP codebase | Task state | Git commit |
-|---|---:|---:|---:|---:|---:|
-| `task-planner` | no | no | yes | no | no |
-| `code-implementer` | production plus focused tests | targeted smoke/codegen/test commands | yes | no | explicit authorization only |
-| `test-engineer` | test assets only | test commands only | yes | no | no |
-| `code-reviewer` | no | no | yes | no | no |
-| `deployment-operator` | no | documented ops only | no | no | no |
+| Agent | Write/Edit | Bash | MCP codebase | Git commit |
+|---|---:|---:|---:|---:|
+| `task-planner` | no | no | yes | no |
+| `code-implementer` | production plus focused tests | targeted smoke/codegen/test commands | yes | explicit authorization only |
+| `test-engineer` | test assets only | test commands only | yes | no |
+| `code-reviewer` | no | no | yes | no |
+| `deployment-operator` | no | documented ops only | no | no |
 
 When available, code-oriented agents prefer `codebase-memory-mcp` for structural code discovery and fall back to `Grep`, `Glob`, and `Read` when needed. Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
-
-## Planning and durable artifacts
-
-`task-planner` returns plans in the Agent result. If a persistent plan artifact is required, the main session writes it explicitly.
-
-Subagents do not write phase reports, plan artifacts, or review files unless the user-requested deliverable itself is a file. The main session owns task state and durable notes.
 
 ## Deployment safety
 
@@ -104,7 +66,7 @@ Hook-level model gates are the effective enforcement layer. README guidance is a
 
 ## Adding a specialist agent
 
-New specialist agents should stay outside the baseline collaborator set unless they are part of an explicitly approved redesign. Prefer precise `description` routing and a clear handoff protocol. Specialists may recommend handoffs, but the main session remains the orchestrator.
+New specialists should use precise `description` routing and role-focused prompts. Add orchestration language only for agents whose explicit job is orchestration.
 
 ## Installation
 
@@ -118,6 +80,5 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~
 
 ## Relationship to other layers
 
-- `global/guides/orchestration-extension.md` — orchestration decision guide.
 - `global/standards/core-standard.md` — core verification and review gates.
-- These agents do not replace global runtime principles; they provide opt-in staged collaborators.
+- These agents do not replace global runtime principles; they provide opt-in specialists.
