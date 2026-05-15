@@ -1,7 +1,7 @@
 ---
 name: task-planner
 description: Use for read-only implementation planning and task breakdown before non-trivial code changes. Do not use for editing files or executing plans.
-tools: Read, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
+tools: Read, Grep, Glob, TaskList, TaskGet, TaskCreate, TaskUpdate, SendMessage, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: opus
 memory: project
 permissionMode: plan

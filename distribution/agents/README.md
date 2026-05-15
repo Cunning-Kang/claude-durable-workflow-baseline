@@ -29,7 +29,9 @@ Baseline agents use a small, official-style prompt shape:
 ## Guardrails
 ```
 
-The sections describe specialist behavior and output quality. They intentionally avoid runtime-specific instructions such as `Agent result`, `SendMessage`, teammate idle notifications, or task-state ownership. Claude Code runtime owns how agent output is routed; the agent owns the work product.
+The sections describe specialist behavior and output quality. They intentionally avoid runtime-specific instructions such as `Agent result`, teammate idle notifications, or task-state ownership. Claude Code runtime owns how agent output is routed; the agent owns the work product.
+
+Frontmatter `tools` may still expose runtime collaboration primitives such as `TaskList`, `TaskGet`, `TaskCreate`, `TaskUpdate`, and `SendMessage`. Tool availability lets adopted agents participate in team mode; prompt bodies should still avoid hard-coding orchestration protocols.
 
 ## Design principles
 

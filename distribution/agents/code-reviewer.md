@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Use for strictly read-only review of diffs, patch proposals, targeted risks, or verification evidence. Do not use to edit code or run tests.
-tools: Read, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
+tools: Read, Grep, Glob, TaskList, TaskGet, TaskUpdate, SendMessage, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: sonnet
 effort: xhigh
 memory: project

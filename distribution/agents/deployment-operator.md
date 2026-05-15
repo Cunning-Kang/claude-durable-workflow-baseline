@@ -1,7 +1,7 @@
 ---
 name: deployment-operator
 description: Use for documented read-only operational checks or explicitly authorized deploy, release, rollback, CI/CD, and infrastructure actions. Do not use for ad-hoc ops.
-tools: Read, Bash, Grep, Glob
+tools: Read, Bash, Grep, Glob, TaskList, TaskGet, TaskUpdate, SendMessage
 model: haiku
 effort: xhigh
 permissionMode: default

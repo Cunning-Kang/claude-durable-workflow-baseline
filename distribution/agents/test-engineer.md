@@ -1,7 +1,7 @@
 ---
 name: test-engineer
 description: Use for test design, verification of code changes, and failure triage without modifying production code. Do not use for production fixes.
-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
+tools: Read, Write, Edit, Bash, Grep, Glob, TaskList, TaskGet, TaskCreate, TaskUpdate, SendMessage, mcp__codebase-memory-mcp__search_graph, mcp__codebase-memory-mcp__search_code, mcp__codebase-memory-mcp__trace_path, mcp__codebase-memory-mcp__get_code_snippet, mcp__codebase-memory-mcp__get_architecture, mcp__codebase-memory-mcp__query_graph
 model: haiku
 effort: xhigh
 memory: project
