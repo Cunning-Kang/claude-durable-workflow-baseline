@@ -4,118 +4,107 @@ Source-only, opt-in agent definitions for Claude Code. Not auto-installed.
 
 ## What this is
 
-Reusable, version-controlled subagent definitions that users can adopt by copying to `~/.claude/agents/`. This directory is a distribution source, not a workflow runtime.
+Reusable, version-controlled subagent definitions that users can adopt by copying to `~/.claude/agents/`. This directory is a distribution source and design guide, not a workflow runtime.
 
-## Core staged workflow agents
+These agents are standalone collaborators. They can be composed into a staged workflow, but none requires a mandatory pipeline to be useful.
 
-These five agents form the default staged workflow for non-trivial software work:
+## Baseline collaborators
+
+| Agent | Model | Effort | Max turns | Role |
+|---|---:|---:|---:|---|
+| `task-planner` | opus | inherit | 15 | Produces read-only implementation plans, task breakdowns, decision points, and handoff suggestions. |
+| `code-implementer` | haiku | xhigh | 35 | Makes bounded code changes, updates focused tests when needed, and reports patch evidence. |
+| `test-engineer` | haiku | xhigh | 25 | Designs tests, verifies diffs, triages failures, and reports coverage or evidence gaps. |
+| `code-reviewer` | sonnet | xhigh | 20 | Performs strictly read-only review of diffs, proposals, risk areas, or evidence quality. |
+| `deployment-operator` | haiku | xhigh | 15 | Runs documented operational checks or authorized deployment actions for explicit ops requests. |
+
+A common development composition is:
 
 ```text
 task-planner -> code-implementer -> test-engineer -> code-reviewer -> main final verification
 ```
 
-| Agent | Model | Effort | Max turns | Role |
-|---|---:|---:|---:|---|
-| `task-planner` | opus | inherit | 15 | Returns the plan and handoff contract in Agent result only. |
-| `code-implementer` | haiku | xhigh | 35 | Makes the planned code change and runs codegen, formatting, and local smoke checks. |
-| `test-engineer` | haiku | xhigh | 25 | Updates test assets, runs relevant tests, and classifies failures conservatively. |
-| `code-reviewer` | sonnet | xhigh | 20 | Reviews final code and test changes plus tester evidence without modifying files. |
-| `deployment-operator` | haiku | xhigh | 15 | Executes only documented runbook/script/CI operational commands for explicit ops requests. |
+This is a composition pattern, not a requirement. `deployment-operator` is an opt-in operations specialist, not a default development stage.
 
-Legacy names `planner`, `implementer`, `tester`, `reviewer`, and `ops-deploy` were removed rather than kept as aliases to avoid duplicate routing targets. Other existing specialist agents in this directory are separate agents, not aliases for these five core workflow stages.
+## Agent definition skeleton
 
-Claude Code subagent frontmatter supports `effort`. The non-`opus` workflow agents set `effort: xhigh` to compensate for weaker mapped models; actual behavior still depends on the active model's supported effort levels.
+Each baseline agent uses the same prompt shape:
+
+```text
+## Role
+## What you produce
+## Workflow
+## Guardrails
+## Handoff
+## Principles this agent follows
+```
+
+The shared skeleton creates predictable prompts without forcing every agent into one output schema. Each agent defines role-specific artifacts and handoff needs.
 
 ## Main session responsibility
 
-The main session stays as the controller and final verifier:
+The main session stays as controller and final verifier:
 
 - Selects and sequences agents.
-- Runs only evidence audit and minimal re-verification before completion claims.
-- Maintains any task state.
+- Maintains task state.
+- Owns final verification and user-facing completion claims.
 - Schedules independent read-only specialists when useful.
-- Does not become the implementation, testing, review, or deployment worker.
+- Extracts useful handoff context and passes it to the next collaborator.
+- Treats subagent results as inputs, not completion claims.
+
+## Shared handoff and stop principles
+
+Subagents should make the next useful action clear to the main session. A useful handoff usually names:
+
+- What was produced, changed, found, or verified.
+- Evidence that matters: files, commands, outputs, reviewed scope, observed state, or citations.
+- Unknowns, risks, or unverified claims.
+- Whether the main session can continue, must decide, or should stop.
+- Suggested next collaborator or action when useful.
+
+Do not require a universal field template. Incomplete handoff is not automatically blocked; real blockers are authorization gaps, unsafe guesswork, missing scope, unavailable evidence, destructive actions, or external effects that need user approval.
+
+Teammate idle notifications are not completion evidence.
 
 ## Parallelism boundary
 
-Only independent read-only tasks may run in parallel. File-writing stages remain serial:
+Only independent read-only tasks may run in parallel. File-writing work remains serial unless the main session explicitly separates non-overlapping scopes.
 
-```text
-code-implementer -> test-engineer -> code-reviewer
-```
-
-This keeps the reviewed scope stable and prevents test changes from escaping review.
-
-## Shared output contract
-
-Each core workflow agent ends with the same compact evidence shell:
-
-```text
-<AGENT_OUTPUT>
-status: <role-specific enum>
-summary:
-  - <1-3 concise bullets>
-artifacts:
-  - <files, plan paths, commands, diffs, runbook refs>
-evidence:
-  - <command/manual/review evidence>
-risks:
-  - <remaining risk or None>
-assumptions:
-  - <material assumption or None>
-next_action: <what main session should do next>
-role_specific:
-  <compact role-specific fields>
-</AGENT_OUTPUT>
-```
-
-Status values are role-specific:
-
-| Agent | Status values |
-|---|---|
-| `task-planner` | `READY`, `BLOCKED` |
-| `code-implementer` | `DONE`, `PARTIAL`, `BLOCKED` |
-| `test-engineer` | `PASS`, `PASS_WITH_WARNINGS`, `FAIL`, `BLOCKED` |
-| `code-reviewer` | `PASS`, `FAIL`, `BLOCKED` |
-| `deployment-operator` | `DONE`, `BLOCKED`, `ABORTED` |
-
-`PASS_WITH_WARNINGS` can proceed only if warnings are non-blocking and the main session records them in final risks or assumptions.
-
-## Delivery protocol
-
-- Final deliverables are returned through Agent result in the `<AGENT_OUTPUT>` block.
-- Teammate idle notifications are not completion evidence.
-- The main session owns task state. Agents without task-state tools must not be asked to update tasks.
-- The main session extracts AGENT_OUTPUT fields and passes relevant context to the next stage.
-- Unrecognized status values must be treated as `BLOCKED`.
+For a given change, only one active collaborator should modify production code at a time. If production-code ownership passes between collaborators, the main session must make the handoff explicit and re-run review on the resulting diff.
 
 ## Tool and permission matrix
 
 | Agent | Write/Edit | Bash | MCP codebase | Task state | Git commit |
 |---|---:|---:|---:|---:|---:|
 | `task-planner` | no | no | yes | no | no |
-| `code-implementer` | production/generation only | targeted smoke/codegen only | yes | no | explicit authorization only |
+| `code-implementer` | production plus focused tests | targeted smoke/codegen/test commands | yes | no | explicit authorization only |
 | `test-engineer` | test assets only | test commands only | yes | no | no |
 | `code-reviewer` | no | no | yes | no | no |
 | `deployment-operator` | no | documented ops only | no | no | no |
 
-Single-writer rule: at most one agent may modify production code files in a pipeline run. The main session remains the sole orchestrator.
-
 When available, code-oriented agents prefer `codebase-memory-mcp` for structural code discovery and fall back to `Grep`, `Glob`, and `Read` when needed. Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
 
-## Planning artifacts
+## Planning and durable artifacts
 
-`task-planner` returns the plan in AGENT_OUTPUT only. If a persistent plan artifact is required, the invoker extracts the plan from Agent result and writes it explicitly.
+`task-planner` returns plans in the Agent result. If a persistent plan artifact is required, the main session writes it explicitly.
 
-Other agents do not write phase reports. They report phase results only through `AGENT_OUTPUT`.
+Subagents do not write phase reports, plan artifacts, or review files unless the user-requested deliverable itself is a file. The main session owns task state and durable notes.
 
 ## Deployment safety
 
-`deployment-operator` requires an explicit action, target environment, and runbook/script/CI clue. It must block rather than infer when approval gates, rollback procedure, environment, or documented command source are unclear.
+`deployment-operator` may run documented read-only status checks when the request includes a clear target and runbook/script/CI source. Mutating deployment, release, rollback, or infrastructure actions require explicit current-session authorization plus the safety gates in the agent definition.
+
+The operator must block rather than infer when approval gates, rollback procedure, environment, or documented command source are unclear.
+
+## Claude Code model parameters and actual control
+
+Agent frontmatter declares intended `model`, `effort`, `permissionMode`, and related runtime fields. Current Claude Code tool schema or UI behavior may still inject a `model` parameter when calling subagents.
+
+Hook-level model gates are the effective enforcement layer. README guidance is advisory: callers should follow hook feedback, retry with the required model when instructed, or omit explicit model parameters when possible.
 
 ## Adding a specialist agent
 
-New specialist agents should stay outside the core staged workflow unless they are part of an explicitly approved redesign. Prefer precise `description` routing and a clear return protocol. Specialists may recommend handoffs, but the main session remains the orchestrator.
+New specialist agents should stay outside the baseline collaborator set unless they are part of an explicitly approved redesign. Prefer precise `description` routing and a clear handoff protocol. Specialists may recommend handoffs, but the main session remains the orchestrator.
 
 ## Installation
 
@@ -131,5 +120,5 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~
 
 - `global/guides/orchestration-extension.md` — orchestration decision guide.
 - `global/standards/core-standard.md` — core verification and review gates.
-- These agents do not replace global runtime principles; they provide opt-in staged workers.
+- These agents do not replace global runtime principles; they provide opt-in staged collaborators.
 - Superpowers remains the primary behavior control layer.
