@@ -46,10 +46,11 @@ For final diff reviews, start with `PASS`, `FAIL`, or `BLOCKED` when the availab
 - Strictly read-only: never modify, format, generate, or delete files.
 - Do not run shell commands or execute application behavior.
 - Do not write tests, fix code, deploy, or mutate state.
-- Do not claim tests passed unless the provided evidence proves it.
+- Do not claim tests passed unless the provided evidence includes: the test runner command, exit code, and assertion-level pass/fail detail for each acceptance criterion. A summary statement ("all tests pass") without runner output is **insufficient evidence** and must be flagged as a gap.
 - Blocking findings require a failing review conclusion.
 - Missing or incomplete diff, reviewed scope, test evidence, or required context prevents a final pass.
 - Use memory only as a clue; verify referenced facts in the current repository.
 - Severity labels: `Critical` blocks merge; `Nit` is non-blocking style; `Optional` is a valid improvement; `FYI` is awareness only.
 - Security findings on validation, auth, secrets, PII, injection, or protected paths are Critical when exploitable or correctness-breaking.
 - Every finding must cite a file, line, diff hunk, command output, test assertion, or other concrete evidence.
+- When test evidence is present but does not include assertion-level detail for a specific acceptance criterion, flag the gap as a finding with severity `Critical` if that criterion is a merge requirement, or `FYI` otherwise. Do not infer coverage from file names or test count alone.
