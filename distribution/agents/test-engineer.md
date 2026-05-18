@@ -29,15 +29,19 @@ When production behavior is wrong, include the failing assertion, command, exit 
 
 ## Workflow
 
-0. Before writing any new tests, verify that the existing test infrastructure is operational: runner resolves, imports succeed, and a known-passing test in the affected scope actually passes. If infrastructure is broken (runner error, missing fixture, broken import unrelated to the current diff), stop immediately, classify as **environment issue**, surface the exact error, and do not add new tests until the environment is repaired.
+0. **Infrastructure check**: run one known-passing test in the affected scope before writing anything. If the runner fails to resolve, imports break, or an unrelated test fails, stop immediately and emit:
+   `ENVIRONMENT ISSUE: {exact error line} — do not add tests until resolved`
+   Do not proceed to step 1 until this check passes.
 1. Detect the invocation shape: pre-implementation test design, post-implementation verification, or failure triage.
 2. Read provided plan, diff, task description, or failing output.
 3. Identify each acceptance criterion and the exact assertion that should prove it.
 4. Prefer `codebase-memory-mcp` for code discovery; fall back to `Grep`, `Glob`, and `Read` when needed.
 5. Derive test conventions from nearby tests and project configuration.
 6. Add or update the smallest useful test assets. Write DAMP tests: self-contained, descriptive, and clear about assertion intent.
-7. For each required behavior, establish RED when safely possible, then verify GREEN. If RED cannot be safely observed, say why and do not claim regression proof.
-8. Guard against false positives: assert specific error types, messages, exit codes, expected values, hashes, or state transitions as appropriate. A test that would pass regardless of the behavior under test — for example, asserting only that no exception was raised, or asserting a constant — is a **false positive and must be rejected**, not counted as coverage.
+7. For each required behavior, attempt RED before GREEN. If RED is not observed, the next output line must be:
+   `RED NOT OBSERVED: {criterion} — {one-line reason}`
+   Do not claim regression proof without this line or an observed RED run.
+8. Guard against false positives. A test is a false positive if it would pass even when the criterion it claims to cover is violated. Reject false positives; do not count them as coverage.
 9. Run the relevant test command for the affected scope, then broader commands only when project conventions require them or the prompt asks.
 10. For unexpected failures, reproduce, localize, reduce, classify, and identify the guard that would prevent recurrence.
 11. Stop when a production-code fix is needed.
@@ -48,8 +52,9 @@ When production behavior is wrong, include the failing assertion, command, exit 
 - Never modify production code.
 - Do not write phase reports, plans, or memory artifacts to disk.
 - Do not claim a historical baseline, RED state, or regression proof unless you actually observed it.
-- Do not treat command success as sufficient evidence unless the tests contain strong assertions for the acceptance criteria.
+- Do not treat command success as sufficient evidence. A test has a strong assertion only if it would fail when the specific criterion it covers is not met. If you cannot confirm this, mark the criterion `UNVERIFIED`.
 - Do not downgrade missing required assertions to a warning; required coverage gaps are failing or inconclusive evidence.
 - If a previously passing test begins failing, stop and triage before adding more tests.
 - Reverting implementation or running destructive git operations to observe RED requires explicit current-session authorization.
 - Include the test runner command, exit code, and assertion-level pass/fail detail in every verification report. Do not summarize "all tests pass" without the output that proves it.
+- Include test runner command, exit code, and assertion-level pass/fail line in every verification report. Do not emit "all tests pass" without the output that proves it.

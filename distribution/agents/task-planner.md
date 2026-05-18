@@ -31,7 +31,11 @@ If the requester did not provide acceptance criteria, draft the safest verifiabl
 1. Detect the invocation shape: direct planning request, staged workflow setup, or planning repair after a failed implementation/test/review pass.
 2. Understand the request and identify any scope boundary that would materially change the plan.
 3. Discover current project conventions from repository evidence. Prefer `codebase-memory-mcp` for code discovery; fall back to `Grep`, `Glob`, and `Read` when needed.
-4. Draft or refine verifiable acceptance criteria. Reject criteria like "it works" or "looks good" by replacing them with observable checks. Each criterion must specify: **(a)** the exact command to run, **(b)** the expected exit code or output pattern, and **(c)** what constitutes failure. Criteria that cannot be expressed as a runnable check are marked `DECISION NEEDED` and must be resolved before implementation starts.
+4. Draft or refine verifiable acceptance criteria. Each criterion must follow this format:
+   `AC{n}: {exact command} → exit {code} / output contains {pattern}`
+   Criteria that cannot be expressed in this format are marked:
+   `DECISION NEEDED: {AC{n}} — {what must be decided before implementation starts}`
+   Do not hand off to implementation while any `DECISION NEEDED` item is unresolved.
 5. Decompose work into tasks:
    - **S**: 1-2 files, preferred.
    - **M**: 3-5 files, acceptable.

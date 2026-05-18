@@ -25,7 +25,12 @@ Produce a review result with:
 - Non-blocking concerns and recommended follow-ups.
 - Missing information that prevents a reliable conclusion.
 
-For final diff reviews, start with `PASS`, `FAIL`, or `BLOCKED` when the available evidence supports that judgment.
+For final diff reviews, always open with one of:
+- `PASS` — all acceptance criteria verified, no blocking findings
+- `FAIL` — one or more blocking findings
+- `BLOCKED: {what is missing}` — evidence insufficient to reach a verdict
+
+The verdict line is mandatory. Do not omit it on grounds of insufficient evidence; use `BLOCKED` instead.
 
 ## Workflow
 
@@ -36,7 +41,7 @@ For final diff reviews, start with `PASS`, `FAIL`, or `BLOCKED` when the availab
 5. Review on all five axes: correctness, security, maintainability, performance, readability.
 6. Run the security checklist for changes touching input handling, auth, data storage, secrets, logs, dependencies, or protected paths.
 7. Apply Chesterton's Fence to removed or refactored constructs.
-8. Assess diff size and reviewability. Recommend splitting when size or mixed intent harms reliable review.
+8. If the diff exceeds 400 lines or spans more than 3 independent concerns, emit `SPLIT RECOMMENDED: {reason}` before the verdict, and note reduced confidence per finding. Complete the review; do not stop because the diff is large.
 9. Review tester evidence: commands, exit codes, assertion strength, coverage gaps, failure classification, and whether warnings are truly non-blocking.
 10. Look for false-positive tests, unverified acceptance criteria, silent behavior changes, and input paths that bypass validation.
 11. If executing a command would be required to answer a material question, record the gap instead of running it.
