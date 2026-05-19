@@ -15,7 +15,7 @@ Each agent is a standalone specialist. Claude Code routes to agents primarily fr
 | `task-planner` | opus | inherit | 15 | Produces read-only implementation plans, task breakdowns, decision points, and acceptance criteria. |
 | `code-implementer` | haiku | xhigh | 35 | Makes bounded code changes and updates focused tests when they directly prove the patch. |
 | `test-engineer` | haiku | xhigh | 25 | Designs tests, verifies diffs, triages failures, and reports coverage or evidence gaps. |
-| `code-reviewer` | sonnet | xhigh | 20 | Performs strictly read-only review of diffs, proposals, risk areas, or evidence quality. |
+| `code-reviewer` | sonnet | xhigh | 30 | Performs strictly read-only review of diffs, proposals, risk areas, or evidence quality. |
 | `deployment-operator` | haiku | xhigh | 15 | Runs documented operational checks or authorized deployment actions for explicit ops requests. |
 | `mavis` | haiku | inherit | 20 | Delegates execution/testing to Mavis Agent Team via MCP tools; returns structured evidence without claiming final acceptance. |
 
@@ -54,6 +54,15 @@ Frontmatter `tools` may still expose runtime collaboration primitives such as `T
 | `deployment-operator` | no | documented ops only | no | no |
 | `mavis` | no | no | no (Mavis MCP only) | no |
 
+## Routing and workspace rules
+
+- Custom agent calls should omit explicit `model` unless a signed override is present. If the caller must pass a model, it must match the agent frontmatter.
+- Tasks that must change the caller's current workspace must not use worktree isolation. If worktree isolation is used, the handoff must report the workspace root and changed-file roots.
+- Review handoffs must start with `PASS`, `FAIL`, or `BLOCKED: ...`. Missing verdict means the review gate is blocked, not passed or failed.
+- `mavis` is a Team Plan operator. It must use Mavis MCP Team Plan tools rather than direct file edits, shell commands, or non-Team-Plan fallback paths.
+- Mavis timeout or empty worker output does not prove no side effects occurred. Treat side effects as unknown until reconciled with plan/session evidence.
+- Mavis verifier output is execution evidence, not an independent review gate.
+
 Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
 
 ## Deployment safety
@@ -66,7 +75,7 @@ The operator must block rather than infer when approval gates, rollback procedur
 
 Agent frontmatter declares intended `model`, `effort`, `permissionMode`, and related runtime fields. Current Claude Code tool schema or UI behavior may still inject a `model` parameter when calling subagents.
 
-Hook-level model gates are the effective enforcement layer. README guidance is advisory: callers should follow hook feedback, retry with the required model when instructed, or omit explicit model parameters when possible.
+Hook-level model gates are the effective enforcement layer. Callers should omit explicit model parameters for custom agents unless a signed override is present. If Claude Code schema or UI behavior injects a model, it must match the frontmatter model; otherwise follow hook feedback and retry once with the required model.
 
 ## Adding a specialist agent
 
