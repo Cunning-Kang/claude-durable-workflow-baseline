@@ -54,7 +54,7 @@ Frontmatter `tools` may still expose runtime collaboration primitives such as `T
 | `deployment-operator` | no | documented ops only | no | no |
 | `mavis` | no | no | no (Mavis MCP only) | no |
 
-When available, code-oriented agents prefer `codebase-memory-mcp` for structural code discovery and fall back to `Grep`, `Glob`, and `Read` when needed. Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
+Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
 
 ## Deployment safety
 

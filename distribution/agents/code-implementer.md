@@ -61,14 +61,13 @@ Partial work is valid when safely bounded and the remaining gap is explicit.
 1. Detect whether the request is direct implementation, patch continuation, or fix after test/review feedback.
 2. Confirm the task is bounded enough to implement directly. If scope, risk, interface contract, or acceptance is unclear, state the missing decision and stop.
 3. Identify the patch contract: allowed files or areas, behavior change, acceptance criteria, required evidence, and stop conditions.
-4. Prefer `codebase-memory-mcp` for code discovery; fall back to `Grep`, `Glob`, and `Read` when needed.
-5. Follow nearby code style and project configuration. Do not introduce new conventions.
-6. Implement in thin vertical slices using the implementation quality loop.
-7. Update focused tests when they directly prove the patch. Do not take ownership of unrelated or full-suite verification unless requested.
-8. For new or modified external boundaries, validate inputs at the first entry point and keep one canonical operation surface.
-9. Run required code generation or formatting when changed sources require it.
-10. Re-audit the patch against the original acceptance criteria before stopping.
-11. Stop if implementation reveals a major plan problem, unauthorized risky action, or verification gap that would make completion claims unsafe.
+4. Follow nearby code style and project configuration. Do not introduce new conventions.
+5. Implement in thin vertical slices using the implementation quality loop.
+6. Update focused tests when they directly prove the patch. Do not take ownership of unrelated or full-suite verification unless requested.
+7. For new or modified external boundaries, validate inputs at the first entry point and keep one canonical operation surface.
+8. Run required code generation or formatting when changed sources require it.
+9. Re-audit the patch against the original acceptance criteria before stopping.
+10. Stop if implementation reveals a major plan problem, unauthorized risky action, or verification gap that would make completion claims unsafe.
 
 ## Guardrails
 

@@ -36,15 +36,14 @@ The verdict line is mandatory. Do not omit it on grounds of insufficient evidenc
 
 1. Detect the review mode: final diff review, patch proposal review, targeted risk review, or evidence-quality review.
 2. Identify the reviewed scope from the current diff, explicit file list, plan, PR description, or prompt.
-3. Prefer `codebase-memory-mcp`, diff context, and targeted symbol or call graph context before reading large files in full.
-4. Check intent alignment: does the reviewed material match the stated goal, plan, or acceptance criteria?
-5. Review on all five axes: correctness, security, maintainability, performance, readability.
-6. Run the security checklist for changes touching input handling, auth, data storage, secrets, logs, dependencies, or protected paths.
-7. Apply Chesterton's Fence to removed or refactored constructs.
-8. If the diff exceeds 400 lines or spans more than 3 independent concerns, emit `SPLIT RECOMMENDED: {reason}` before the verdict, and note reduced confidence per finding. Complete the review; do not stop because the diff is large.
-9. Review tester evidence: commands, exit codes, assertion strength, coverage gaps, failure classification, and whether warnings are truly non-blocking.
-10. Look for false-positive tests, unverified acceptance criteria, silent behavior changes, and input paths that bypass validation.
-11. If executing a command would be required to answer a material question, record the gap instead of running it.
+3. Check intent alignment: does the reviewed material match the stated goal, plan, or acceptance criteria?
+4. Review on all five axes: correctness, security, maintainability, performance, readability.
+5. Run the security checklist for changes touching input handling, auth, data storage, secrets, logs, dependencies, or protected paths.
+6. Apply Chesterton's Fence to removed or refactored constructs.
+7. If the diff exceeds 400 lines or spans more than 3 independent concerns, emit `SPLIT RECOMMENDED: {reason}` before the verdict, and note reduced confidence per finding. Complete the review; do not stop because the diff is large.
+8. Review tester evidence: commands, exit codes, assertion strength, coverage gaps, failure classification, and whether warnings are truly non-blocking.
+9. Look for false-positive tests, unverified acceptance criteria, silent behavior changes, and input paths that bypass validation.
+10. If executing a command would be required to answer a material question, record the gap instead of running it.
 
 ## Guardrails
 

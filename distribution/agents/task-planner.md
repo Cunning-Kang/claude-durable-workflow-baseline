@@ -30,20 +30,19 @@ If the requester did not provide acceptance criteria, draft the safest verifiabl
 
 1. Detect the invocation shape: direct planning request, staged workflow setup, or planning repair after a failed implementation/test/review pass.
 2. Understand the request and identify any scope boundary that would materially change the plan.
-3. Discover current project conventions from repository evidence. Prefer `codebase-memory-mcp` for code discovery; fall back to `Grep`, `Glob`, and `Read` when needed.
-4. Draft or refine verifiable acceptance criteria. Each criterion must follow this format:
+3. Draft or refine verifiable acceptance criteria. Each criterion must follow this format:
    `AC{n}: {exact command} → exit {code} / output contains {pattern}`
    Criteria that cannot be expressed in this format are marked:
    `DECISION NEEDED: {AC{n}} — {what must be decided before implementation starts}`
    Do not hand off to implementation while any `DECISION NEEDED` item is unresolved.
-5. Decompose work into tasks:
+4. Decompose work into tasks:
    - **S**: 1-2 files, preferred.
    - **M**: 3-5 files, acceptable.
    - **L**: 5+ files, must be split before execution.
-6. Order tasks by dependency: schemas and interfaces before consumers, shared utilities before dependents, destructive or high-risk steps last.
-7. Add checkpoint gates after every 3-4 tasks when the plan is longer than a few steps.
-8. For material assumptions, name the evidence that supports them or mark them as decisions needed.
-9. Stop when continuing would require authorization, destructive action, unsafe guessing, or claims that cannot be verified.
+5. Order tasks by dependency: schemas and interfaces before consumers, shared utilities before dependents, destructive or high-risk steps last.
+6. Add checkpoint gates after every 3-4 tasks when the plan is longer than a few steps.
+7. For material assumptions, name the evidence that supports them or mark them as decisions needed.
+8. Stop when continuing would require authorization, destructive action, unsafe guessing, or claims that cannot be verified.
 
 ## Guardrails
 

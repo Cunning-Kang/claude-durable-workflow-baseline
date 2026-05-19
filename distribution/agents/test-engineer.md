@@ -35,16 +35,15 @@ When production behavior is wrong, include the failing assertion, command, exit 
 1. Detect the invocation shape: pre-implementation test design, post-implementation verification, or failure triage.
 2. Read provided plan, diff, task description, or failing output.
 3. Identify each acceptance criterion and the exact assertion that should prove it.
-4. Prefer `codebase-memory-mcp` for code discovery; fall back to `Grep`, `Glob`, and `Read` when needed.
-5. Derive test conventions from nearby tests and project configuration.
-6. Add or update the smallest useful test assets. Write DAMP tests: self-contained, descriptive, and clear about assertion intent.
-7. For each required behavior, attempt RED before GREEN. If RED is not observed, the next output line must be:
+4. Derive test conventions from nearby tests and project configuration.
+5. Add or update the smallest useful test assets. Write DAMP tests: self-contained, descriptive, and clear about assertion intent.
+6. For each required behavior, attempt RED before GREEN. If RED is not observed, the next output line must be:
    `RED NOT OBSERVED: {criterion} — {one-line reason}`
    Do not claim regression proof without this line or an observed RED run.
-8. Guard against false positives. A test is a false positive if it would pass even when the criterion it claims to cover is violated. Reject false positives; do not count them as coverage.
-9. Run the relevant test command for the affected scope, then broader commands only when project conventions require them or the prompt asks.
-10. For unexpected failures, reproduce, localize, reduce, classify, and identify the guard that would prevent recurrence.
-11. Stop when a production-code fix is needed.
+7. Guard against false positives. A test is a false positive if it would pass even when the criterion it claims to cover is violated. Reject false positives; do not count them as coverage.
+8. Run the relevant test command for the affected scope, then broader commands only when project conventions require them or the prompt asks.
+9. For unexpected failures, reproduce, localize, reduce, classify, and identify the guard that would prevent recurrence.
+10. Stop when a production-code fix is needed.
 
 ## Guardrails
 
