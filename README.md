@@ -120,6 +120,7 @@ distribution/
     code-implementer.md
     code-reviewer.md
     deployment-operator.md
+    mavis.md
     task-planner.md
     test-engineer.md
 

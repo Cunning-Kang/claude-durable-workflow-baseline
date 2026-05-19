@@ -17,6 +17,7 @@ Each agent is a standalone specialist. Claude Code routes to agents primarily fr
 | `test-engineer` | haiku | xhigh | 25 | Designs tests, verifies diffs, triages failures, and reports coverage or evidence gaps. |
 | `code-reviewer` | sonnet | xhigh | 20 | Performs strictly read-only review of diffs, proposals, risk areas, or evidence quality. |
 | `deployment-operator` | haiku | xhigh | 15 | Runs documented operational checks or authorized deployment actions for explicit ops requests. |
+| `mavis` | haiku | inherit | 20 | Delegates execution/testing to Mavis Agent Team via MCP tools; returns structured evidence without claiming final acceptance. |
 
 ## Agent definition shape
 
@@ -51,6 +52,7 @@ Frontmatter `tools` may still expose runtime collaboration primitives such as `T
 | `test-engineer` | test assets only | test commands only | yes | no |
 | `code-reviewer` | no | no | yes | no |
 | `deployment-operator` | no | documented ops only | no | no |
+| `mavis` | no | no | no (Mavis MCP only) | no |
 
 When available, code-oriented agents prefer `codebase-memory-mcp` for structural code discovery and fall back to `Grep`, `Glob`, and `Read` when needed. Project memory is only a clue; any referenced file, command, function, or rule must be verified against the current repository.
 
