@@ -69,6 +69,9 @@ Increase to **2** only when workstreams are clearly independent and integration 
 Treat **3+ active workstreams** as exceptional.
 If unsure, stay serial.
 
+Choose subagent isolation by target state, not by agent role.
+If the task depends on caller workspace state, do not use worktree isolation.
+
 ---
 
 ## 5. Escalation and Downgrade
