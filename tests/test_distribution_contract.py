@@ -95,6 +95,12 @@ class AgentInventoryContractTests(unittest.TestCase):
         text = md_path.read_text()
         return text.split('---', 2)[2]
 
+    def _handoff_section(self, md_path: Path) -> str:
+        body = self._body(md_path)
+        marker = "## Artifact and final handoff"
+        start = body.index(marker)
+        return body[start:]
+
     def _read_frontmatter(self, md_path: Path) -> dict:
         """Parse YAML frontmatter from a markdown agent file."""
         text = md_path.read_text()
@@ -190,13 +196,28 @@ class AgentInventoryContractTests(unittest.TestCase):
 
     def test_agents_include_bookend_handoff_contract(self):
         for path in self._agent_files():
-            text = path.read_text()
+            handoff = self._handoff_section(path)
             fm = self._read_frontmatter(path)
             name = fm["name"]
-            self.assertIn("STATUS: <PASS|FAIL|BLOCKED|PARTIAL>", text, path.name)
-            self.assertIn(f'<handoff agent="{name}"', text, path.name)
-            self.assertIn(f'<handoff-end agent="{name}"', text, path.name)
-            self.assertIn("No text may follow `<handoff-end ... />`", text, path.name)
+            self.assertIn("STATUS: <PASS|FAIL|BLOCKED|PARTIAL>", handoff, path.name)
+            self.assertIn(f'<handoff agent="{name}"', handoff, path.name)
+            self.assertIn(f'<handoff-end agent="{name}"', handoff, path.name)
+            self.assertIn('status="<same>"', handoff, path.name)
+            self.assertIn('workspace="<same>"', handoff, path.name)
+            self.assertIn('artifact="<same>"', handoff, path.name)
+            self.assertIn("No text may follow `<handoff-end ... />`", handoff, path.name)
+
+    def test_handoff_section_stays_short(self):
+        max_lines = 22
+        for path in self._agent_files():
+            handoff = self._handoff_section(path)
+            line_count = len(handoff.splitlines())
+            self.assertLessEqual(line_count, max_lines, f"{path.name}: {line_count} handoff lines")
+
+    def test_handoff_section_has_no_bulk_rules_block(self):
+        for path in self._agent_files():
+            handoff = self._handoff_section(path)
+            self.assertNotIn("\nRules:\n", handoff, path.name)
 
     def test_user_artifact_hook_distribution_files_exist(self):
         root = REPO_ROOT / "distribution" / "hooks" / "user" / "validate-agent-artifact-write"
