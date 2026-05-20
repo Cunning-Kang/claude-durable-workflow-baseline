@@ -1,0 +1,21 @@
+// Merge this snippet into ~/.claude/settings.json only after explicitly adopting
+// ~/.claude/hooks/validate-agent-artifact-write/hook.mjs.
+// This is source-only example configuration, not live baseline wiring.
+// Subagent frontmatter hooks pass each agent name; this global entry is illustrative fallback.
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Validating agent artifact Write path",
+            "timeout": 30,
+            "command": "\"$HOME\"/.claude/hooks/validate-agent-artifact-write/hook.mjs code-reviewer"
+          }
+        ]
+      }
+    ]
+  }
+}

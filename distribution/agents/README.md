@@ -12,27 +12,26 @@ Each agent is a standalone specialist. Claude Code routes to agents primarily fr
 
 | Agent | Model | Effort | Max turns | Role |
 |---|---:|---:|---:|---|
-| `task-planner` | opus | inherit | 15 | Produces read-only implementation plans, task breakdowns, decision points, and acceptance criteria. |
-| `code-implementer` | haiku | xhigh | 35 | Makes bounded code changes and updates focused tests when they directly prove the patch. |
-| `test-engineer` | haiku | xhigh | 25 | Designs tests, verifies diffs, triages failures, and reports coverage or evidence gaps. |
-| `code-reviewer` | sonnet | xhigh | 30 | Performs strictly read-only review of diffs, proposals, risk areas, or evidence quality. |
-| `deployment-operator` | haiku | xhigh | 15 | Runs documented operational checks or authorized deployment actions for explicit ops requests. |
-| `mavis` | haiku | inherit | 20 | Delegates execution/testing to Mavis Agent Team via MCP tools; returns structured evidence without claiming final acceptance. |
+| `task-planner` | opus | inherit | 15 | Principal engineer/TPM for ambiguous work; turns fuzzy intent into executable, verifiable plans. |
+| `code-implementer` | haiku | xhigh | 35 | Senior product engineer for constrained high-signal patches and smallest provable production changes. |
+| `test-engineer` | haiku | xhigh | 25 | Staff test engineer for behavior proof, false-positive prevention, and RED/GREEN evidence quality. |
+| `code-reviewer` | sonnet | xhigh | 30 | Principal hostile reviewer for correctness, security, scope, and evidence failures. |
+| `deployment-operator` | haiku | xhigh | 15 | Senior SRE for documented operations where authorization, rollback, and health evidence are explicit. |
+| `mavis` | haiku | inherit | 20 | Mavis Team Plan operator for bounded worker/verifier execution evidence without final acceptance. |
 
 ## Agent definition shape
 
-Baseline agents use a small, official-style prompt shape:
+Baseline agents use a short hard prompt shape:
 
 ```text
 ## Role
-## What you produce
+## Boundaries
 ## Workflow
-## Guardrails
+## What you produce
+## Artifact and final handoff
 ```
 
-The sections describe specialist behavior and output quality. They intentionally avoid runtime-specific instructions such as `Agent result`, teammate idle notifications, or task-state ownership. Claude Code runtime owns how agent output is routed; the agent owns the work product.
-
-Frontmatter `tools` may still expose runtime collaboration primitives such as `TaskList`, `TaskGet`, `TaskCreate`, `TaskUpdate`, and `SendMessage`. Tool availability lets adopted agents participate in team mode; prompt bodies should still avoid hard-coding orchestration protocols.
+`## Artifact and final handoff` is always the last section. It defines the Bookend XML transport contract for gate-critical fields only. Agent-specific evidence remains agent-specific.
 
 ## Design principles
 
@@ -47,10 +46,10 @@ Frontmatter `tools` may still expose runtime collaboration primitives such as `T
 
 | Agent | Write/Edit | Bash | MCP codebase | Git commit |
 |---|---:|---:|---:|---:|
-| `task-planner` | no | no | yes | no |
+| `task-planner` | temp artifacts only via scoped hook | no | yes | no |
 | `code-implementer` | production plus focused tests | targeted smoke/codegen/test commands | yes | explicit authorization only |
 | `test-engineer` | test assets only | test commands only | yes | no |
-| `code-reviewer` | no | no | yes | no |
+| `code-reviewer` | temp artifacts only via scoped hook | no | yes | no |
 | `deployment-operator` | no | documented ops only | no | no |
 | `mavis` | no | no | no (Mavis MCP only) | no |
 
@@ -95,3 +94,18 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~
 
 - `global/standards/core-standard.md` — core verification and review gates.
 - These agents do not replace global runtime principles; they provide opt-in specialists.
+
+
+## Final handoff rules
+
+- First line is `STATUS: ...`.
+- Envelope attributes are only `agent`, `status`, `workspace`, and `artifact`.
+- Final line is `<handoff-end ... />`.
+- No text appears after the end marker.
+- Workspace is observed absolute path, or `UNVERIFIED` with `BLOCKED`.
+- Default artifact path is `$TMPDIR/claude-agent-artifacts/<agent>-*.md`.
+- Project artifacts require explicit request and gitignored `.claude/agent-artifacts/`.
+
+## Read-only artifact writes
+
+`code-reviewer` and `task-planner` may use `Write` only for temp artifacts. This is safe only with the scoped user hook. Prompt-only restrictions are not sufficient. Do not use `Bash` to create artifacts.

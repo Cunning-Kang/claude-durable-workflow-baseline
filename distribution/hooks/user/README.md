@@ -70,3 +70,11 @@ Is it project-agnostic AND intended to run in ALL repos?
 - `docs/reference/hooks-scope.md` — Three-layer scope reference
 - D-003: Hooks must be layered as user / project / local example only
 - R-002: Hooks mis-globalization risk — source/snippets only; opt-in per layer
+
+
+### `validate-agent-artifact-write`
+
+- Event: `PreToolUse`
+- Tool: `Write`
+- Purpose: restrict read-only subagent artifact writes to `$TMPDIR/claude-agent-artifacts/<agent>-*.md`
+- Source: `distribution/hooks/user/validate-agent-artifact-write/hook.mjs`

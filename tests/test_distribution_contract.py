@@ -88,6 +88,13 @@ class DistributionContractTests(unittest.TestCase):
 class AgentInventoryContractTests(unittest.TestCase):
     AGENTS_DIR = REPO_ROOT / "distribution" / "agents"
 
+    def _agent_text(self, md_path: Path) -> str:
+        return md_path.read_text()
+
+    def _body(self, md_path: Path) -> str:
+        text = md_path.read_text()
+        return text.split('---', 2)[2]
+
     def _read_frontmatter(self, md_path: Path) -> dict:
         """Parse YAML frontmatter from a markdown agent file."""
         text = md_path.read_text()
@@ -157,6 +164,55 @@ class AgentInventoryContractTests(unittest.TestCase):
                 )
         self.assertEqual([], mismatches, "Agent inventory model mismatches:\n" + "\n".join(mismatches))
 
+
+    def test_agent_models_remain_expected(self):
+        expected = {
+            "task-planner": "opus",
+            "code-implementer": "haiku",
+            "test-engineer": "haiku",
+            "code-reviewer": "sonnet",
+            "deployment-operator": "haiku",
+            "mavis": "haiku",
+        }
+        for path in self._agent_files():
+            fm = self._read_frontmatter(path)
+            self.assertEqual(expected[fm["name"]], fm["model"], path.name)
+
+    def test_agents_use_short_hard_section_order(self):
+        required = ["## Role", "## Boundaries", "## Workflow", "## What you produce", "## Artifact and final handoff"]
+        for path in self._agent_files():
+            body = self._body(path)
+            positions = [body.find(section) for section in required]
+            self.assertTrue(all(pos >= 0 for pos in positions), path.name)
+            self.assertEqual(positions, sorted(positions), path.name)
+            last_heading = [line for line in body.splitlines() if line.startswith("## ")][-1]
+            self.assertEqual("## Artifact and final handoff", last_heading, path.name)
+
+    def test_agents_include_bookend_handoff_contract(self):
+        for path in self._agent_files():
+            text = path.read_text()
+            fm = self._read_frontmatter(path)
+            name = fm["name"]
+            self.assertIn("STATUS: <PASS|FAIL|BLOCKED|PARTIAL>", text, path.name)
+            self.assertIn(f'<handoff agent="{name}"', text, path.name)
+            self.assertIn(f'<handoff-end agent="{name}"', text, path.name)
+            self.assertIn("No text may follow `<handoff-end ... />`", text, path.name)
+
+    def test_user_artifact_hook_distribution_files_exist(self):
+        root = REPO_ROOT / "distribution" / "hooks" / "user" / "validate-agent-artifact-write"
+        for rel in ["hook.mjs", "README.md", "scope.md", "manual-test.md", "rollback.md"]:
+            self.assertTrue((root / rel).exists(), rel)
+        self.assertTrue((REPO_ROOT / "tests" / "validate-agent-artifact-write.test.mjs").exists())
+
+    def test_read_only_artifact_agents_have_write_hook(self):
+        for filename, agent in [("code-reviewer.md", "code-reviewer"), ("task-planner.md", "task-planner")]:
+            text = (self.AGENTS_DIR / filename).read_text()
+            fm = self._read_frontmatter(self.AGENTS_DIR / filename)
+            self.assertIn("hooks:", text)
+            self.assertIn("PreToolUse:", text)
+            self.assertIn('matcher: "Write"', text)
+            self.assertIn(f"validate-agent-artifact-write/hook.mjs {agent}", text)
+            self.assertNotIn("Write", [item.strip() for item in fm.get("disallowedTools", "").split(",")])
 
 if __name__ == "__main__":
     unittest.main()

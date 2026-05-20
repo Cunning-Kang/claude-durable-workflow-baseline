@@ -78,3 +78,9 @@ Is it intended to apply across all repos for one user?
 - `docs/reference/hooks-scope.md` — Three-layer scope reference
 - D-003: Hooks must be layered as user / project / local example only
 - R-002: Hooks/settings must remain source/snippets only; opt-in per layer
+
+
+### `validate-agent-artifact-write.settings.jsonc`
+
+- Event: `PreToolUse`
+- Purpose: example user-level registration for the artifact Write validator hook
