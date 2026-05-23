@@ -10,7 +10,7 @@ This file defines review gate status only. Whether review is required is determi
 
 Independent means: reviewer did not implement the reviewed change.
 Self-review does not satisfy this gate unless a higher-precedence policy explicitly permits it.
-Not independent: the same assistant in a second pass, or a reviewer that edits the implementation.
+Not independent: the same agent reviewing its own prior output.
 
 ## Required Evidence
 

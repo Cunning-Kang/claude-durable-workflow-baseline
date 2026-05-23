@@ -15,8 +15,8 @@ Escalate only to make execution safe and bounded. Then downgrade to the simplest
 
 ### Terminology (minimum definitions)
 
-- **bounded execution** — a task or workstream whose scope is fixed before delegation starts
-- **workstream** — one parallel line of work with a defined scope
+- **bounded execution** — scope fixed before delegation starts; required for all delegation
+- **workstream** — one parallel line of work; must be bounded before delegation
 - **fanout** — delegating to multiple workstreams simultaneously
 
 ---
@@ -100,28 +100,9 @@ When changing path, record a brief reason.
 
 ## 6. Recovery Signals
 
-If tool or agent failure occurs, follow the tool failure rule in core-standard.md.
-Do not pretend the missing result is implied.
-On agent failure, narrow, re-bound, or fall back to serial. Do not expand fanout automatically.
-
-If output returns low confidence:
-
-- narrow the task,
-- reduce scope,
-- clarify when ambiguity is real,
-- escalate only if the uncertainty is genuinely orchestration-related.
-
-If integration cost becomes dominant:
-
-- stop expanding fanout,
-- collapse back to serial integration,
-- re-sequence the remaining work.
-
-If coordination overhead dominates actual execution time across workstreams:
-
-- stop adding new workstreams,
-- prefer bounded delegation or explicit checkpoints,
-- protect safe completion of the accepted scope first.
+On tool or agent failure: follow core-standard.md §7 tool failure rule; narrow, re-bound, or fall back to serial. Do not expand fanout.
+On low-confidence output: narrow scope; clarify only when ambiguity is genuine; escalate only if the blocker is orchestration-specific.
+On dominant integration or coordination cost: stop expanding fanout; collapse to serial with explicit checkpoints; protect accepted scope before adding work.
 
 ---
 
