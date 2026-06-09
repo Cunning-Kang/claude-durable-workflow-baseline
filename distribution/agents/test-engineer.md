@@ -59,3 +59,5 @@ STATUS: <PASS|FAIL|BLOCKED>
 - `STATUS:`, `<handoff status="...">`, and `<handoff-end status="...">` must use the same value.
 - Unknown workspace means `BLOCKED` with `workspace="UNVERIFIED"`.
 - Artifact path, if used, must be `$TMPDIR/claude-agent-artifacts/test-engineer-*.md`.
+- When STATUS is BLOCKED: no verdict is emitted (tests could not run).
+- When STATUS is PASS or FAIL: verdict matches STATUS.

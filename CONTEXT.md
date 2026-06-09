@@ -33,10 +33,10 @@ _Avoid_: Output-first template, universal report schema
 - A **Standalone collaborator** can participate in a **Staged workflow**.
 - A **Staged workflow** is coordinated by the main session, not by subagents.
 - **Handoff principles** and **Stop principles** are shared across agents; **Artifact-oriented output** differs by agent role.
-- The five baseline **Standalone collaborators** keep their existing names: `task-planner`, `code-implementer`, `test-engineer`, `code-reviewer`, and `deployment-operator`.
+- The six baseline **Standalone collaborators** keep their existing names: `task-planner`, `code-implementer`, `test-engineer`, `code-reviewer`, `deployment-operator`, and `spec-reviewer`.
 - Every baseline subagent uses the same **Agent definition skeleton**, but each defines role-specific deliverables and handoff needs.
 - Agent distribution docs explain standalone collaborators, invocation guidance, runtime caveats, and safety boundaries rather than centering a mandatory pipeline or shared output schema.
-- The agent redesign should migrate all five baseline agent files and `distribution/agents/README.md` together so the shared design model stays consistent.
+- The agent redesign should migrate all six baseline agent files and `distribution/agents/README.md` together so the shared design model stays consistent.
 - Only one active collaborator should modify production code for a given change at a time; production-code handoffs must be explicit and followed by fresh review of the resulting diff.
 - `code-implementer` may update focused tests that directly prove its patch; `test-engineer` owns independent verification, coverage strengthening, and failure classification.
 - `test-engineer` does not modify production code; production fixes discovered during testing are handed back to the main session or `code-implementer` with failing evidence.

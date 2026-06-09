@@ -17,6 +17,7 @@ Each agent is a standalone specialist. Claude Code routes to agents primarily fr
 | `test-engineer` | haiku | xhigh | 25 | Staff test engineer for behavior proof, false-positive prevention, and RED/GREEN evidence quality. |
 | `code-reviewer` | sonnet | xhigh | 30 | Principal hostile reviewer for correctness, security, scope, and evidence failures. |
 | `deployment-operator` | haiku | xhigh | 15 | Senior SRE for documented operations where authorization, rollback, and health evidence are explicit. |
+| `spec-reviewer` | haiku | xhigh | 20 | Compliance auditor verifying delivery matches spec contract. Read-only, no code quality evaluation. |
 | `mavis` | haiku | inherit | 20 | Mavis Team Plan operator for bounded worker/verifier execution evidence without final acceptance. |
 
 ## Agent definition shape
@@ -51,6 +52,7 @@ Baseline agents use a short hard prompt shape:
 | `test-engineer` | test assets only | test commands only | yes | no |
 | `code-reviewer` | temp artifacts only via scoped hook | no | yes | no |
 | `deployment-operator` | no | documented ops only | no | no |
+| `spec-reviewer` | temp artifacts only via scoped hook | no | yes | no |
 | `mavis` | no | no | no (Mavis MCP only) | no |
 
 ## Routing and workspace rules
@@ -108,4 +110,4 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~
 
 ## Read-only artifact writes
 
-`code-reviewer` and `task-planner` may use `Write` only for temp artifacts. This is safe only with the scoped user hook. Prompt-only restrictions are not sufficient. Do not use `Bash` to create artifacts.
+`code-reviewer`, `task-planner`, and `spec-reviewer` may use `Write` only for temp artifacts. This is safe only with the scoped user hook. Prompt-only restrictions are not sufficient. Do not use `Bash` to create artifacts.
