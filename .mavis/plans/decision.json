@@ -1,0 +1,22 @@
+{
+  "last_cycle": [
+    {
+      "task_id": "worker-readme-check",
+      "verdict": "manual_retry",
+      "reason": "Task was killed after delivering WORKER_SMOKE_OK — the worker completed successfully but the engine killed it post-delivery due to infrastructure timeout. This is not a task failure; re-running to capture the result cleanly in the engine. No code changes needed."
+    }
+  ],
+  "next_cycle": [
+    {
+      "task_id": "worker-readme-check",
+      "title": "Worker smoke task",
+      "prompt": "Quick smoke test: confirm workspace exists at /Users/cunning/Workspaces/heavy/claude-durable-workflow-baseline, verify it's a git repo, confirm bash works. Write a brief deliverable.md and exit. Return exactly: WORKER_SMOKE_OK",
+      "assigned_to": "general",
+      "verified_by": "verifier",
+      "verify_prompt": "Verify worker output contains WORKER_SMOKE_OK. Return PASS if present, otherwise FAIL with evidence.",
+      "timeout_ms": 300000
+    }
+  ],
+  "plan_complete": false,
+  "message_to_user": "重新跑一下，之前 worker 其实跑完了，只是被超时误杀。"
+}

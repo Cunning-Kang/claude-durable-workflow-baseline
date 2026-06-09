@@ -1,0 +1,9 @@
+{
+  "decisions": [
+    {
+      "task_id": "worker-smoke",
+      "decision": "accept",
+      "reason": "Verifier passed: WORKER_SMOKE_OK present in deliverable."
+    }
+  ]
+}
