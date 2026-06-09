@@ -145,13 +145,26 @@ After all issues complete:
      Repeat until PASS or BLOCKED.
    BLOCKED → report, await instructions
 
-### Phase 3: Commit and Push
+### Phase 3: Commit, Push, and Close Completed Issues
 
-1. Atomic commit for all changes across all issues (one commit total).
-   Commit message references all completed issue numbers.
+1. Atomic commit for all changes across all completed issues (one commit
+   total). Commit message references all completed issue numbers.
+   Optional: use `Closes #N` for GitHub cross-linking, but do not rely on
+   auto-close because it is branch/default-merge dependent.
 2. Push to GitHub.
-3. Report summary: issues completed, tasks per issue, files changed,
-   review findings resolved.
+3. For each issue where all tasks completed and all gates PASS:
+   `gh issue close <number> --comment "Completed in <commit SHA>. <summary>"`
+4. Verify each closed issue:
+   `gh issue view <number> --json state,url`
+   Require `state == "CLOSED"`.
+5. If close fails or state remains non-CLOSED: retry close once. If still
+   not CLOSED, report BLOCKED with the exact command/error and do not claim
+   issue closure.
+6. For each issue with incomplete tasks, FAIL, BLOCKED, or exhausted retry
+   budget: add a comment with partial status and remaining blockers. Do NOT
+   close.
+7. Report summary: issues completed, issues closed, commit SHA, issue URLs,
+   tasks per issue, files changed, review findings resolved.
 
 ## Retry Rules
 
@@ -189,6 +202,7 @@ After all issues complete:
 - Make subagents read the plan file (provide full task text)
 - Ignore subagent BLOCKED or FAIL status
 - Commit before global review PASS
+- Close an issue with incomplete tasks or failed/blocked gates
 
 ## Continuous Execution
 
