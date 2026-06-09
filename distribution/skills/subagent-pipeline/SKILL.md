@@ -140,7 +140,8 @@ After all issues complete:
    PASS → proceed to Phase 3
    FAIL → implementer fixes affected tasks → full pipeline rewalk for
      those tasks (using remaining Phase 1 budget) → re-run global review.
-     If budget exhausted: report and halt.
+     If any affected task has exhausted budget: report as unfixable,
+     include in failure summary with specific findings, await instructions.
      Repeat until PASS or BLOCKED.
    BLOCKED → report, await instructions
 
@@ -161,6 +162,12 @@ After all issues complete:
 - Escalation: consecutive same-reviewer FAIL → full pipeline rewalk
   from implementer. Escalation rewalk does not consume budget.
   Subsequent failures during rewalk DO consume budget.
+
+  Retry accounting example:
+    Task enters escalation rewalk with 2 prior retries consumed.
+    Rewalk implementer redone (free — escalation does not consume budget).
+    Rewalk spec-reviewer FAILs → implementer fix dispatched (retry 3).
+    Budget exhausted. Any further FAIL → stop and report.
 
 ## Parallel Mode
 

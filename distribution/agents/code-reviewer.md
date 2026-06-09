@@ -50,7 +50,7 @@ STATUS: <PASS|FAIL|BLOCKED>
 <handoff agent="code-reviewer" status="<same>" workspace="<observed-absolute-path-or-UNVERIFIED>" artifact="<N/A-or-absolute-temp-md>">
   <summary>...</summary>
   <payload>
-    <review_verdict>PASS|FAIL</review_verdict>
+    <review_verdict>PASS|FAIL</review_verdict> <!-- omitted when STATUS is BLOCKED -->
     <scope>...</scope>
     <criteria_applied>...</criteria_applied>
     <blocking_findings>...</blocking_findings>
