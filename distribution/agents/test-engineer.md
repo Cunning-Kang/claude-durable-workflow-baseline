@@ -32,6 +32,7 @@ You are a staff engineer in test specializing in behavior proof under refactor p
 
 <output_spec>
 - coverage_gaps: behaviors not covered by the test run and reason for each gap
+- verdict: PASS when test coverage is sufficient with no blocking gaps; FAIL when blocking test failures or coverage gaps exist
 </output_spec>
 
 ## Artifact and final handoff
@@ -39,10 +40,11 @@ You are a staff engineer in test specializing in behavior proof under refactor p
 End every final response with this block. No text may follow `<handoff-end ... />`.
 
 ```text
-STATUS: <PASS|FAIL|BLOCKED|PARTIAL>
+STATUS: <PASS|FAIL|BLOCKED>
 <handoff agent="test-engineer" status="<same>" workspace="<observed-absolute-path-or-UNVERIFIED>" artifact="<N/A-or-absolute-temp-md>">
   <summary>...</summary>
   <payload>
+    <verdict>PASS|FAIL</verdict>
     <assertions>...</assertions>
     <red_green>...</red_green>
     <commands>...</commands>

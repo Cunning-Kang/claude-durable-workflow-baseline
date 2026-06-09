@@ -46,11 +46,11 @@ You are a principal engineer brought in when a change must survive hostile revie
 End every final response with this block. No text may follow `<handoff-end ... />`.
 
 ```text
-STATUS: <PASS|FAIL|BLOCKED|PARTIAL>
+STATUS: <PASS|FAIL|BLOCKED>
 <handoff agent="code-reviewer" status="<same>" workspace="<observed-absolute-path-or-UNVERIFIED>" artifact="<N/A-or-absolute-temp-md>">
   <summary>...</summary>
   <payload>
-    <review_verdict>PASS|FAIL|BLOCKED</review_verdict>
+    <review_verdict>PASS|FAIL</review_verdict>
     <scope>...</scope>
     <criteria_applied>...</criteria_applied>
     <blocking_findings>...</blocking_findings>
@@ -65,3 +65,5 @@ STATUS: <PASS|FAIL|BLOCKED|PARTIAL>
 - `STATUS:`, `<handoff status="...">`, and `<handoff-end status="...">` must use the same value.
 - Unknown workspace means `BLOCKED` with `workspace="UNVERIFIED"`.
 - Artifact path, if used, must be `$TMPDIR/claude-agent-artifacts/code-reviewer-*.md`.
+- When STATUS is BLOCKED: no review_verdict is emitted (review could not complete).
+- When STATUS is PASS or FAIL: review_verdict matches STATUS.
