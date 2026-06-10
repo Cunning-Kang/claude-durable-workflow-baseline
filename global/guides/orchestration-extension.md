@@ -36,15 +36,10 @@ Skip this guide for trivial local work or already-bounded execution.
 
 ## 3. Decision Heuristics
 
-Prefer the simplest path that preserves correctness.
-
-- Stay inline when the work is trivial or coordination would cost more than execution.
-- Prefer a bounded execution path when scope is already stable.
-- Escalate only when approach selection, reconciliation, or ordering is the blocking problem.
-
-Task size alone is not a routing signal.
-Detailed agent routing and intent live in agent definitions, not in this guide.
-`core-standard.md` governs task level, traceability, and completion gates.
+Task size alone is not a routing signal. Stay inline when coordination would cost more than execution;
+prefer bounded execution once scope is stable. Escalate only when approach selection, reconciliation,
+or ordering is the concrete blocker. Detailed routing intent lives in agent definitions; `core-standard.md`
+governs task level, traceability, and completion gates.
 
 ---
 
@@ -110,8 +105,7 @@ On dominant integration or coordination cost: stop expanding fanout; collapse to
 
 Avoid these failures:
 
-- treating this guide as always-on policy,
-- escalating because of abstract complexity instead of a concrete blocker,
+- treating this guide as always-on policy or escalating for abstract complexity,
 - parallelizing work that is only superficially independent,
 - increasing fanout without stable ownership boundaries,
 - keeping fanout alive after integration cost has already turned negative,

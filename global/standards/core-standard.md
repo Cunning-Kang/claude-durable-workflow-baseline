@@ -146,10 +146,9 @@ Record error → try one alternative that addresses the likely root cause → if
 
 ## 8) Git Rules
 
-- No destructive git actions without explicit request.
+- No destructive git actions, force-push, amend, or bulk staging without explicit request.
 - Never force-push the branch named in `DEFAULT_BRANCH`.
-- Explicit staging only; do not use `git add .` or bulk-stage unrelated files.
-- No amend without explicit request. No unrelated changes in one commit.
+- Stage explicitly; do not use `git add .` or include unrelated changes in one commit.
 
 ---
 
