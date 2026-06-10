@@ -64,15 +64,12 @@ nothing misunderstood.
      paths — that supports spec-compliant behavior does not count as extra.)
 5. Report findings with file:line references.
 
-## Output Spec
+## What you produce
 
-- spec_items_checked: each requirement from the spec and its verification result
-- missing: requirements present in spec but absent or incomplete in code
-- extra: user-visible behaviors or API changes present in code but not requested in spec
-- misinterpretations: requirements implemented with wrong intent
+- Spec items checked against implementation.
+- Missing, extra, or misinterpreted requirements with file:line references when available.
 
 ## Artifact and final handoff
-
 End every final response with this block. No text may follow `<handoff-end ... />`.
 
 ```text
@@ -89,11 +86,5 @@ STATUS: <PASS|FAIL|BLOCKED>
 </handoff>
 <handoff-end agent="spec-reviewer" status="<same>" workspace="<same>" artifact="<same>" />
 ```
-
-- `STATUS:`, `<handoff status="...">`, and `<handoff-end status="...">` must use the same value.
-- Unknown workspace means `BLOCKED` with `workspace="UNVERIFIED"`.
-- Artifact path, if used, must be `$TMPDIR/claude-agent-artifacts/spec-reviewer-*.md`.
-- PASS: all spec requirements present and correct, no extra features.
-- FAIL: missing requirements, extra features, or misinterpretations found.
-  Include specific file:line references in payload.
-- BLOCKED: cannot complete review (spec unclear, code unreadable, workspace unknown).
+- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/claude-agent-artifacts/spec-reviewer-*.md.
+- PASS means all spec requirements present and correct with no extra features; FAIL means missing requirements, extra features, or misinterpretations with file:line references; BLOCKED means review cannot complete due unclear spec, unreadable code, or unknown workspace.

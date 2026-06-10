@@ -87,12 +87,11 @@ tasks:
 That schema is not valid for `mavis_team_plan_run_yaml`; it fails with `Invalid plan`.
 `timeout_ms` is per task. Runtime polling timeout is separate.
 
-<output_spec>
-- plan: id, owner_session, task IDs with assigned roles
-- results: worker output verbatim, verifier output verbatim, failures
-- evidence: raw command output; do not summarize or infer absent results
-- assumptions: constraints not in caller's original request, stated or inferred
-</output_spec>
+## What you produce
+
+- Team Plan id, owner/session, task IDs, roles, and status.
+- Worker and verifier outputs, failures, raw evidence, and assumptions.
+- Final acceptance remains caller-owned.
 
 ## Artifact and final handoff
 

@@ -54,6 +54,10 @@ After all tasks for all issues complete:
 4. Extract all tasks with full text, acceptance criteria, and context.
 5. Create todo list tracking all tasks across all issues.
 
+### Phase 0.5: Capability Preconditions
+
+Before implementation, note visible repository policy that constrains code discovery or file access. If required source inspection is blocked for the planned reviewer/tester and no allowed alternative is visible, stop as BLOCKED before implementation. Do not start work that cannot be independently reviewed under current tool policy.
+
 ### Phase 1: Execute
 
 For each issue (sequential by default; --parallel issues run concurrently
@@ -64,12 +68,20 @@ in separate worktrees):
 
   For each task in the issue:
 
+    If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.
+
     1. Dispatch code-implementer
        Context: task full text, acceptance criteria, file references,
        project constraints summary.
        Requirement: implementer must complete self-review (completeness,
        quality, discipline/YAGNI, testing) before reporting DONE.
        Self-review is the first quality gate — not optional.
+
+    Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:
+    - Harness/tool non-success wins over agent prose. If a task is cancelled, timed out, interrupted, reports 0/N succeeded, or required verification errored, do not treat prose like "Done" as DONE/PASS.
+    - A result without a clear role status and usable role-specific handoff is incomplete. If harness/tool status succeeded, ask the same agent once to restate actual status and evidence without changing files. If still incomplete, route implementer results as FAIL and reviewer/tester results as BLOCKED when independent judgment cannot be established. Do not re-ask after cancelled, timed out, interrupted, or 0/N succeeded; route those from the harness/tool status.
+    - Format alone is not a blocker. Block only on missing capability, unknown workspace/scope, inaccessible source, or unavailable verification needed for the stage.
+    - If coordinator read-only checks contradict a DONE result, route as FAIL with exact evidence and redispatch code-implementer. Do not patch directly.
 
     2. Route on STATUS:
        DONE → dispatch spec-reviewer
@@ -203,6 +215,7 @@ After all issues complete:
 - Ignore subagent BLOCKED or FAIL status
 - Commit before global review PASS
 - Close an issue with incomplete tasks or failed/blocked gates
+- Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.
 
 ## Continuous Execution
 

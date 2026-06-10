@@ -178,6 +178,7 @@ class AgentInventoryContractTests(unittest.TestCase):
             "test-engineer": "haiku",
             "code-reviewer": "sonnet",
             "deployment-operator": "haiku",
+            "spec-reviewer": "haiku",
             "mavis": "haiku",
         }
         for path in self._agent_files():
@@ -199,7 +200,16 @@ class AgentInventoryContractTests(unittest.TestCase):
             handoff = self._handoff_section(path)
             fm = self._read_frontmatter(path)
             name = fm["name"]
-            self.assertIn("STATUS: <PASS|FAIL|BLOCKED|PARTIAL>", handoff, path.name)
+            expected_status = {
+                "task-planner": "STATUS: <DONE|FAIL|BLOCKED>",
+                "code-implementer": "STATUS: <DONE|FAIL|BLOCKED>",
+                "deployment-operator": "STATUS: <DONE|FAIL|BLOCKED>",
+                "code-reviewer": "STATUS: <PASS|FAIL|BLOCKED>",
+                "spec-reviewer": "STATUS: <PASS|FAIL|BLOCKED>",
+                "test-engineer": "STATUS: <PASS|FAIL|BLOCKED>",
+                "mavis": "STATUS: <PASS|FAIL|BLOCKED|PARTIAL>",
+            }
+            self.assertIn(expected_status[name], handoff, path.name)
             self.assertIn(f'<handoff agent="{name}"', handoff, path.name)
             self.assertIn(f'<handoff-end agent="{name}"', handoff, path.name)
             self.assertIn('status="<same>"', handoff, path.name)
@@ -226,7 +236,7 @@ class AgentInventoryContractTests(unittest.TestCase):
         self.assertTrue((REPO_ROOT / "tests" / "validate-agent-artifact-write.test.mjs").exists())
 
     def test_read_only_artifact_agents_have_write_hook(self):
-        for filename, agent in [("code-reviewer.md", "code-reviewer"), ("task-planner.md", "task-planner")]:
+        for filename, agent in [("code-reviewer.md", "code-reviewer"), ("spec-reviewer.md", "spec-reviewer"), ("task-planner.md", "task-planner")]:
             text = (self.AGENTS_DIR / filename).read_text()
             fm = self._read_frontmatter(self.AGENTS_DIR / filename)
             self.assertIn("hooks:", text)
@@ -234,6 +244,95 @@ class AgentInventoryContractTests(unittest.TestCase):
             self.assertIn('matcher: "Write"', text)
             self.assertIn(f"validate-agent-artifact-write/hook.mjs {agent}", text)
             self.assertNotIn("Write", [item.strip() for item in fm.get("disallowedTools", "").split(",")])
+
+
+class SubagentPipelinePromptContractTests(unittest.TestCase):
+    """Prompt text regression tests only; these do not exercise runtime hooks."""
+
+    AGENTS_DIR = REPO_ROOT / "distribution" / "agents"
+    SKILL = REPO_ROOT / "distribution" / "skills" / "subagent-pipeline" / "SKILL.md"
+
+    def _agent_files(self):
+        for p in sorted(self.AGENTS_DIR.glob("*.md")):
+            if p.name != "README.md":
+                yield p
+
+    def test_agents_define_role_specific_outputs(self):
+        expected = {
+            "task-planner.md": [
+                "- Executable plan including goal, scope, non-goals, assumptions, tasks, dependencies, acceptance, verification, and risk.",
+                "- Open decisions or blockers that prevent safe implementation.",
+            ],
+            "code-implementer.md": [
+                "- Changed files and the behavior each change produces.",
+                "- Focused verification commands with exit code and status.",
+                "- Deviations, concerns, risks, or blockers.",
+            ],
+            "test-engineer.md": [
+                "- Acceptance criteria mapped to assertions, RED/GREEN evidence, and gaps.",
+                "- Commands with exit code, status, failure classification, and coverage gaps.",
+            ],
+            "code-reviewer.md": [
+                "- Criteria applied across correctness, security, maintainability, performance, readability, and complexity.",
+                "- Blocking findings with evidence, plus non-blocking concerns and evidence gaps.",
+            ],
+            "deployment-operator.md": [
+                "- Documented command and status evidence.",
+                "- Operation state before and after.",
+                "- Authorization and rollback evidence for mutating operations.",
+            ],
+            "spec-reviewer.md": [
+                "- Spec items checked against implementation.",
+                "- Missing, extra, or misinterpreted requirements with file:line references when available.",
+            ],
+            "mavis.md": [
+                "- Team Plan id, owner/session, task IDs, roles, and status.",
+                "- Worker and verifier outputs, failures, raw evidence, and assumptions.",
+                "- Final acceptance remains caller-owned.",
+            ],
+        }
+        for path in self._agent_files():
+            text = path.read_text()
+            for needle in expected[path.name]:
+                self.assertIn(needle, text, path.name)
+
+    def test_code_implementer_prompt_guards_scope_and_evidence(self):
+        text = (self.AGENTS_DIR / "code-implementer.md").read_text()
+        self.assertIn("- Work in existing files by default. New test files, fixtures, or generated artifacts are allowed when the task requires them. New production files are allowed only when the task explicitly requests a new module, public contract, entrypoint, adapter, or similar production artifact. Do not create new production files to broaden scope. If you create one, justify it in <changed_files> and include focused verification.", text)
+        self.assertIn("- Completeness: did you implement every requirement in the spec, and does the existing <verification> payload cover each acceptance requirement in substance?", text)
+        self.assertIn("If required behavior or evidence is missing, report FAIL; if capability or environment prevents verification, report BLOCKED.", text)
+
+    def test_subagent_pipeline_accident_rules_are_present(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "### Phase 0.5: Capability Preconditions",
+            "Before implementation, note visible repository policy that constrains code discovery or file access. If required source inspection is blocked for the planned reviewer/tester and no allowed alternative is visible, stop as BLOCKED before implementation. Do not start work that cannot be independently reviewed under current tool policy.",
+            "If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.",
+            "Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:",
+            "- Harness/tool non-success wins over agent prose. If a task is cancelled, timed out, interrupted, reports 0/N succeeded, or required verification errored, do not treat prose like \"Done\" as DONE/PASS.",
+            "- A result without a clear role status and usable role-specific handoff is incomplete. If harness/tool status succeeded, ask the same agent once to restate actual status and evidence without changing files. If still incomplete, route implementer results as FAIL and reviewer/tester results as BLOCKED when independent judgment cannot be established. Do not re-ask after cancelled, timed out, interrupted, or 0/N succeeded; route those from the harness/tool status.",
+            "- Format alone is not a blocker. Block only on missing capability, unknown workspace/scope, inaccessible source, or unavailable verification needed for the stage.",
+            "- If coordinator read-only checks contradict a DONE result, route as FAIL with exact evidence and redispatch code-implementer. Do not patch directly.",
+            "- Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_legacy_output_markers_are_absent(self):
+        forbidden = ["<acceptance_evidence>", "<output_spec>", "</output_spec>", "## Output Spec"]
+        for path in [self.SKILL, *self._agent_files()]:
+            text = path.read_text()
+            for marker in forbidden:
+                self.assertNotIn(marker, text, path.name)
+
+    def test_mavis_keeps_team_plan_rules_before_output_and_acceptance_owned_by_caller(self):
+        text = (self.AGENTS_DIR / "mavis.md").read_text()
+        self.assertIn("Final acceptance remains caller-owned.", text)
+        positions = [
+            text.index("## Team Plan rules"),
+            text.index("## What you produce"),
+            text.index("## Artifact and final handoff"),
+        ]
+        self.assertEqual(positions, sorted(positions))
 
 if __name__ == "__main__":
     unittest.main()
