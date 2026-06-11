@@ -20,7 +20,7 @@ nothing misunderstood.
   requirement, exclude everything not requested, and correctly interpret
   each requirement?
 - Do not evaluate code quality, performance, security, or test coverage.
-- - Do not trust the implementer's report. Verify independently by reading code.
+- Do not trust the implementer's report. Verify independently by reading code.
 - Report findings only. Do not suggest fixes, implementations, or improvements.
 </boundaries>
 

@@ -86,7 +86,13 @@ class DistributionContractTests(unittest.TestCase):
 
 
 class AgentInventoryContractTests(unittest.TestCase):
-    AGENTS_DIR = REPO_ROOT / "distribution" / "agents"
+    AGENTS_ROOT = REPO_ROOT / "distribution" / "agents"
+    AGENTS_DIR = AGENTS_ROOT / "claude-code"
+    OMP_AGENTS_DIR = AGENTS_ROOT / "oh-my-pi"
+    AGENT_SETS = {
+        "claude-code": AGENTS_ROOT / "claude-code",
+        "oh-my-pi": AGENTS_ROOT / "oh-my-pi",
+    }
 
     def _agent_text(self, md_path: Path) -> str:
         return md_path.read_text()
@@ -116,60 +122,55 @@ class AgentInventoryContractTests(unittest.TestCase):
 
     def _agent_files(self):
         """Yield all .md agent files excluding README.md."""
-        for p in sorted(self.AGENTS_DIR.glob("*.md")):
+        for p in sorted(self.AGENTS_ROOT.glob("*/*.md")):
             if p.name != "README.md":
                 yield p
 
     def test_readme_inventory_matches_actual_frontmatter_name_and_model(self):
-        """Verify the README inventory table entries match actual agent frontmatter."""
-        readme = (self.AGENTS_DIR / "README.md").read_text()
+        """Verify each README inventory table entries match actual agent frontmatter."""
         mismatches = []
-        # Parse the inventory table rows: find the table body between header separator lines
-        lines = readme.splitlines()
-        # Find the line with the table header separator (|---|---|...)
-        sep_idx = next(
-            (i for i, l in enumerate(lines) if l.strip().startswith("|---")),
-            None,
-        )
-        if sep_idx is None:
-            self.fail("README: inventory table separator line not found")
-        # Collect all rows after the separator until an empty line or unrelated content
-        in_table = False
-        table_rows = []
-        for line in lines[sep_idx + 1:]:
-            # Stop at blank line or a line that doesn't start with |
-            if not line.strip():
-                break
-            if line.startswith("|"):
-                table_rows.append(line)
-            else:
-                break
+        for agent_set, agent_dir in self.AGENT_SETS.items():
+            readme = (agent_dir / "README.md").read_text()
+            lines = readme.splitlines()
+            sep_idx = next(
+                (i for i, l in enumerate(lines) if l.strip().startswith("|---")),
+                None,
+            )
+            if sep_idx is None:
+                self.fail(f"{agent_set} README: inventory table separator line not found")
 
-        # Build a map from agent name -> listed model from the table
-        table_map = {}  # name -> model
-        for row in table_rows:
-            cells = [c.strip() for c in row.split("|")]
-            # cells[0] is empty before first |, cells[1] is Agent, cells[2] is Model
-            if len(cells) >= 3:
-                agent = cells[1].strip("`").strip()
-                model = cells[2].strip()
-                if agent:
-                    table_map[agent] = model
+            table_rows = []
+            for line in lines[sep_idx + 1:]:
+                if not line.strip():
+                    break
+                if line.startswith("|"):
+                    table_rows.append(line)
+                else:
+                    break
 
-        # Compare against actual frontmatter
-        for path in self._agent_files():
-            fm = self._read_frontmatter(path)
-            name = fm.get("name", "")
-            model = fm.get("model", "")
-            listed_model = table_map.get(name)
-            if listed_model is None:
-                mismatches.append(f"{name}: not found in README inventory table")
-            elif listed_model != model:
-                mismatches.append(
-                    f"{name}: README model='{listed_model}' != frontmatter model='{model}'"
-                )
+            table_map = {}
+            for row in table_rows:
+                cells = [c.strip() for c in row.split("|")]
+                if len(cells) >= 3:
+                    agent = cells[1].strip("`").strip()
+                    model = cells[2].strip()
+                    if agent:
+                        table_map[agent] = model
+
+            for path in sorted(agent_dir.glob("*.md")):
+                if path.name == "README.md":
+                    continue
+                fm = self._read_frontmatter(path)
+                name = fm.get("name", "")
+                model = fm.get("model", "")
+                listed_model = table_map.get(name)
+                if listed_model is None:
+                    mismatches.append(f"{agent_set}/{name}: not found in README inventory table")
+                elif listed_model != model:
+                    mismatches.append(
+                        f"{agent_set}/{name}: README model='{listed_model}' != frontmatter model='{model}'"
+                    )
         self.assertEqual([], mismatches, "Agent inventory model mismatches:\n" + "\n".join(mismatches))
-
 
     def test_agent_models_remain_expected(self):
         expected = {
@@ -180,6 +181,7 @@ class AgentInventoryContractTests(unittest.TestCase):
             "deployment-operator": "haiku",
             "spec-reviewer": "haiku",
             "mavis": "haiku",
+            "plan-reviewer": "sonnet",
         }
         for path in self._agent_files():
             fm = self._read_frontmatter(path)
@@ -208,6 +210,7 @@ class AgentInventoryContractTests(unittest.TestCase):
                 "spec-reviewer": "STATUS: <PASS|FAIL|BLOCKED>",
                 "test-engineer": "STATUS: <PASS|FAIL|BLOCKED>",
                 "mavis": "STATUS: <PASS|FAIL|BLOCKED|PARTIAL>",
+                "plan-reviewer": "STATUS: <PASS|FAIL|BLOCKED>",
             }
             self.assertIn(expected_status[name], handoff, path.name)
             self.assertIn(f'<handoff agent="{name}"', handoff, path.name)
@@ -236,9 +239,10 @@ class AgentInventoryContractTests(unittest.TestCase):
         self.assertTrue((REPO_ROOT / "tests" / "validate-agent-artifact-write.test.mjs").exists())
 
     def test_read_only_artifact_agents_have_write_hook(self):
-        for filename, agent in [("code-reviewer.md", "code-reviewer"), ("spec-reviewer.md", "spec-reviewer"), ("task-planner.md", "task-planner")]:
-            text = (self.AGENTS_DIR / filename).read_text()
-            fm = self._read_frontmatter(self.AGENTS_DIR / filename)
+        for filename, agent in [("code-reviewer.md", "code-reviewer"), ("spec-reviewer.md", "spec-reviewer"), ("task-planner.md", "task-planner"), ("plan-reviewer.md", "plan-reviewer")]:
+            path = self.AGENTS_DIR / filename
+            text = path.read_text()
+            fm = self._read_frontmatter(path)
             self.assertIn("hooks:", text)
             self.assertIn("PreToolUse:", text)
             self.assertIn('matcher: "Write"', text)
@@ -249,11 +253,13 @@ class AgentInventoryContractTests(unittest.TestCase):
 class SubagentPipelinePromptContractTests(unittest.TestCase):
     """Prompt text regression tests only; these do not exercise runtime hooks."""
 
-    AGENTS_DIR = REPO_ROOT / "distribution" / "agents"
+    AGENTS_ROOT = REPO_ROOT / "distribution" / "agents"
+    AGENTS_DIR = AGENTS_ROOT / "claude-code"
+    OMP_AGENTS_DIR = AGENTS_ROOT / "oh-my-pi"
     SKILL = REPO_ROOT / "distribution" / "skills" / "subagent-pipeline" / "SKILL.md"
 
     def _agent_files(self):
-        for p in sorted(self.AGENTS_DIR.glob("*.md")):
+        for p in sorted(self.AGENTS_ROOT.glob("*/*.md")):
             if p.name != "README.md":
                 yield p
 
@@ -290,6 +296,10 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
                 "- Worker and verifier outputs, failures, raw evidence, and assumptions.",
                 "- Final acceptance remains caller-owned.",
             ],
+            "plan-reviewer.md": [
+                "- Plan criteria checked across goal, scope, acceptance, verification, dependencies, risks, rollback, and architecture fit.",
+                "- Blocking plan defects, non-blocking concerns, evidence gaps, and unreviewed scope with file:line references when available.",
+            ],
         }
         for path in self._agent_files():
             text = path.read_text()
@@ -307,7 +317,7 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
         for needle in [
             "### Phase 0.5: Capability Preconditions",
             "Before implementation, note visible repository policy that constrains code discovery or file access. If required source inspection is blocked for the planned reviewer/tester and no allowed alternative is visible, stop as BLOCKED before implementation. Do not start work that cannot be independently reviewed under current tool policy.",
-            "If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.",
+            "If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner, then plan-reviewer, for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.",
             "Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:",
             "- Harness/tool non-success wins over agent prose. If a task is cancelled, timed out, interrupted, reports 0/N succeeded, or required verification errored, do not treat prose like \"Done\" as DONE/PASS.",
             "- A result without a clear role status and usable role-specific handoff is incomplete. If harness/tool status succeeded, ask the same agent once to restate actual status and evidence without changing files. If still incomplete, route implementer results as FAIL and reviewer/tester results as BLOCKED when independent judgment cannot be established. Do not re-ask after cancelled, timed out, interrupted, or 0/N succeeded; route those from the harness/tool status.",
@@ -326,12 +336,14 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
             "implementation → code-implementer",
             "spec compliance → spec-reviewer",
             "verification/test → test-engineer",
+            "plan review/architecture plan review/task breakdown review → plan-reviewer",
             "code review/global review → code-reviewer",
             "generic task/reviewer/agent with assignment text such as \"You are task-planner\"",
             "generic task/reviewer/agent with assignment text such as \"You are code-implementer\"",
             "generic task/reviewer/agent with assignment text such as \"You are spec-reviewer\"",
             "generic task/reviewer/agent with assignment text such as \"You are test-engineer\"",
             "generic task/reviewer/agent with assignment text such as \"You are code-reviewer\"",
+            "generic task/reviewer/agent with assignment text such as \"You are plan-reviewer\"",
             "Required named subagent selection unavailable",
         ]:
             self.assertIn(needle, text)
@@ -367,9 +379,9 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
         text = self.SKILL.read_text()
         for needle in [
             "Risk tiers do not remove mandatory stages.",
-            "code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer",
+            "task-planner (when required) → plan-reviewer (when task-planner ran) → code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer",
             "After all tasks for all issues complete:\n  code-reviewer (global review, full diff)",
-            "Risk tiers affect only split decisions, context budget, and review/test prompt focus.",
+            "Risk tiers affect only split decisions, context budget, and plan/review/test prompt focus.",
         ]:
             self.assertIn(needle, text)
 
@@ -396,6 +408,7 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
             "issue has multiple acceptance criteria and lacks task-level slices",
             "public contract/schema/CLI/API ambiguity exists",
             "dispatch named task-planner",
+            "dispatch named plan-reviewer",
         ]:
             self.assertIn(needle, text)
 
@@ -415,6 +428,42 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
             text.index("## Artifact and final handoff"),
         ]
         self.assertEqual(positions, sorted(positions))
+
+    def test_dual_agent_set_consistency(self):
+        claude_files = {p.name for p in self.AGENTS_DIR.glob("*.md") if p.name != "README.md"}
+        omp_files = {p.name for p in self.OMP_AGENTS_DIR.glob("*.md") if p.name != "README.md"}
+        self.assertEqual(claude_files, omp_files)
+
+        for filename in sorted(claude_files):
+            claude = (self.AGENTS_DIR / filename).read_text()
+            omp = (self.OMP_AGENTS_DIR / filename).read_text()
+            claude_name = re.search(r"^name: (.+)$", claude, re.MULTILINE).group(1).strip().strip('"')
+            omp_name = re.search(r"^name: (.+)$", omp, re.MULTILINE).group(1).strip().strip('"')
+            self.assertEqual(claude_name, omp_name, filename)
+            for marker in ["## Role", "## Boundaries", "## Workflow", "## What you produce", "## Artifact and final handoff"]:
+                self.assertIn(marker, claude, filename)
+                self.assertIn(marker, omp, filename)
+            self.assertIn("claude-agent-artifacts", claude, filename)
+            self.assertIn("omp-agent-artifacts", omp, filename)
+
+    def test_oh_my_pi_frontmatter_uses_allowlist_shape(self):
+        forbidden = ["disallowedTools:", "effort:", "permissionMode:", "memory:", "color:", "maxTurns:", "hooks:"]
+        for path in self.OMP_AGENTS_DIR.glob("*.md"):
+            if path.name == "README.md":
+                continue
+            text = path.read_text()
+            for marker in forbidden:
+                self.assertNotIn(marker, text, path.name)
+
+    def test_plan_reviewer_description_is_actionable(self):
+        for path in [self.AGENTS_DIR / "plan-reviewer.md", self.OMP_AGENTS_DIR / "plan-reviewer.md"]:
+            text = path.read_text()
+            description = re.search(r"^description: (.+)$", text, re.MULTILINE).group(1)
+            self.assertIn("read-only", description)
+            self.assertIn("plan", description)
+            self.assertIn("Do not use", description)
+            self.assertIn("editing", description)
+            self.assertIn("implementation", description)
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,7 @@ Each agent is a standalone specialist. Claude Code routes to agents primarily fr
 | Agent | Model | Effort | Max turns | Role |
 |---|---:|---:|---:|---|
 | `task-planner` | opus | inherit | 15 | Principal engineer/TPM for ambiguous work; turns fuzzy intent into executable, verifiable plans. |
+| `plan-reviewer` | sonnet | xhigh | 20 | Principal architect/reviewer for plans, task breakdowns, and architecture proposals before implementation. |
 | `code-implementer` | haiku | xhigh | 35 | Senior product engineer for constrained high-signal patches and smallest provable production changes. |
 | `test-engineer` | haiku | xhigh | 25 | Staff test engineer for behavior proof, false-positive prevention, and RED/GREEN evidence quality. |
 | `code-reviewer` | sonnet | xhigh | 30 | Principal hostile reviewer for correctness, security, scope, and evidence failures. |
@@ -48,6 +49,7 @@ Baseline agents use a short hard prompt shape:
 | Agent | Write/Edit | Bash | MCP codebase | Git commit |
 |---|---:|---:|---:|---:|
 | `task-planner` | temp artifacts only via scoped hook | no | yes | no |
+| `plan-reviewer` | temp artifacts only via scoped hook | no | yes | no |
 | `code-implementer` | production plus focused tests | targeted smoke/codegen/test commands | yes | explicit authorization only |
 | `test-engineer` | test assets only | test commands only | yes | no |
 | `code-reviewer` | temp artifacts only via scoped hook | no | yes | no |
@@ -86,10 +88,10 @@ New specialists should use precise `description` routing and role-focused prompt
 
 ```bash
 # Copy selected agents to your user-level agents directory
-cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/*.md ~/.claude/agents/
+cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/claude-code/*.md ~/.claude/agents/
 
 # Or copy individual agents
-cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~/.claude/agents/
+cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/claude-code/task-planner.md ~/.claude/agents/
 ```
 
 ## Relationship to other layers
@@ -110,4 +112,4 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/task-planner.md ~
 
 ## Read-only artifact writes
 
-`code-reviewer`, `task-planner`, and `spec-reviewer` may use `Write` only for temp artifacts. This is safe only with the scoped user hook. Prompt-only restrictions are not sufficient. Do not use `Bash` to create artifacts.
+`code-reviewer`, `task-planner`, `spec-reviewer`, and `plan-reviewer` may use `Write` only for temp artifacts. This is safe only with the scoped user hook. Prompt-only restrictions are not sufficient. Do not use `Bash` to create artifacts.

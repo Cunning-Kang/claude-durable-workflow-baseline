@@ -1,7 +1,7 @@
 ---
 name: subagent-pipeline
 description: Use when executing implementation tasks via the subagent
-  pipeline: implementer → spec-reviewer → test-engineer → code-reviewer,
+  pipeline: planner → plan-reviewer → implementer → spec-reviewer → test-engineer → code-reviewer,
   with per-task quality gates and final global review. Accepts one or
   more GitHub issues.
 ---
@@ -24,17 +24,13 @@ Accept one or more GitHub issues:
 Parallel syntax: comma-separated issues run concurrently; space-separated
 groups run sequentially.
 
-## Model Assignments
-
-Models are fixed at design time in agent definitions. This prompt does not
-override them. Reference: distribution/agents/*.md
-
 ## Typed Dispatch Protocol
 
 You MUST dispatch runtime-recognized named subagents. Prompt impersonation is forbidden.
 
 Required mapping:
   planning → task-planner
+  plan review/architecture plan review/task breakdown review → plan-reviewer
   implementation → code-implementer
   spec compliance → spec-reviewer
   verification/test → test-engineer
@@ -42,6 +38,7 @@ Required mapping:
 
 Forbidden:
   - generic task/reviewer/agent with assignment text such as "You are task-planner"
+  - generic task/reviewer/agent with assignment text such as "You are plan-reviewer"
   - generic task/reviewer/agent with assignment text such as "You are code-implementer"
   - generic task/reviewer/agent with assignment text such as "You are spec-reviewer"
   - generic task/reviewer/agent with assignment text such as "You are test-engineer"
@@ -82,7 +79,7 @@ Ledger rules:
 
 ## Independence Rules
 
-Coordinator never implements, tests, or reviews. Only named spec-reviewer, test-engineer, and code-reviewer judgments count for their gates.
+Coordinator never implements, tests, or reviews. Only named plan-reviewer, spec-reviewer, test-engineer, and code-reviewer judgments count for their gates.
 
 Allowed reviewer/tester context: task spec, changed files, implementer handoff, diff range, acceptance criteria, and concrete evidence.
 
@@ -93,7 +90,7 @@ Reviewer/tester PASS requires matching scope and evidence in its handoff.
 ## Pipeline Order
 
 Per task:
-  code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer
+  task-planner (when required) → plan-reviewer (when task-planner ran) → code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer
 
 After all tasks for all issues complete:
   code-reviewer (global review, full diff)
@@ -123,19 +120,20 @@ After all tasks for all issues complete:
 
    Routing:
    - Usable breakdown + no --plan flag: skip task-planner, use breakdown.
-   - No usable breakdown + no --no-plan flag: dispatch named task-planner with context:
+   - No usable breakdown + no --no-plan flag: dispatch named task-planner, then dispatch named plan-reviewer with context:
      issue body full text, relevant code paths, project constraints from
      CLAUDE.md/CONTEXT.md.
-   - --plan: always dispatch named task-planner (same context).
+   - --plan: always dispatch named task-planner, then dispatch named plan-reviewer (same context).
    - --no-plan: never dispatch task-planner, use issue body as-is. If issue body
      cannot produce verifiable tasks safely, report BLOCKED rather than inventing broad tasks.
-4. Extract all tasks with full text, acceptance criteria, and context.
-5. Assign task risk tier for planning/context only:
+4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. On FAIL, redispatch task-planner with plan-reviewer findings. On BLOCKED, supplement context once; if still BLOCKED, stop.
+5. Extract all tasks with full text, acceptance criteria, and context.
+6. Assign task risk tier for planning/context only:
    - L2: public CLI/API/schema/config/security/irreversible/closeout-sensitive.
    - L1: normal behavior change.
    - L0: docs/tests/mechanical local change.
    Risk tiers do not remove mandatory stages.
-6. Create todo list tracking all tasks across all issues.
+7. Create todo list tracking all tasks across all issues.
 
 ### Phase 0.5: Capability Preconditions
 
@@ -151,18 +149,18 @@ in separate worktrees):
 
   For each task in the issue:
 
-    If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.
+    If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner, then plan-reviewer, for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.
 
-    Adjacent acceptance items may be merged before dispatch only when task-planner defines them as one independently verifiable slice with:
+    Adjacent acceptance items may be merged before dispatch only when task-planner defines them as one independently verifiable slice and plan-reviewer accepts that boundary with:
     - one behavior target
     - one acceptance set
     - one focused verification plan
     - one reviewer scope without ambiguity
     - one retry budget for the merged slice
 
-    If any reviewer/tester says scope is too broad or ambiguous, route BLOCKED/FAIL to task-planner or split before continuing.
+    If any reviewer/tester says scope is too broad or ambiguous, route BLOCKED/FAIL to task-planner plus plan-reviewer, or split before continuing.
 
-    Risk tiers affect only split decisions, context budget, and review/test prompt focus. Risk tiers do not remove mandatory stages.
+    Risk tiers affect only split decisions, context budget, and plan/review/test prompt focus. Risk tiers do not remove mandatory stages.
 
     1. Dispatch code-implementer
        Context: task full text, acceptance criteria, file references,

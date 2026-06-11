@@ -33,7 +33,7 @@ _Avoid_: Output-first template, universal report schema
 - A **Standalone collaborator** can participate in a **Staged workflow**.
 - A **Staged workflow** is coordinated by the main session, not by subagents.
 - **Handoff principles** and **Stop principles** are shared across agents; **Artifact-oriented output** differs by agent role.
-- The six baseline **Standalone collaborators** keep their existing names: `task-planner`, `code-implementer`, `test-engineer`, `code-reviewer`, `deployment-operator`, and `spec-reviewer`.
+- The baseline **Standalone collaborators** keep their existing names: `task-planner`, `plan-reviewer`, `code-implementer`, `test-engineer`, `code-reviewer`, `deployment-operator`, and `spec-reviewer`.
 - Every baseline subagent uses the same **Agent definition skeleton**, but each defines role-specific deliverables and handoff needs.
 - Agent distribution docs explain standalone collaborators, invocation guidance, runtime caveats, and safety boundaries rather than centering a mandatory pipeline or shared output schema.
 - The agent redesign should migrate all six baseline agent files and `distribution/agents/README.md` together so the shared design model stays consistent.
@@ -54,6 +54,7 @@ _Avoid_: Output-first template, universal report schema
 - The main session owns task state; subagents may recommend task-state updates in handoff but should not maintain task state unless explicitly equipped and asked.
 - Subagents do not write phase reports, plan artifacts, or review files unless the user-requested deliverable itself is a file; durable notes are owned by the main session.
 - `task-planner` may suggest safe parallelization and specialist handoffs, but the main session remains responsible for invoking and coordinating agents.
+- `plan-reviewer` reviews plan artifacts, task breakdowns, and architecture proposals for executability, boundedness, verification, dependency order, rollback, and architecture fit; it does not generate plans or implement work.
 - `code-implementer` may work standalone on bounded implementation tasks; if scope, risk, or acceptance is unclear, it hands back the missing decision or recommends planning first.
 
 ## Example dialogue

@@ -13,6 +13,7 @@ Each agent is a standalone specialist. Oh My Pi routes to agents by exact `name`
 | Agent | Model | Thinking | Tools | Role |
 |---|---:|---:|---|---|
 | `task-planner` | opus | inherit | read-only | Principal engineer/TPM for ambiguous work; turns fuzzy intent into executable, verifiable plans. |
+| `plan-reviewer` | sonnet | high | read-only | Principal architect/reviewer for plans, task breakdowns, and architecture proposals before implementation. |
 | `code-implementer` | haiku | high | edit/write/bash/eval/debug | Senior product engineer for constrained high-signal patches and smallest provable production changes. |
 | `test-engineer` | haiku | high | tests + verification commands | Staff test engineer for behavior proof, false-positive prevention, and RED/GREEN evidence quality. |
 | `code-reviewer` | sonnet | high | read-only | Principal hostile reviewer for correctness, security, scope, and evidence failures. |
@@ -49,6 +50,7 @@ Baseline agents use a short hard prompt shape:
 | Agent | OMP `tools` allowlist | Write/Edit | Bash | MCP/codebase | Git commit |
 |---|---|---:|---:|---:|---:|
 | `task-planner` | `read, search, find, lsp, ast_grep, web_search` | no | no | via read-only tools | no |
+| `plan-reviewer` | `read, search, find, lsp, ast_grep, web_search` | no | no | via read-only tools | no |
 | `code-implementer` | `read, search, find, lsp, ast_grep, ast_edit, edit, write, bash, eval, debug` | production plus focused tests | targeted smoke/codegen/test commands | via tools | explicit authorization only |
 | `test-engineer` | `read, search, find, lsp, ast_grep, ast_edit, edit, write, bash, eval, debug` | test assets only | test commands only | via tools | no |
 | `code-reviewer` | `read, search, find, lsp, ast_grep, web_search` | no | no | via read-only tools | no |
