@@ -311,9 +311,91 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
             "Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:",
             "- Harness/tool non-success wins over agent prose. If a task is cancelled, timed out, interrupted, reports 0/N succeeded, or required verification errored, do not treat prose like \"Done\" as DONE/PASS.",
             "- A result without a clear role status and usable role-specific handoff is incomplete. If harness/tool status succeeded, ask the same agent once to restate actual status and evidence without changing files. If still incomplete, route implementer results as FAIL and reviewer/tester results as BLOCKED when independent judgment cannot be established. Do not re-ask after cancelled, timed out, interrupted, or 0/N succeeded; route those from the harness/tool status.",
-            "- Format alone is not a blocker. Block only on missing capability, unknown workspace/scope, inaccessible source, or unavailable verification needed for the stage.",
+            "- Format alone is not a blocker. Accept malformed formatting only when status, workspace/scope, and evidence are semantically present. Block only on missing capability, unknown workspace/scope, inaccessible source, unavailable verification, or missing semantic evidence needed for the stage.",
             "- If coordinator read-only checks contradict a DONE result, route as FAIL with exact evidence and redispatch code-implementer. Do not patch directly.",
             "- Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_requires_named_agents_not_impersonation(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "runtime-recognized named subagents",
+            "Prompt impersonation is forbidden.",
+            "planning → task-planner",
+            "implementation → code-implementer",
+            "spec compliance → spec-reviewer",
+            "verification/test → test-engineer",
+            "code review/global review → code-reviewer",
+            "generic task/reviewer/agent with assignment text such as \"You are task-planner\"",
+            "generic task/reviewer/agent with assignment text such as \"You are code-implementer\"",
+            "generic task/reviewer/agent with assignment text such as \"You are spec-reviewer\"",
+            "generic task/reviewer/agent with assignment text such as \"You are test-engineer\"",
+            "generic task/reviewer/agent with assignment text such as \"You are code-reviewer\"",
+            "Required named subagent selection unavailable",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_identity_does_not_require_metadata_only(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "## Agent Identity Evidence",
+            "invocation evidence is required.",
+            "metadata is optional.",
+            "metadata absence is not BLOCKED.",
+            "If invocation used a generic agent and only the prompt or handoff claims the role: BLOCKED.",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_keeps_mandatory_closeout(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "### Phase 3: Commit, Push, and Close Completed Issues",
+            "Phase 3 is mandatory for completed issues.",
+            "Do not remove, skip, or default-disable commit/push/close behavior.",
+            "Atomic commit for all changes across all completed issues",
+            "Push to GitHub.",
+            "gh issue close <number>",
+            "gh issue view <number> --json state,url",
+            "Require `state == \"CLOSED\"`.",
+            "do not claim\n   issue closure or workflow DONE",
+            "the issue is already closed",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_risk_tiers_do_not_skip_gates(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "Risk tiers do not remove mandatory stages.",
+            "code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer",
+            "After all tasks for all issues complete:\n  code-reviewer (global review, full diff)",
+            "Risk tiers affect only split decisions, context budget, and review/test prompt focus.",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_status_mapping_is_downgrade_only(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "downgrade-only semantic status mapping",
+            "Never convert FAIL/BLOCKED to PASS/DONE",
+            "never fill missing evidence",
+            "never treat ambiguous polarity as PASS",
+            "If output says both PASS and blocking issue, route as FAIL/BLOCKED.",
+            "Restate at most once per stage result.",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_planner_trigger_fields_are_defined(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "A usable structured breakdown exists only when each task has:",
+            "behavior target",
+            "acceptance criteria",
+            "verification expectation",
+            "dependencies/blockers",
+            "issue has multiple acceptance criteria and lacks task-level slices",
+            "public contract/schema/CLI/API ambiguity exists",
+            "dispatch named task-planner",
         ]:
             self.assertIn(needle, text)
 

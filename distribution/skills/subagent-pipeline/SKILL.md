@@ -29,6 +29,67 @@ groups run sequentially.
 Models are fixed at design time in agent definitions. This prompt does not
 override them. Reference: distribution/agents/*.md
 
+## Typed Dispatch Protocol
+
+You MUST dispatch runtime-recognized named subagents. Prompt impersonation is forbidden.
+
+Required mapping:
+  planning → task-planner
+  implementation → code-implementer
+  spec compliance → spec-reviewer
+  verification/test → test-engineer
+  code review/global review → code-reviewer
+
+Forbidden:
+  - generic task/reviewer/agent with assignment text such as "You are task-planner"
+  - generic task/reviewer/agent with assignment text such as "You are code-implementer"
+  - generic task/reviewer/agent with assignment text such as "You are spec-reviewer"
+  - generic task/reviewer/agent with assignment text such as "You are test-engineer"
+  - generic task/reviewer/agent with assignment text such as "You are code-reviewer"
+  - model override for role agents
+
+If the runtime cannot select these named subagents, stop as BLOCKED:
+"Required named subagent selection unavailable: <name>". Do not degrade to prompt impersonation.
+
+## Agent Identity Evidence
+
+For each dispatch, record identity source in the coordinator report:
+
+1. invocation — the dispatch mechanism explicitly selected the configured subagent name.
+2. handoff — the subagent handoff self-identifies the expected agent.
+3. metadata — if future runtime metadata exposes actual subagent identity.
+
+Current requirement:
+  - invocation evidence is required.
+  - handoff evidence must not contradict invocation.
+  - metadata is optional.
+  - metadata absence is not BLOCKED.
+
+If invocation used a generic agent and only the prompt or handoff claims the role: BLOCKED.
+
+## Dispatch Ledger
+
+Maintain a compact coordinator-owned report table for traceability. Do not write a repo file for it. Do not require subagents to output this table.
+
+Ledger fields:
+  stage, required_subagent, identity_source, tool_status, role_status, evidence_refs, route_decision
+
+Ledger rules:
+  - Ledger is traceability only.
+  - Ledger cannot satisfy review, test, or spec gates by itself.
+  - PASS requires the relevant named reviewer/tester handoff and evidence.
+  - evidence_refs must point to verifiable handoffs, tool results, commits, issue state, or other concrete artifacts.
+
+## Independence Rules
+
+Coordinator never implements, tests, or reviews. Only named spec-reviewer, test-engineer, and code-reviewer judgments count for their gates.
+
+Allowed reviewer/tester context: task spec, changed files, implementer handoff, diff range, acceptance criteria, and concrete evidence.
+
+Forbidden reviewer/tester prompt overrides: "return PASS", "treat this as accepted", "only restate PASS", "ignore findings", or any equivalent rubber-stamp instruction.
+
+Reviewer/tester PASS requires matching scope and evidence in its handoff.
+
 ## Pipeline Order
 
 Per task:
@@ -44,15 +105,37 @@ After all tasks for all issues complete:
 1. Record BASE_SHA = $(git rev-parse HEAD). For parallel mode, capture
    before any worktree is created.
 2. Read each issue body via `gh issue view`. On failure: report and halt.
-3. For each issue, check if body contains structured task breakdown.
-   - Has breakdown + no --plan flag: skip task-planner, use breakdown.
-   - No breakdown + no --no-plan flag: dispatch task-planner with context:
+3. For each issue, check if body contains usable structured task breakdown.
+   A usable structured breakdown exists only when each task has:
+   - id or stable label
+   - behavior target
+   - acceptance criteria
+   - verification expectation
+   - dependencies/blockers
+   - likely file/context references when known
+
+   Use real task-planner when:
+   - --plan flag is present
+   - issue has multiple acceptance criteria and lacks task-level slices
+   - public contract/schema/CLI/API ambiguity exists
+   - behavior target or verification is unclear
+   - task boundary affects review/test strategy
+
+   Routing:
+   - Usable breakdown + no --plan flag: skip task-planner, use breakdown.
+   - No usable breakdown + no --no-plan flag: dispatch named task-planner with context:
      issue body full text, relevant code paths, project constraints from
      CLAUDE.md/CONTEXT.md.
-   - --plan: always dispatch task-planner (same context).
-   - --no-plan: never dispatch task-planner, use issue body as-is.
+   - --plan: always dispatch named task-planner (same context).
+   - --no-plan: never dispatch task-planner, use issue body as-is. If issue body
+     cannot produce verifiable tasks safely, report BLOCKED rather than inventing broad tasks.
 4. Extract all tasks with full text, acceptance criteria, and context.
-5. Create todo list tracking all tasks across all issues.
+5. Assign task risk tier for planning/context only:
+   - L2: public CLI/API/schema/config/security/irreversible/closeout-sensitive.
+   - L1: normal behavior change.
+   - L0: docs/tests/mechanical local change.
+   Risk tiers do not remove mandatory stages.
+6. Create todo list tracking all tasks across all issues.
 
 ### Phase 0.5: Capability Preconditions
 
@@ -70,6 +153,17 @@ in separate worktrees):
 
     If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.
 
+    Adjacent acceptance items may be merged before dispatch only when task-planner defines them as one independently verifiable slice with:
+    - one behavior target
+    - one acceptance set
+    - one focused verification plan
+    - one reviewer scope without ambiguity
+    - one retry budget for the merged slice
+
+    If any reviewer/tester says scope is too broad or ambiguous, route BLOCKED/FAIL to task-planner or split before continuing.
+
+    Risk tiers affect only split decisions, context budget, and review/test prompt focus. Risk tiers do not remove mandatory stages.
+
     1. Dispatch code-implementer
        Context: task full text, acceptance criteria, file references,
        project constraints summary.
@@ -80,7 +174,9 @@ in separate worktrees):
     Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:
     - Harness/tool non-success wins over agent prose. If a task is cancelled, timed out, interrupted, reports 0/N succeeded, or required verification errored, do not treat prose like "Done" as DONE/PASS.
     - A result without a clear role status and usable role-specific handoff is incomplete. If harness/tool status succeeded, ask the same agent once to restate actual status and evidence without changing files. If still incomplete, route implementer results as FAIL and reviewer/tester results as BLOCKED when independent judgment cannot be established. Do not re-ask after cancelled, timed out, interrupted, or 0/N succeeded; route those from the harness/tool status.
-    - Format alone is not a blocker. Block only on missing capability, unknown workspace/scope, inaccessible source, or unavailable verification needed for the stage.
+    - Use downgrade-only semantic status mapping. Never convert FAIL/BLOCKED to PASS/DONE, never fill missing evidence, never infer verification that is not reported, and never treat ambiguous polarity as PASS. If output says both PASS and blocking issue, route as FAIL/BLOCKED.
+    - Format alone is not a blocker. Accept malformed formatting only when status, workspace/scope, and evidence are semantically present. Block only on missing capability, unknown workspace/scope, inaccessible source, unavailable verification, or missing semantic evidence needed for the stage.
+    - Restate at most once per stage result. Restatement does not consume implementation retry budget; it consumes the format budget for that stage result. Format budget exhausted → route by substance, or FAIL/BLOCKED as above.
     - If coordinator read-only checks contradict a DONE result, route as FAIL with exact evidence and redispatch code-implementer. Do not patch directly.
 
     2. Route on STATUS:
@@ -159,6 +255,8 @@ After all issues complete:
 
 ### Phase 3: Commit, Push, and Close Completed Issues
 
+Phase 3 is mandatory for completed issues. Do not remove, skip, or default-disable commit/push/close behavior. Only execute Phase 3 when all task gates and global review PASS.
+
 1. Atomic commit for all changes across all completed issues (one commit
    total). Commit message references all completed issue numbers.
    Optional: use `Closes #N` for GitHub cross-linking, but do not rely on
@@ -170,8 +268,10 @@ After all issues complete:
    `gh issue view <number> --json state,url`
    Require `state == "CLOSED"`.
 5. If close fails or state remains non-CLOSED: retry close once. If still
-   not CLOSED, report BLOCKED with the exact command/error and do not claim
-   issue closure.
+   not CLOSED, report BLOCKED with the exact command/error/state and do not claim
+   issue closure or workflow DONE. Include the recovery step. If close reports
+   the issue is already closed, verify state with `gh issue view`; if state ==
+   "CLOSED", closure gate PASS.
 6. For each issue with incomplete tasks, FAIL, BLOCKED, or exhausted retry
    budget: add a comment with partial status and remaining blockers. Do NOT
    close.
