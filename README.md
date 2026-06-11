@@ -34,6 +34,9 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-wor
    ~/.claude/commands/init-claude-workflow.md
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/new-feature.md \
    ~/.claude/commands/new-feature.md
+# Optional: copy reusable dynamic workflow command
+cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/subagent-pipeline-workflow.md \
+   ~/.claude/commands/subagent-pipeline-workflow.md
 
 # 4. 复制 supporting scripts 到固定 runtime 路径
 mkdir -p ~/.claude/scripts
@@ -58,7 +61,8 @@ See [docs/claude-one-command-bootstrap.md](docs/claude-one-command-bootstrap.md)
 4. Copy `distribution/scripts/*.sh` to `~/.claude/scripts/` as the fixed runtime script location
 5. Run `/init-claude-workflow` in any new repo to initialize baseline files
 6. Run `/new-feature <feature-slug>` when you need a feature spec instance
-7. (Optional) Copy `distribution/agents/*.md` to `~/.claude/agents/` for custom subagent definitions
+7. (Optional) Copy `distribution/agents/<set>/*.md` to `~/.claude/agents/` for custom subagent definitions
+8. (Optional) Copy `distribution/commands/subagent-pipeline-workflow.md` to `~/.claude/commands/` and use `distribution/workflows/subagent-pipeline-dynamic.js` as a source-only reusable Workflow script
 
 ## What `/init-claude-workflow` does
 - Verifies the current directory is a git repository
@@ -116,13 +120,12 @@ distribution/
   settings-snippets/           ← source-only · opt-in · NOT copied by /init-claude-workflow
     project/                  (project-scope settings fragments)
   agents/                     ← source-only · opt-in · NOT auto-installed
-    README.md                (installation and routing protocol guide)
-    code-implementer.md
-    code-reviewer.md
-    deployment-operator.md
-    mavis.md
-    task-planner.md
-    test-engineer.md
+    claude-code/              (Claude Code agent definitions)
+    oh-my-pi/                 (Oh My Pi agent definitions)
+  skills/                     ← source-only · opt-in · NOT auto-installed
+    subagent-pipeline/        (coordinator skill reference)
+  workflows/                  ← source-only · opt-in · NOT auto-installed
+    subagent-pipeline-dynamic.js  (reusable dynamic Workflow script)
 
 global/                        ← copied to ~/.claude/ (host-wide surface)
   CLAUDE.md                    (runtime entry — copy to ~/.claude/CLAUDE.md)
@@ -136,7 +139,7 @@ docs/
 
 **What auto-enters a new repo:** `baseline/` tree (via `/init-claude-workflow`).
 
-**What does NOT auto-enter:** `distribution/hooks/`, `distribution/settings-snippets/`, and `distribution/agents/` — these are source-only opt-in artifacts you adopt manually.
+**What does NOT auto-enter:** `distribution/hooks/`, `distribution/settings-snippets/`, `distribution/agents/`, `distribution/skills/`, and `distribution/workflows/` — these are source-only opt-in artifacts you adopt manually.
 
 ## Version
 

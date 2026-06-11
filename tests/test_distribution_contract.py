@@ -11,6 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 INIT_SCRIPT = REPO_ROOT / "distribution/scripts/init-claude-workflow.sh"
 NEW_FEATURE_SCRIPT = REPO_ROOT / "distribution/scripts/instantiate-feature.sh"
 NEW_FEATURE_COMMAND = REPO_ROOT / "distribution/commands/new-feature.md"
+SUBAGENT_PIPELINE_WORKFLOW_COMMAND = REPO_ROOT / "distribution/commands/subagent-pipeline-workflow.md"
+SUBAGENT_PIPELINE_DYNAMIC_WORKFLOW = REPO_ROOT / "distribution/workflows/subagent-pipeline-dynamic.js"
 README = REPO_ROOT / "README.md"
 BOOTSTRAP_DOC = REPO_ROOT / "docs/claude-one-command-bootstrap.md"
 CANONICAL_CACHE_PATH = "~/.claude/baselines/durable-workflow-v1"
@@ -79,10 +81,104 @@ class DistributionContractTests(unittest.TestCase):
         self.assertIn(CANONICAL_CACHE_PATH, readme)
         self.assertIn(CANONICAL_CACHE_PATH, bootstrap)
         self.assertIn("distribution/commands/new-feature.md", readme)
+        self.assertIn("distribution/commands/subagent-pipeline-workflow.md", readme)
+        self.assertIn("distribution/workflows/subagent-pipeline-dynamic.js", readme)
         self.assertIn("distribution/scripts/*.sh", readme)
         self.assertIn("mkdir -p ~/.claude/scripts", readme)
         self.assertIn("distribution/commands/new-feature.md", bootstrap)
+        self.assertIn("distribution/commands/subagent-pipeline-workflow.md", bootstrap)
+        self.assertIn("distribution/workflows/subagent-pipeline-dynamic.js", bootstrap)
         self.assertIn("distribution/scripts/*.sh", bootstrap)
+
+
+class DynamicWorkflowContractTests(unittest.TestCase):
+    def test_subagent_pipeline_dynamic_workflow_exists_and_has_meta(self):
+        text = SUBAGENT_PIPELINE_DYNAMIC_WORKFLOW.read_text()
+
+        self.assertTrue(text.startswith("export const meta = {"))
+        self.assertIn("name: 'subagent-pipeline-dynamic'", text)
+        self.assertIn("description: 'Reusable dynamic workflow", text)
+        for phase in ["Setup", "Planning", "Execute", "Verify", "Global Review", "Closeout", "Report"]:
+            self.assertIn(f"title: '{phase}'", text)
+
+    def test_subagent_pipeline_dynamic_workflow_uses_named_agents_without_model_override(self):
+        text = SUBAGENT_PIPELINE_DYNAMIC_WORKFLOW.read_text()
+
+        for agent in [
+            "task-planner",
+            "plan-reviewer",
+            "code-implementer",
+            "spec-reviewer",
+            "test-engineer",
+            "code-reviewer",
+        ]:
+            self.assertIn(f"'{agent}'", text)
+            self.assertIn("agentType: requiredSubagent", text)
+        self.assertNotRegex(text, r"\bmodel\s*:")
+        self.assertIn("No model override for role agents.", text)
+        self.assertIn("Required named subagent selection unavailable", text)
+
+    def test_subagent_pipeline_dynamic_workflow_keeps_dispatch_ledger_and_status_rules(self):
+        text = SUBAGENT_PIPELINE_DYNAMIC_WORKFLOW.read_text()
+
+        for needle in [
+            "LEDGER_FIELDS",
+            "stage",
+            "required_subagent",
+            "identity_source",
+            "tool_status",
+            "role_status",
+            "evidence_refs",
+            "route_decision",
+            "RETRY_BUDGET = 3",
+            "RESTATEMENT_BUDGET = 1",
+            "downgrade-only semantic status mapping",
+            "never convert FAIL/BLOCKED to PASS/DONE",
+            "never fill missing evidence",
+            "never infer verification",
+            "never treat ambiguous polarity as PASS",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_dynamic_workflow_keeps_issue_and_closeout_contract(self):
+        text = SUBAGENT_PIPELINE_DYNAMIC_WORKFLOW.read_text()
+
+        for needle in [
+            "BASE_SHA",
+            "HEAD_SHA",
+            "gh issue view",
+            "gh issue close",
+            "state == \"CLOSED\"",
+            "No push before global review PASS",
+            "explicit current-session authorization required before commit, push, gh issue close",
+            "closeoutAuthorized",
+            "phase3: disabled",
+            "READY_FOR_CLOSEOUT",
+        ]:
+            self.assertIn(needle, text)
+
+    def test_subagent_pipeline_workflow_command_describes_reusable_asset(self):
+        text = SUBAGENT_PIPELINE_WORKFLOW_COMMAND.read_text()
+
+        self.assertTrue(text.startswith("---\n"))
+        self.assertIn("description:", text)
+        self.assertIn("allowed-tools:", text)
+        self.assertIn("  - Read", text)
+        self.assertIn("  - Workflow", text)
+        self.assertIn("argument-hint:", text)
+        self.assertNotIn("name: subagent-pipeline-workflow", text)
+        self.assertIn("distribution/workflows/subagent-pipeline-dynamic.js", text)
+        for usage in [
+            "/subagent-pipeline-workflow #1",
+            "/subagent-pipeline-workflow --parallel #1,#2 #3",
+            "/subagent-pipeline-workflow --plan #1",
+            "/subagent-pipeline-workflow --no-plan #1",
+            "/subagent-pipeline-workflow --no-closeout #1",
+        ]:
+            self.assertIn(usage, text)
+        self.assertIn("source-only and opt-in", text)
+        self.assertIn("does not auto-install", text)
+        self.assertIn("Do not commit, push, or close GitHub issues without explicit current-session authorization.", text)
 
 
 class AgentInventoryContractTests(unittest.TestCase):

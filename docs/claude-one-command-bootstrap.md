@@ -38,6 +38,10 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/init-claude-wor
 cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/new-feature.md \
    ~/.claude/commands/new-feature.md
 
+# Optional: copy reusable dynamic workflow command
+cp ~/.claude/baselines/durable-workflow-v1/distribution/commands/subagent-pipeline-workflow.md \
+   ~/.claude/commands/subagent-pipeline-workflow.md
+
 # 复制 workflow supporting scripts 到固定 runtime 路径 ~/.claude/scripts/
 mkdir -p ~/.claude/scripts
 cp ~/.claude/baselines/durable-workflow-v1/distribution/scripts/*.sh \
@@ -91,11 +95,13 @@ claude
 
 > **区分说明：**
 > - `/init-claude-workflow`、`/new-feature` 为本仓库 distribution commands（需复制到 `~/.claude/commands/`）
+> - `/subagent-pipeline-workflow` 是 source-only optional command，引用 `distribution/workflows/subagent-pipeline-dynamic.js`，不会被 `/init-claude-workflow` 自动安装。
 
 | 场景 | 入口 |
 |------|------|
 | 初始化新项目 | `/init-claude-workflow` |
 | 初始化新 feature | `/new-feature <feature-slug>` |
+| 运行 reusable dynamic workflow | `/subagent-pipeline-workflow <issues>`（optional source-only command） |
 | 查询增强层 | `docs/specs/_template/`、`docs/workflow/`、`memory/` |
 
 ---
@@ -131,15 +137,19 @@ source repo (canonical distribution source)
 │   └── README.md                 (source repo 内部自述，无需复制)
 ├── distribution/
 │   ├── commands/
-│   │   ├── init-claude-workflow.md  → copy to ~/.claude/commands/
-│   │   └── new-feature.md           → copy to ~/.claude/commands/
+│   │   ├── init-claude-workflow.md       → copy to ~/.claude/commands/
+│   │   ├── new-feature.md                → copy to ~/.claude/commands/
+│   │   └── subagent-pipeline-workflow.md → optional copy to ~/.claude/commands/
 │   ├── scripts/
 │   │   ├── init-claude-workflow.sh  (内部脚本) → copy to ~/.claude/scripts/
 │   │   └── instantiate-feature.sh   (feature 初始化脚本) → copy to ~/.claude/scripts/
 │   ├── hooks/                     (Phase 3 · source-only · opt-in · 不被 init-claude-workflow 自动安装)
 │   │   └── project/               (project-scope deterministic gate templates)
-│   └── settings-snippets/          (Phase 3 · source-only · opt-in · 不被 init-claude-workflow 自动安装)
-│       └── project/               (project-scope 配置片段模板，与配对 hook 协同)
+│   ├── settings-snippets/          (Phase 3 · source-only · opt-in · 不被 init-claude-workflow 自动安装)
+│   │   └── project/               (project-scope 配置片段模板，与配对 hook 协同)
+│   ├── skills/                    (source-only · opt-in · 不被 init-claude-workflow 自动安装)
+│   └── workflows/                 (source-only · opt-in · reusable dynamic Workflow scripts)
+│       └── subagent-pipeline-dynamic.js
 └── baseline/                     → init-claude-workflow 的 source
     ├── docs/specs/_template/    (spec templates: index, plan, spec, review, verify, tasks/)
     ├── docs/workflow/          (review-protocol, execution-contract, memory-protocol, etc.)
@@ -147,7 +157,7 @@ source repo (canonical distribution source)
     └── claude/                 (claude-snippet.md)
 ```
 
-> **注意：** `distribution/hooks/` and `distribution/settings-snippets/` are source-only opt-in artifacts — they are **not** copied by `/init-claude-workflow` and must be adopted manually per the opt-in procedures in those directories.
+> **注意：** `distribution/hooks/`, `distribution/settings-snippets/`, `distribution/skills/`, and `distribution/workflows/` are source-only opt-in artifacts — they are **not** copied by `/init-claude-workflow` and must be adopted manually per the opt-in procedures in those directories.
 
 ---
 
