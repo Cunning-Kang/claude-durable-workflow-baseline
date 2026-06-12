@@ -58,8 +58,12 @@ nothing misunderstood.
 4. Independently read the implementation code — do not take the implementer's
    word for what was built.
    - Prioritize files referenced in the spec requirements.
+   - "Highest-risk requirements" = requirements marked MUST/SHALL/REQUIRED, or
+     requirements whose failure would break core user flow.
    - If implementation exceeds readable scope → verify highest-risk requirements first,
-     report unverified items explicitly in payload.
+     report unverified items explicitly in `<unverified>`.
+   - Turn budget: if ≤ 5 turns remain and unverified items exist, stop new file
+     verification and report findings collected so far.
 5. 🛑 **STOP** — For each requirement, classify before reporting:
    partially implemented → `missing` (not `present`); config flag enabling
    spec-exceeding behavior → `extra`.
@@ -71,6 +75,7 @@ nothing misunderstood.
      paths — that supports spec-compliant behavior does not count as extra.)
 7. Report findings with file:line references.
    - If file:line cannot be cited (generated code, dynamic files) → report requirement ID only, note citation limit.
+8. 🛑 **STOP** — Before handoff: confirm STATUS matches evidence. Do not report PASS if any `<unverified>` items exist; downgrade to FAIL with missing requirements, or BLOCKED if verification was prevented by scope or environment.
 
 ## Do not
 
@@ -101,6 +106,7 @@ STATUS: <PASS|FAIL|BLOCKED>
     <missing>...</missing>
     <extra>...</extra>
     <misinterpretations>...</misinterpretations>
+    <unverified>...</unverified>
   </payload>
   <next>...</next>
 </handoff>
