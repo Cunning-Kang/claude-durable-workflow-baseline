@@ -1,9 +1,8 @@
 ---
 name: subagent-pipeline
-description: Use when executing implementation tasks via the subagent
+description: Use when executing implementation work via the subagent
   pipeline: planner → plan-reviewer → implementer → spec-reviewer → test-engineer → code-reviewer,
-  with per-task quality gates and final global review. Accepts one or
-  more GitHub issues.
+  with per-task quality gates and final global review. Accepts GitHub issues, plan files, and task text.
 ---
 
 # Subagent Pipeline
@@ -14,15 +13,40 @@ code yourself.
 
 ## Input
 
-Accept one or more GitHub issues:
+Interactive-first behavior:
+
+- With no arguments, ask the user to choose work item source: GitHub issue, plan file, or task text.
+- For GitHub issue, ask for one or more issue numbers or URLs.
+- For plan file, discover candidate files and ask the user to select one. Default single-select; allow multiple plan files only when the user explicitly asks.
+- For task text, ask the user to paste the task. If acceptance or verification is missing, use task-planner unless the user selected --no-plan.
+
+Shortcut arguments remain supported:
+
   /subagent-pipeline #1
-  /subagent-pipeline #1 #2 #3
+  /subagent-pipeline docs/plans/foo.md
+  /subagent-pipeline "Fix auth token expiry"
+  /subagent-pipeline #1 docs/plans/foo.md "Fix X"
   /subagent-pipeline --parallel #1,#2 #3
   /subagent-pipeline --plan #1       (force task-planner)
-  /subagent-pipeline --no-plan #1    (skip task-planner)
+  /subagent-pipeline --no-plan #1    (skip task-planner; BLOCKED if unclear)
+  /subagent-pipeline --no-commit #1  (report READY_FOR_COMMIT)
+  /subagent-pipeline --push #1       (commit then push)
+  /subagent-pipeline --close-issues #1  (commit, push, close, verify CLOSED)
 
-Parallel syntax: comma-separated issues run concurrently; space-separated
-groups run sequentially.
+Work items:
+
+- issue: `#N` or issue URL; read with `gh issue view`.
+- plan-file: markdown file path; read as immutable spec.
+- task: quoted or pasted task text; original user text is immutable spec.
+
+Mixed source types are allowed in one run. Each input is an independent work item in input order. Parallel syntax remains comma-separated issue shortcuts; generic plan/task parallelism is planner-approved only.
+
+Plan file candidate discovery only finds files; it does not judge plan quality. Search candidates:
+
+1. `.claude/plans/*.md`
+2. `docs/plans/*.md`
+3. `plans/*.md`
+4. Recent markdown files with names containing `plan`, `task`, `implementation`, or `roadmap`
 
 ## Typed Dispatch Protocol
 
@@ -87,12 +111,22 @@ Forbidden reviewer/tester prompt overrides: "return PASS", "treat this as accept
 
 Reviewer/tester PASS requires matching scope and evidence in its handoff.
 
+## Immutable Work Item Spec
+
+Work item spec is immutable. Pipeline may read but must not modify:
+
+- issue body before authorized Phase 3 (no `gh issue edit`, no `gh issue comment`, no `gh issue close`)
+- plan file content
+- user-provided task text
+
+Task-planner breakdown becomes immutable after plan-reviewer PASS.
+
 ## Pipeline Order
 
 Per task:
   task-planner (when required) → plan-reviewer (when task-planner ran) → code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer
 
-After all tasks for all issues complete:
+After all tasks for all work items complete:
   code-reviewer (global review, full diff)
 
 ## Process
@@ -100,9 +134,13 @@ After all tasks for all issues complete:
 ### Phase 0: Setup
 
 1. Record BASE_SHA = $(git rev-parse HEAD). For parallel mode, capture
-   before any worktree is created.
-2. Read each issue body via `gh issue view`. On failure: report and halt.
-3. For each issue, check if body contains usable structured task breakdown.
+   before any patch proposal worker is created.
+2. Load each work item spec:
+   - issue: `gh issue view <number> --json number,title,body,url,state`
+   - plan-file: read the selected markdown file
+   - task: preserve pasted task text exactly
+   On failure: report and halt.
+3. For each work item, check if body contains usable structured task breakdown.
    A usable structured breakdown exists only when each task has:
    - id or stable label
    - behavior target
@@ -113,7 +151,7 @@ After all tasks for all issues complete:
 
    Use real task-planner when:
    - --plan flag is present
-   - issue has multiple acceptance criteria and lacks task-level slices
+   - work item has multiple acceptance criteria and lacks task-level slices
    - public contract/schema/CLI/API ambiguity exists
    - behavior target or verification is unclear
    - task boundary affects review/test strategy
@@ -121,10 +159,10 @@ After all tasks for all issues complete:
    Routing:
    - Usable breakdown + no --plan flag: skip task-planner, use breakdown.
    - No usable breakdown + no --no-plan flag: dispatch named task-planner, then dispatch named plan-reviewer with context:
-     issue body full text, relevant code paths, project constraints from
+     full work item spec, relevant code paths, project constraints from
      CLAUDE.md/CONTEXT.md.
    - --plan: always dispatch named task-planner, then dispatch named plan-reviewer (same context).
-   - --no-plan: never dispatch task-planner, use issue body as-is. If issue body
+   - --no-plan: never dispatch task-planner, use work item spec as-is. If the spec
      cannot produce verifiable tasks safely, report BLOCKED rather than inventing broad tasks.
 4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. On FAIL, redispatch task-planner with plan-reviewer findings. On BLOCKED, supplement context once; if still BLOCKED, stop.
 5. Extract all tasks with full text, acceptance criteria, and context.
@@ -133,7 +171,8 @@ After all tasks for all issues complete:
    - L1: normal behavior change.
    - L0: docs/tests/mechanical local change.
    Risk tiers do not remove mandatory stages.
-7. Create todo list tracking all tasks across all issues.
+7. Create todo list tracking all tasks across all work items.
+8. Task-planner proposes safe parallel groups when --parallel is requested. Plan-reviewer audits those groups. If --parallel was requested but rejected by plan-reviewer, run sequentially and report the reason unless the user explicitly required parallel.
 
 ### Phase 0.5: Capability Preconditions
 
@@ -141,13 +180,12 @@ Before implementation, note visible repository policy that constrains code disco
 
 ### Phase 1: Execute
 
-For each issue (sequential by default; --parallel issues run concurrently
-in separate worktrees):
+For each work item (sequential by default; --parallel allows planner-approved patch proposal groups):
 
-  If any issue is BLOCKED with exhausted retry budget: halt all subsequent
-  issues and report.
+  If any work item is BLOCKED with exhausted retry budget: halt all subsequent
+  work items and report.
 
-  For each task in the issue:
+  For each task in the work item:
 
     If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner, then plan-reviewer, for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.
 
@@ -166,7 +204,7 @@ in separate worktrees):
        Context: task full text, acceptance criteria, file references,
        project constraints summary.
        Requirement: implementer must complete self-review (completeness,
-       quality, discipline/YAGNI, testing) before reporting DONE.
+       quality, discipline/YAGNI, and testing) before reporting DONE.
        Self-review is the first quality gate — not optional.
 
     Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:
@@ -234,13 +272,40 @@ in separate worktrees):
        fix. Every reviewer BLOCKED redispatch consumes 1 retry.
        Budget exhausted → stop, report failure and recommendations.
 
+### Parallel Mode
+
+--parallel is permission to parallelize safe slices, not a requirement unless the user explicitly says parallel is mandatory.
+
+Planner proposes:
+
+- can_parallelize: true/false
+- safe_groups
+- dependencies
+- conflict risks
+
+Plan-reviewer approves or rejects those groups.
+
+Approved parallel groups use patch proposal flow:
+
+1. Dispatch parallel code-implementer workers for safe slices.
+2. Each worker returns STATUS plus unified diff patch, changed files, focused verification notes, assumptions, and risks.
+3. Coordinator mechanically runs `git apply --check` and `git apply` in declared slice order. Coordinator does not edit patches.
+4. On patch apply failure, redispatch affected code-implementer with current main context and patch failure output.
+5. Authoritative gates run on the main worktree after apply:
+   - spec-reviewer per slice
+   - test-engineer per group
+   - code-reviewer per group
+
+If plan-reviewer rejects parallelization, execute sequentially and report:
+"Parallel requested but rejected by plan-reviewer: <reason>. Executed sequentially."
+
 ### Phase 2: Global Review
 
-After all issues complete:
+After all work items complete and before any commit:
 
 1. Collect full diff: BASE_SHA (recorded in Phase 0) to HEAD_SHA
    ($(git rev-parse HEAD)).
-2. Dispatch code-reviewer with full diff + all issue specs + all task
+2. Dispatch code-reviewer with full diff + all work item specs + all task
    acceptance criteria.
 3. Route:
    PASS → proceed to Phase 3
@@ -251,30 +316,58 @@ After all issues complete:
      Repeat until PASS or BLOCKED.
    BLOCKED → report, await instructions
 
-### Phase 3: Commit, Push, and Close Completed Issues
+### Phase 3: Report and Atomic Commit
 
-Phase 3 is mandatory for completed issues. Do not remove, skip, or default-disable commit/push/close behavior. Only execute Phase 3 when all task gates and global review PASS.
+Phase 3 runs only after all task gates and global review PASS. Default behavior is report plus atomic commit. It does not push or close issues by default.
 
-1. Atomic commit for all changes across all completed issues (one commit
-   total). Commit message references all completed issue numbers.
-   Optional: use `Closes #N` for GitHub cross-linking, but do not rely on
-   auto-close because it is branch/default-merge dependent.
-2. Push to GitHub.
-3. For each issue where all tasks completed and all gates PASS:
+Flags:
+
+- `--no-commit`: skip commit and return READY_FOR_COMMIT with commit plan.
+- `--push`: after commit, push current branch.
+- `--close-issues`: after commit, push current branch, close completed issue-source work items, and verify `state == "CLOSED"`. `--close-issues` implies push.
+
+Coordinator owns Phase 3 mechanical actions. `deployment-operator` is not part of default subagent-pipeline.
+
+1. Build commit groups after global review PASS:
+   - no file overlap → one commit per work item
+   - overlapping changed files → one combined commit for those work items
+   - plan-file default → one commit unless plan-reviewer promoted internal slices to separate work items
+   - unknown file ownership → one combined commit
+2. Stage explicit files only. Do not use `git add .`.
+3. Commit message references all completed issue numbers. Use `Refs #N` by default. Use `Closes #N` only when `--close-issues` was supplied.
+4. Include `Co-Authored-By: Claude <noreply@anthropic.com>`.
+5. Verify commit with `git show --stat --oneline HEAD` and `git status --short`.
+6. If `--push`: push current branch.
+7. If `--close-issues`: for each completed issue-source work item run:
    `gh issue close <number> --comment "Completed in <commit SHA>. <summary>"`
-4. Verify each closed issue:
-   `gh issue view <number> --json state,url`
+   then `gh issue view <number> --json state,url`.
    Require `state == "CLOSED"`.
-5. If close fails or state remains non-CLOSED: retry close once. If still
+   If close fails or state remains non-CLOSED: retry close once. If still
    not CLOSED, report BLOCKED with the exact command/error/state and do not claim
    issue closure or workflow DONE. Include the recovery step. If close reports
    the issue is already closed, verify state with `gh issue view`; if state ==
    "CLOSED", closure gate PASS.
-6. For each issue with incomplete tasks, FAIL, BLOCKED, or exhausted retry
-   budget: add a comment with partial status and remaining blockers. Do NOT
-   close.
-7. Report summary: issues completed, issues closed, commit SHA, issue URLs,
-   tasks per issue, files changed, review findings resolved.
+8. Final report: work items completed, commits, push status, issue URLs,
+   tasks per work item, files changed, review findings resolved, risks, and recovery commands.
+
+## Top-Level Status
+
+Use only these top-level statuses:
+
+- DONE: all gates PASS, commits created unless no changes are valid, push/close completed if requested.
+- READY_FOR_COMMIT: gates PASS but `--no-commit` skipped commit; report includes commit plan and commands.
+- BLOCKED: authorization, tool, environment, unclear spec, git, push, or gh issue close prevents safe continuation.
+- FAIL: implementation/spec/test/review quality failure exhausted retry budget.
+
+Phase details belong in fields such as:
+
+```js
+phase3: {
+  commit: "created" | "skipped" | "blocked" | "not_needed",
+  push: "skipped" | "done" | "blocked",
+  closeIssues: "skipped" | "done" | "blocked"
+}
+```
 
 ## Retry Rules
 
@@ -292,33 +385,23 @@ Phase 3 is mandatory for completed issues. Do not remove, skip, or default-disab
     Rewalk spec-reviewer FAILs → implementer fix dispatched (retry 3).
     Budget exhausted. Any further FAIL → stop and report.
 
-## Parallel Mode
-
---parallel #1,#2 #3 means:
-  Group 1: #1 and #2 execute concurrently (separate worktrees)
-  Group 2: #3 executes after group 1 completes
-  Merge order: by issue number (ascending)
-  Merge strategy: merge commit. On conflict: halt and report for manual
-    resolution.
-  Global review: after all merges complete
-  BASE_SHA: captured from main worktree before any worktree creation
-
 ## What You Never Do
 
 - Implement code yourself
 - Skip any Phase 1 pipeline stage
 - Proceed past FAIL without remediation
 - Push before global review PASS
-- Make subagents read the plan file (provide full task text)
+- Make subagents read the plan file path only (provide full task text)
 - Ignore subagent BLOCKED or FAIL status
 - Commit before global review PASS
 - Close an issue with incomplete tasks or failed/blocked gates
+- Use deployment-operator in the default subagent-pipeline
 - Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.
 
 ## Continuous Execution
 
-Do not pause between tasks or issues. Execute without stopping.
+Do not pause between tasks or work items. Execute without stopping.
 Only stop when:
   - BLOCKED and retry budget exhausted
   - Ambiguity that genuinely prevents progress
-  - All issues complete
+  - All work items complete

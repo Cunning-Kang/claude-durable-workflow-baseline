@@ -140,22 +140,29 @@ class DynamicWorkflowContractTests(unittest.TestCase):
         ]:
             self.assertIn(needle, text)
 
-    def test_subagent_pipeline_dynamic_workflow_keeps_issue_and_closeout_contract(self):
+    def test_subagent_pipeline_dynamic_workflow_keeps_work_item_and_commit_contract(self):
         text = SUBAGENT_PIPELINE_DYNAMIC_WORKFLOW.read_text()
 
         for needle in [
+            "workItems",
+            "plan-file",
+            "task",
             "BASE_SHA",
             "HEAD_SHA",
             "gh issue view",
             "gh issue close",
             "state == \"CLOSED\"",
             "No push before global review PASS",
-            "explicit current-session authorization required before commit, push, gh issue close",
-            "closeoutAuthorized",
-            "phase3: disabled",
-            "READY_FOR_CLOSEOUT",
+            "READY_FOR_COMMIT",
+            "noCommit",
+            "push",
+            "closeIssues",
+            "const push = Boolean(source.push) || closeIssues",
+            "Coordinator-owned mechanical commit after global review PASS",
         ]:
             self.assertIn(needle, text)
+        for forbidden in ["READY_FOR_CLOSEOUT", "closeoutAuthorized", "phase3: disabled", "closeout: 'deployment-operator'"]:
+            self.assertNotIn(forbidden, text)
 
     def test_subagent_pipeline_workflow_command_describes_reusable_asset(self):
         text = SUBAGENT_PIPELINE_WORKFLOW_COMMAND.read_text()
@@ -170,15 +177,21 @@ class DynamicWorkflowContractTests(unittest.TestCase):
         self.assertIn("distribution/workflows/subagent-pipeline-dynamic.js", text)
         for usage in [
             "/subagent-pipeline-workflow #1",
+            "/subagent-pipeline-workflow docs/plans/auth-refactor.md",
+            "/subagent-pipeline-workflow \"Fix auth token expiry\"",
             "/subagent-pipeline-workflow --parallel #1,#2 #3",
             "/subagent-pipeline-workflow --plan #1",
             "/subagent-pipeline-workflow --no-plan #1",
-            "/subagent-pipeline-workflow --no-closeout #1",
+            "/subagent-pipeline-workflow --no-commit #1",
+            "/subagent-pipeline-workflow --push #1",
+            "/subagent-pipeline-workflow --close-issues #1",
         ]:
             self.assertIn(usage, text)
         self.assertIn("source-only and opt-in", text)
         self.assertIn("does not auto-install", text)
-        self.assertIn("Do not commit, push, or close GitHub issues without explicit current-session authorization.", text)
+        self.assertIn("Do not commit before global review PASS.", text)
+        self.assertIn("Do not push or close GitHub issues without explicit current-session authorization", text)
+        self.assertNotIn("--no-closeout", text)
 
 
 class AgentInventoryContractTests(unittest.TestCase):
@@ -455,19 +468,46 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
         ]:
             self.assertIn(needle, text)
 
-    def test_subagent_pipeline_keeps_mandatory_closeout(self):
+    def test_subagent_pipeline_keeps_report_and_commit_phase(self):
         text = self.SKILL.read_text()
         for needle in [
-            "### Phase 3: Commit, Push, and Close Completed Issues",
-            "Phase 3 is mandatory for completed issues.",
-            "Do not remove, skip, or default-disable commit/push/close behavior.",
-            "Atomic commit for all changes across all completed issues",
-            "Push to GitHub.",
+            "### Phase 3: Report and Atomic Commit",
+            "Default behavior is report plus atomic commit.",
+            "It does not push or close issues by default.",
+            "--no-commit",
+            "READY_FOR_COMMIT",
+            "--push",
+            "--close-issues",
+            "--close-issues` implies push",
+            "Coordinator owns Phase 3 mechanical actions.",
+            "deployment-operator` is not part of default subagent-pipeline",
+            "Stage explicit files only",
             "gh issue close <number>",
             "gh issue view <number> --json state,url",
             "Require `state == \"CLOSED\"`.",
             "do not claim\n   issue closure or workflow DONE",
             "the issue is already closed",
+        ]:
+            self.assertIn(needle, text)
+        self.assertNotIn("--no-closeout", text)
+
+
+    def test_subagent_pipeline_supports_work_item_sources_and_statuses(self):
+        text = self.SKILL.read_text()
+        for needle in [
+            "GitHub issue, plan file, or task text",
+            "issue: `#N` or issue URL",
+            "plan-file: markdown file path",
+            "task: quoted or pasted task text",
+            "Mixed source types are allowed",
+            "Use only these top-level statuses",
+            "DONE",
+            "READY_FOR_COMMIT",
+            "BLOCKED",
+            "FAIL",
+            "patch proposal flow",
+            "git apply --check",
+            "Authoritative gates run on the main worktree after apply",
         ]:
             self.assertIn(needle, text)
 
@@ -476,7 +516,7 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
         for needle in [
             "Risk tiers do not remove mandatory stages.",
             "task-planner (when required) → plan-reviewer (when task-planner ran) → code-implementer (with self-review) → spec-reviewer → test-engineer → code-reviewer",
-            "After all tasks for all issues complete:\n  code-reviewer (global review, full diff)",
+            "After all tasks for all work items complete:\n  code-reviewer (global review, full diff)",
             "Risk tiers affect only split decisions, context budget, and plan/review/test prompt focus.",
         ]:
             self.assertIn(needle, text)
@@ -501,7 +541,7 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
             "acceptance criteria",
             "verification expectation",
             "dependencies/blockers",
-            "issue has multiple acceptance criteria and lacks task-level slices",
+            "work item has multiple acceptance criteria and lacks task-level slices",
             "public contract/schema/CLI/API ambiguity exists",
             "dispatch named task-planner",
             "dispatch named plan-reviewer",
