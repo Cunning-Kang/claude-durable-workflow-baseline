@@ -129,6 +129,15 @@ Per task:
 After all tasks for all work items complete:
   code-reviewer (global review, full diff)
 
+## Checkpoints
+
+These checkpoints are execution gates, not routine user pauses. Continue automatically when the gate PASSes. Stop only on BLOCKED/FAIL exhaustion, ambiguity that prevents progress, or an outward-facing action that requires authorization.
+
+- 🔴 CHECKPOINT · Task Gate: spec-reviewer, test-engineer, and code-reviewer must PASS before a task is complete.
+- 🔴 CHECKPOINT · Global Review Gate: final code-reviewer must PASS before Phase 3.
+- 🔴 CHECKPOINT · Commit/Push/Close Gate: commit requires all gates PASS; push and issue close run only when the original command included the matching flag.
+- 🛑 STOP · BLOCKED/FAIL Exhaustion: exhausted retry budget, missing required capability, or unsafe ambiguity stops the pipeline and reports recovery steps.
+
 ## Process
 
 ### Phase 0: Setup
@@ -140,7 +149,7 @@ After all tasks for all work items complete:
    - plan-file: read the selected markdown file
    - task: preserve pasted task text exactly
    On failure: report and halt.
-3. For each work item, check if body contains usable structured task breakdown.
+3. For each work item, check if the work item spec contains usable structured task breakdown.
    A usable structured breakdown exists only when each task has:
    - id or stable label
    - behavior target

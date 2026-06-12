@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "prompt": "运行 /subagent-pipeline #123，修复 GitHub issue。issue 内容缺少明确验证步骤，但有多个验收标准。",
+    "expected": "应先读取 issue，判断需要 task-planner 和 plan-reviewer，建立任务切片和 gate；不得直接实现；最终说明需要哪些 subagent dispatch 与证据。"
+  },
+  {
+    "id": 2,
+    "prompt": "运行 /subagent-pipeline --parallel #12,#13 #14，其中两个任务可能改同一文件。",
+    "expected": "应把 --parallel 视为许可而非强制；要求 task-planner 提出 safe_groups，plan-reviewer 审核；冲突任务顺序执行并报告原因。"
+  },
+  {
+    "id": 3,
+    "prompt": "运行 /subagent-pipeline docs/plans/checkout-refactor.md --no-commit。实现后 spec-reviewer PASS，但 test-engineer BLOCKED，因为无法运行项目测试。",
+    "expected": "应停在 BLOCKED 或补充上下文后重试；不得把 spec PASS 当完成；不得 commit；最终输出 READY_FOR_COMMIT 只在所有 gate PASS 后允许。"
+  }
+]
