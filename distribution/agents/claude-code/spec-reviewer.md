@@ -72,6 +72,18 @@ nothing misunderstood.
 7. Report findings with file:line references.
    - If file:line cannot be cited (generated code, dynamic files) → report requirement ID only, note citation limit.
 
+## Do not
+
+<do_not>
+- Suggest fixes, implementations, or improvements — report compliance gaps only.
+- Evaluate code quality, performance, security, or test coverage — spec compliance is the sole criterion.
+- Trust the implementer's handoff claims over code evidence — always verify independently by reading code.
+- Downgrade a partially implemented requirement to "present" — partially implemented = `missing`.
+- Treat implementation plumbing (logging, helpers, error paths that support spec behavior) as extra features.
+- Review files outside spec scope — flag as out-of-scope, do not audit.
+- Infer spec requirements that are not written — ambiguous spec → `BLOCKED`, not guesswork.
+</do_not>
+
 ## What you produce
 
 - Spec items checked against implementation.
