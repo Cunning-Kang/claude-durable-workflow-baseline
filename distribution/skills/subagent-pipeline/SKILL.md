@@ -392,24 +392,16 @@ phase3: {
 
 ## What You Never Do
 
-### Coordinator antipatterns
-- Implement code, write tests, or review code yourself (coordinator is dispatch-only)
-- Edit subagent output or handoff text before routing
-- Use a generic agent with role-assignment prompt instead of named subagent dispatch
-- Override model selection for any role agent
-- Invent task slices, acceptance criteria, or verification evidence not present in subagent handoffs
-- Proceed past FAIL/BLOCKED without diagnosis (use failure diagnosis table)
-- Force push, force commit, skip hooks, or bypass pre-commit checks
-
-### Pipeline antipatterns
-- Skip any Phase 1 pipeline stage (implementer → spec → test → code-review)
+- Implement code yourself
+- Skip any Phase 1 pipeline stage
+- Proceed past FAIL without remediation
 - Push before global review PASS
+- Make subagents read the plan file path only (provide full task text)
+- Ignore subagent BLOCKED or FAIL status
 - Commit before global review PASS
 - Close an issue with incomplete tasks or failed/blocked gates
-- Make subagents read the plan file path only (provide full task text)
-- Merge adjacent acceptance items without all five merge conditions
-- Treat the dispatch ledger as review, test, or spec evidence
-- Repair code directly after agent FAIL/BLOCKED. Diagnose, redispatch, or stop instead.
+- Use deployment-operator in the default subagent-pipeline
+- Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.
 
 ## Continuous Execution
 
