@@ -11,7 +11,7 @@ argument-hint: "[#issue ... | plan-file | 'task'] [--parallel #1,#2 #3] [--plan|
 
 Usage: Run `/subagent-pipeline-workflow <work items>` to launch the reusable dynamic workflow script.
 
-With no arguments, collect work items interactively in the main session before invoking Workflow.
+With no arguments: this command layer collects work items interactively (prompt user for issue numbers, plan file paths, or task text) before invoking Workflow. The workflow script itself requires non-empty `workItems` and will return BLOCKED if none are supplied.
 
 Examples:
 - `/subagent-pipeline-workflow #1`
@@ -29,7 +29,7 @@ What it does:
 1. Uses `distribution/workflows/subagent-pipeline-dynamic.js` as the workflow script.
 2. Parses work item arguments into workflow args:
    - `workItems`: issue (`#1`), plan-file (`docs/plans/foo.md`), and task text entries
-   - `groups`: comma-separated issue shortcuts are one requested parallel group; space-separated groups run in order
+   - `groups`: array of arrays. Comma-separated items form one group (parallel candidates); space-separated groups run sequentially. Example: `--parallel #1,#2 #3` → `groups: [[#1, #2], [#3]]`
    - `plan`: `force` for `--plan`, `skip` for `--no-plan`, otherwise `auto`
    - `commit`: false for `--no-commit`, otherwise true
    - `push`: true for `--push`; also true when `closeIssues` is true
