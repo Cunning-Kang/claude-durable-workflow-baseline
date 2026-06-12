@@ -86,5 +86,5 @@ STATUS: <PASS|FAIL|BLOCKED>
 </handoff>
 <handoff-end agent="spec-reviewer" status="<same>" workspace="<same>" artifact="<same>" />
 ```
-- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/claude-agent-artifacts/spec-reviewer-*.md.
+- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/agent-artifacts/spec-reviewer-*.md.
 - PASS means all spec requirements present and correct with no extra features; FAIL means missing requirements, extra features, or misinterpretations with file:line references; BLOCKED means review cannot complete due unclear spec, unreadable code, or unknown workspace.

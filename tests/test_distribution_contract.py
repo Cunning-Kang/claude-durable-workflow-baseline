@@ -539,8 +539,10 @@ class SubagentPipelinePromptContractTests(unittest.TestCase):
             for marker in ["## Role", "## Boundaries", "## Workflow", "## What you produce", "## Artifact and final handoff"]:
                 self.assertIn(marker, claude, filename)
                 self.assertIn(marker, omp, filename)
-            self.assertIn("claude-agent-artifacts", claude, filename)
-            self.assertIn("omp-agent-artifacts", omp, filename)
+            self.assertIn("agent-artifacts", claude, filename)
+            self.assertIn("agent-artifacts", omp, filename)
+            self.assertNotIn("claude-agent-artifacts", claude, filename)
+            self.assertNotIn("omp-agent-artifacts", omp, filename)
 
     def test_oh_my_pi_frontmatter_uses_allowlist_shape(self):
         forbidden = ["disallowedTools:", "effort:", "permissionMode:", "memory:", "color:", "maxTurns:", "hooks:"]

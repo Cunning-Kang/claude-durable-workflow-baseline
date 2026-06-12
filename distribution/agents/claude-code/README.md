@@ -107,7 +107,7 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/claude-code/task-
 - Final line is `<handoff-end ... />`.
 - No text appears after the end marker.
 - Workspace is observed absolute path, or `UNVERIFIED` with `BLOCKED`.
-- Default artifact path is `$TMPDIR/claude-agent-artifacts/<agent>-*.md`.
+- Default artifact path is `$TMPDIR/agent-artifacts/<agent>-*.md`.
 - Project artifacts require explicit request and gitignored `.claude/agent-artifacts/`.
 
 ## Read-only artifact writes

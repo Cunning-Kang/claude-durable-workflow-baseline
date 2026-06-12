@@ -47,4 +47,4 @@ STATUS: <DONE|FAIL|BLOCKED>
 
 - `STATUS:`, `<handoff status="...">`, and `<handoff-end status="...">` must use the same value.
 - Unknown workspace means `BLOCKED` with `workspace="UNVERIFIED"`.
-- Artifact path, if used, must be `$TMPDIR/omp-agent-artifacts/task-planner-*.md`.
+- Artifact path, if used, must be `$TMPDIR/agent-artifacts/task-planner-*.md`.

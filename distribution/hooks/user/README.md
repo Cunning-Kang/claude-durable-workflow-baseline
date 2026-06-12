@@ -76,5 +76,5 @@ Is it project-agnostic AND intended to run in ALL repos?
 
 - Event: `PreToolUse`
 - Tool: `Write`
-- Purpose: restrict read-only subagent artifact writes to `$TMPDIR/claude-agent-artifacts/<agent>-*.md`
+- Purpose: restrict read-only subagent artifact writes to `$TMPDIR/agent-artifacts/<agent>-*.md`
 - Source: `distribution/hooks/user/validate-agent-artifact-write/hook.mjs`

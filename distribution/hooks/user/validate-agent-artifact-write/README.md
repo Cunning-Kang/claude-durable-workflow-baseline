@@ -5,7 +5,7 @@ Enforces read-only artifact writes for global subagents.
 - Event: `PreToolUse`
 - Tool: `Write`
 - Scope: user-level source-only hook
-- Allowed path: `$TMPDIR/claude-agent-artifacts/<agent>-*.md`
+- Allowed path: `$TMPDIR/agent-artifacts/<agent>-*.md`
 - Denied by default: repo paths and `.claude/agent-artifacts/`
 
 ## Install

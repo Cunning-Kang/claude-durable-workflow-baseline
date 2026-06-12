@@ -3,7 +3,7 @@
 ## In scope
 
 - Validate `Write.file_path` for read-only agent artifact writes.
-- Allow only absolute temp artifact paths under `$TMPDIR/claude-agent-artifacts/<agent>-*.md`.
+- Allow only absolute temp artifact paths under `$TMPDIR/agent-artifacts/<agent>-*.md`.
 
 ## Out of scope
 

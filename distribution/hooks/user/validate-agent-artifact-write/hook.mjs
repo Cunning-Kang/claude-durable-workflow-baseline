@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync } from 'node:fs';
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -41,13 +42,37 @@ if (typeof filePath !== 'string' || filePath.trim() === '') fail('Blocked: Write
 if (!path.isAbsolute(filePath)) fail('Blocked: artifact Write path must be absolute.');
 
 const tmpBase = process.env.TMPDIR || os.tmpdir();
-const allowRoot = path.resolve(tmpBase, 'claude-agent-artifacts');
+const allowRoot = path.resolve(tmpBase, 'agent-artifacts');
+let realAllowRoot;
+try {
+  realAllowRoot = fs.realpathSync(allowRoot);
+  if (!fs.statSync(realAllowRoot).isDirectory()) fail('Blocked: $TMPDIR/agent-artifacts must be a directory.');
+} catch {
+  fail('Blocked: $TMPDIR/agent-artifacts must exist before artifact writes.');
+}
+
 const target = path.resolve(filePath);
 const relative = path.relative(allowRoot, target);
-if (relative.startsWith('..') || path.isAbsolute(relative) || relative === '') fail('Blocked: artifact Write path must be under $TMPDIR/claude-agent-artifacts/.');
+if (relative.startsWith('..') || path.isAbsolute(relative) || relative === '') fail('Blocked: artifact Write path must be under $TMPDIR/agent-artifacts/.');
+if (relative.includes(path.sep)) fail('Blocked: artifact Write path must be directly under $TMPDIR/agent-artifacts/.');
+
+let realParent;
+try {
+  realParent = fs.realpathSync(path.dirname(target));
+} catch {
+  fail('Blocked: artifact parent directory must exist.');
+}
+if (realParent !== realAllowRoot) fail('Blocked: artifact parent directory must be $TMPDIR/agent-artifacts/.');
+
+try {
+  fs.lstatSync(target);
+  fail('Blocked: artifact target already exists.');
+} catch (error) {
+  if (error?.code !== 'ENOENT') fail('Blocked: artifact target could not be checked.');
+}
 
 const base = path.basename(target);
-const pattern = new RegExp(`^${escapeRegExp(agent)}-[A-Za-z0-9._-]+\.md$`);
+const pattern = new RegExp(`^${escapeRegExp(agent)}-[A-Za-z0-9._-]+\\.md$`);
 if (!pattern.test(base)) fail(`Blocked: artifact filename must match ${agent}-*.md.`);
 
 pass();

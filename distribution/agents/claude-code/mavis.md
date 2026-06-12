@@ -114,4 +114,4 @@ STATUS: <PASS|FAIL|BLOCKED|PARTIAL>
 
 - `STATUS:`, `<handoff status="...">`, and `<handoff-end status="...">` must use the same value.
 - Unknown workspace means `BLOCKED` with `workspace="UNVERIFIED"`.
-- Artifact path, if used, must be `$TMPDIR/claude-agent-artifacts/mavis-*.md`.
+- Artifact path, if used, must be `$TMPDIR/agent-artifacts/mavis-*.md`.

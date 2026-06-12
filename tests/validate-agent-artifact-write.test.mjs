@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -41,31 +41,36 @@ test('blocks relative path', () => {
 
 test('allows temp artifact for matching agent', () => {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'artifact-hook-'));
-  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'claude-agent-artifacts', 'code-reviewer-abc.md')), { TMPDIR: tmp });
+  mkdirSync(path.join(tmp, 'agent-artifacts'));
+  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'agent-artifacts', 'code-reviewer-abc.md')), { TMPDIR: tmp });
   assert.equal(result.status, 0, result.stderr);
 });
 
 test('blocks outside temp root', () => {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'artifact-hook-'));
+  mkdirSync(path.join(tmp, 'agent-artifacts'));
   const result = runHook('code-reviewer', writePayload(path.join(tmp, 'other', 'code-reviewer-abc.md')), { TMPDIR: tmp });
   assert.equal(result.status, 2);
 });
 
 test('blocks traversal outside temp root', () => {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'artifact-hook-'));
-  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'claude-agent-artifacts', '..', 'code-reviewer-abc.md')), { TMPDIR: tmp });
+  mkdirSync(path.join(tmp, 'agent-artifacts'));
+  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'agent-artifacts', '..', 'code-reviewer-abc.md')), { TMPDIR: tmp });
   assert.equal(result.status, 2);
 });
 
 test('blocks wrong agent prefix', () => {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'artifact-hook-'));
-  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'claude-agent-artifacts', 'task-planner-abc.md')), { TMPDIR: tmp });
+  mkdirSync(path.join(tmp, 'agent-artifacts'));
+  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'agent-artifacts', 'task-planner-abc.md')), { TMPDIR: tmp });
   assert.equal(result.status, 2);
 });
 
 test('blocks wrong extension', () => {
   const tmp = mkdtempSync(path.join(os.tmpdir(), 'artifact-hook-'));
-  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'claude-agent-artifacts', 'code-reviewer-abc.txt')), { TMPDIR: tmp });
+  mkdirSync(path.join(tmp, 'agent-artifacts'));
+  const result = runHook('code-reviewer', writePayload(path.join(tmp, 'agent-artifacts', 'code-reviewer-abc.txt')), { TMPDIR: tmp });
   assert.equal(result.status, 2);
 });
 

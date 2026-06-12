@@ -59,5 +59,5 @@ STATUS: <PASS|FAIL|BLOCKED>
 </handoff>
 <handoff-end agent="code-reviewer" status="<same>" workspace="<same>" artifact="<same>" />
 ```
-- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/claude-agent-artifacts/code-reviewer-*.md.
+- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/agent-artifacts/code-reviewer-*.md.
 - When STATUS is BLOCKED, omit review_verdict; when STATUS is PASS or FAIL, review_verdict matches STATUS.

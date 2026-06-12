@@ -107,7 +107,7 @@ cp ~/.claude/baselines/durable-workflow-v1/distribution/agents/oh-my-pi/task-pla
 - Final line is `<handoff-end ... />`.
 - No text appears after the end marker.
 - Workspace is observed absolute path, or `UNVERIFIED` with `BLOCKED`.
-- Default artifact path is `$TMPDIR/omp-agent-artifacts/<agent>-*.md`.
+- Default artifact path is `$TMPDIR/agent-artifacts/<agent>-*.md`.
 - Project artifacts require explicit request and gitignored `.omp/agent-artifacts/`.
 
 ## Read-only artifact writes

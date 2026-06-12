@@ -54,5 +54,5 @@ STATUS: <PASS|FAIL|BLOCKED>
 </handoff>
 <handoff-end agent="test-engineer" status="<same>" workspace="<same>" artifact="<same>" />
 ```
-- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/claude-agent-artifacts/test-engineer-*.md.
+- Keep STATUS, <handoff status="...">, and <handoff-end status="..."> identical; unknown workspace means BLOCKED with workspace="UNVERIFIED"; artifact path, if used, must be $TMPDIR/agent-artifacts/test-engineer-*.md.
 - When STATUS is BLOCKED, omit verdict; when STATUS is PASS or FAIL, verdict matches STATUS.
