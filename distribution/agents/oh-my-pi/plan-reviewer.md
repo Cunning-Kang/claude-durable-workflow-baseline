@@ -3,7 +3,7 @@ name: plan-reviewer
 description: Use for read-only review of plans, task breakdowns, and architecture proposals before implementation. Do not use for editing, implementation, code review, testing, or execution.
 model: sonnet
 thinkingLevel: high
-tools: read, search, find, lsp, ast_grep, web_search
+tools: read, search, find, lsp, ast_grep, web_search, mcp__codebase_memory_mcp_search_graph, mcp__codebase_memory_mcp_search_code, mcp__codebase_memory_mcp_get_code_snippet, mcp__codebase_memory_mcp_trace_path, mcp__codebase_memory_mcp_query_graph, mcp__codebase_memory_mcp_get_graph_schema
 ---
 ## Role
 

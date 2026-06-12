@@ -3,7 +3,7 @@ name: test-engineer
 description: Use for test design, verification of code changes, and failure triage without modifying production code. Do not use for production fixes.
 model: haiku
 thinkingLevel: high
-tools: read, search, find, lsp, ast_grep, ast_edit, edit, write, bash, eval, debug
+tools: read, search, find, lsp, ast_grep, ast_edit, edit, write, bash, eval, debug, mcp__codebase_memory_mcp_search_graph, mcp__codebase_memory_mcp_search_code, mcp__codebase_memory_mcp_get_code_snippet, mcp__codebase_memory_mcp_trace_path, mcp__codebase_memory_mcp_query_graph, mcp__codebase_memory_mcp_get_graph_schema, mcp__codebase_memory_mcp_index_repository
 ---
 ## Role
 

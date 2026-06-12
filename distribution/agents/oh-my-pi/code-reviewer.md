@@ -3,7 +3,7 @@ name: code-reviewer
 description: Use for strictly read-only review of diffs, patch proposals, targeted risks, or verification evidence. Do not use to edit code or run tests.
 model: sonnet
 thinkingLevel: high
-tools: read, search, find, lsp, ast_grep, web_search
+tools: read, search, find, lsp, ast_grep, web_search, mcp__codebase_memory_mcp_search_graph, mcp__codebase_memory_mcp_search_code, mcp__codebase_memory_mcp_get_code_snippet, mcp__codebase_memory_mcp_trace_path, mcp__codebase_memory_mcp_query_graph, mcp__codebase_memory_mcp_get_graph_schema
 ---
 ## Role
 

@@ -3,7 +3,7 @@ name: spec-reviewer
 description: Use for read-only spec compliance review: verify implementation matches requirements without evaluating code quality or test coverage. Do not use for code quality review, testing, or editing.
 model: haiku
 thinkingLevel: high
-tools: read, search, find, lsp, ast_grep
+tools: read, search, find, lsp, ast_grep, mcp__codebase_memory_mcp_search_graph, mcp__codebase_memory_mcp_search_code, mcp__codebase_memory_mcp_get_code_snippet, mcp__codebase_memory_mcp_trace_path, mcp__codebase_memory_mcp_query_graph, mcp__codebase_memory_mcp_get_graph_schema
 ---
 ## Role
 

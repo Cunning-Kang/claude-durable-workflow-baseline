@@ -2,7 +2,7 @@
 name: task-planner
 description: Use for read-only implementation planning and task breakdown before non-trivial code changes. Do not use for editing files or executing plans.
 model: opus
-tools: read, search, find, lsp, ast_grep, web_search
+tools: read, search, find, lsp, ast_grep, web_search, mcp__codebase_memory_mcp_search_graph, mcp__codebase_memory_mcp_search_code, mcp__codebase_memory_mcp_get_code_snippet, mcp__codebase_memory_mcp_trace_path, mcp__codebase_memory_mcp_query_graph, mcp__codebase_memory_mcp_get_graph_schema, mcp__codebase_memory_mcp_index_repository
 ---
 ## Role
 

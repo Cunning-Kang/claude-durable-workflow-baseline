@@ -3,7 +3,7 @@ name: deployment-operator
 description: Use for documented read-only operational checks or explicitly authorized deploy, release, rollback, CI/CD, and infrastructure actions. Do not use for ad-hoc ops.
 model: haiku
 thinkingLevel: high
-tools: read, search, find, bash
+tools: read, search, find, bash, mcp__codebase_memory_mcp_search_graph, mcp__codebase_memory_mcp_search_code, mcp__codebase_memory_mcp_get_code_snippet, mcp__codebase_memory_mcp_trace_path, mcp__codebase_memory_mcp_query_graph, mcp__codebase_memory_mcp_get_graph_schema
 ---
 ## Role
 
