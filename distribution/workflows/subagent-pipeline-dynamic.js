@@ -201,11 +201,16 @@ async function setupWorkItems(config, ledger) {
   return { status: DONE, baseSha, setup }
 }
 
+function hasStructuredBreakdown(specText) {
+  const text = String(specText || '')
+  return /acceptance criteria|verification expectation|dependencies|blockers/i.test(text) && /task|T\d+|slice/i.test(text)
+}
+
 function needsPlanner(config, specText) {
   if (config.plan === 'force') return true
   if (config.plan === 'skip') return false
   const text = String(specText || '')
-  const hasSlices = /acceptance criteria|verification expectation|dependencies|blockers/i.test(text) && /task|T\d+|slice/i.test(text)
+  const hasSlices = hasStructuredBreakdown(text)
   const risky = /public contract|schema|CLI|API|config|security|migration|irreversible/i.test(text)
   const multipleAcceptance = (text.match(/acceptance/gi) || []).length > 1
   return risky || multipleAcceptance || !hasSlices
@@ -214,11 +219,11 @@ function needsPlanner(config, specText) {
 async function planWorkItem(config, workItem, setupText, ledger) {
   phase('Planning')
   if (!needsPlanner(config, setupText)) {
+    if (config.plan === 'skip' && !hasStructuredBreakdown(setupText)) {
+      return blocked(`Work item ${workItem.label} lacks structured breakdown (six-field check) with --no-plan. Cannot produce verifiable tasks safely.`, ledger)
+    }
     ledgerRow(ledger, 'Planning', 'work-item-spec', 'success', DONE, [`${workItem.label} structured breakdown`], 'skip task-planner')
     return { status: DONE, workItem, tasksText: `Use structured work item spec for ${workItem.label}.\n\nSafety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}\n\n${setupText}` }
-  }
-  if (config.plan === 'skip') {
-    return blocked(`Work item ${workItem.label} cannot produce verifiable tasks safely with --no-plan semantics.`, ledger)
   }
   const plan = await dispatch('Planning', ROLE_AGENTS.planning, `Plan work item ${workItem.label} into independently verifiable task slices. Include behavior target, acceptance criteria, verification expectation, dependencies/blockers, likely files/context, risk tier, and safe parallel patch-proposal groups when --parallel is requested. Safety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}\n\nSource setup/spec context:\n${setupText}`, [DONE, FAIL, BLOCKED], ledger, `plan:${workItem.id}`)
   if (plan.status !== DONE) return blocked(`task-planner did not produce executable plan for ${workItem.label}.`, ledger, { plan })

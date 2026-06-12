@@ -148,31 +148,17 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    - issue: `gh issue view <number> --json number,title,body,url,state`
    - plan-file: read the selected markdown file
    - task: preserve pasted task text exactly
-   On failure: report and halt.
-3. For each work item, check if the work item spec contains usable structured task breakdown.
-   A usable structured breakdown exists only when each task has:
-   - id or stable label
-   - behavior target
-   - acceptance criteria
-   - verification expectation
-   - dependencies/blockers
-   - likely file/context references when known
+   On failure: report which work item failed and the command error, skip that work item, continue with remaining. If all work items fail → BLOCKED.
+3. For each work item, determine task breakdown routing:
 
-   Use real task-planner when:
-   - --plan flag is present
-   - work item has multiple acceptance criteria and lacks task-level slices
-   - public contract/schema/CLI/API ambiguity exists
-   - behavior target or verification is unclear
-   - task boundary affects review/test strategy
+   Structured breakdown = work item spec where every task has all six fields:
+   id or stable label, behavior target, acceptance criteria, verification expectation, dependencies/blockers, likely file/context references.
 
-   Routing:
-   - Usable breakdown + no --plan flag: skip task-planner, use breakdown.
-   - No usable breakdown + no --no-plan flag: dispatch named task-planner, then dispatch named plan-reviewer with context:
-     full work item spec, relevant code paths, project constraints from
-     CLAUDE.md/CONTEXT.md.
-   - --plan: always dispatch named task-planner, then dispatch named plan-reviewer (same context).
-   - --no-plan: never dispatch task-planner, use work item spec as-is. If the spec
-     cannot produce verifiable tasks safely, report BLOCKED rather than inventing broad tasks.
+   Routing (first matching rule wins):
+   - --plan flag → always dispatch task-planner, then plan-reviewer.
+   - --no-plan flag → never dispatch task-planner. If spec lacks all six fields per task, report BLOCKED.
+   - Structured breakdown present → skip task-planner, use breakdown directly.
+   - Structured breakdown absent → dispatch task-planner, then plan-reviewer with context: full work item spec, relevant code paths, project constraints from CLAUDE.md/CONTEXT.md.
 4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. On FAIL, redispatch task-planner with plan-reviewer findings. On BLOCKED, supplement context once; if still BLOCKED, stop.
 5. Extract all tasks with full text, acceptance criteria, and context.
 6. Assign task risk tier for planning/context only:
@@ -196,16 +182,16 @@ For each work item (sequential by default; --parallel allows planner-approved pa
 
   For each task in the work item:
 
-    If a planned task contains multiple independently verifiable changes, split it before dispatch or send it back to task-planner, then plan-reviewer, for a smaller breakdown. Each slice needs a behavior target and focused verification expectation.
+    If a planned task contains multiple independently verifiable changes:
+    split before dispatch → each slice gets its own behavior target and focused verification expectation.
+    If splitting fails (task-planner cannot decompose) → report BLOCKED.
 
-    Adjacent acceptance items may be merged before dispatch only when task-planner defines them as one independently verifiable slice and plan-reviewer accepts that boundary with:
-    - one behavior target
-    - one acceptance set
-    - one focused verification plan
-    - one reviewer scope without ambiguity
-    - one retry budget for the merged slice
+    Merge adjacent acceptance items into one dispatch only when all five conditions hold:
+    one behavior target, one acceptance set, one verification plan, one unambiguous reviewer scope, one shared retry budget.
 
-    If any reviewer/tester says scope is too broad or ambiguous, route BLOCKED/FAIL to task-planner plus plan-reviewer, or split before continuing.
+    If any reviewer/tester reports scope too broad or ambiguous:
+    route FAIL/BLOCKED → split the task → redispatch code-implementer on each slice.
+    Do not send back to task-planner for scope that reviewers already identified.
 
     Risk tiers affect only split decisions, context budget, and plan/review/test prompt focus. Risk tiers do not remove mandatory stages.
 
@@ -216,18 +202,17 @@ For each work item (sequential by default; --parallel allows planner-approved pa
        quality, discipline/YAGNI, and testing) before reporting DONE.
        Self-review is the first quality gate — not optional.
 
-    Before any Phase 1 or Phase 2 route on STATUS, treat subagent results as inputs, not completion claims:
-    - Harness/tool non-success wins over agent prose. If a task is cancelled, timed out, interrupted, reports 0/N succeeded, or required verification errored, do not treat prose like "Done" as DONE/PASS.
-    - A result without a clear role status and usable role-specific handoff is incomplete. If harness/tool status succeeded, ask the same agent once to restate actual status and evidence without changing files. If still incomplete, route implementer results as FAIL and reviewer/tester results as BLOCKED when independent judgment cannot be established. Do not re-ask after cancelled, timed out, interrupted, or 0/N succeeded; route those from the harness/tool status.
-    - Use downgrade-only semantic status mapping. Never convert FAIL/BLOCKED to PASS/DONE, never fill missing evidence, never infer verification that is not reported, and never treat ambiguous polarity as PASS. If output says both PASS and blocking issue, route as FAIL/BLOCKED.
-    - Format alone is not a blocker. Accept malformed formatting only when status, workspace/scope, and evidence are semantically present. Block only on missing capability, unknown workspace/scope, inaccessible source, unavailable verification, or missing semantic evidence needed for the stage.
-    - Restate at most once per stage result. Restatement does not consume implementation retry budget; it consumes the format budget for that stage result. Format budget exhausted → route by substance, or FAIL/BLOCKED as above.
-    - If coordinator read-only checks contradict a DONE result, route as FAIL with exact evidence and redispatch code-implementer. Do not patch directly.
+    Status interpretation rules (applies to all Phase 1 and Phase 2 routing):
+    - Harness/tool non-success (cancelled, timeout, interrupted, 0/N succeeded, verification error) overrides agent prose. Route from harness/tool status directly.
+    - Downgrade-only mapping: FAIL/BLOCKED never converts to PASS/DONE. Ambiguous polarity → FAIL/BLOCKED.
+    - Missing role status or handoff → ask the same agent once to restate without file changes. Still incomplete → implementer: route FAIL; reviewer/tester: route BLOCKED.
+    - Format issues are not blockers when status, scope, and evidence are semantically present. Block on missing capability, unknown scope, inaccessible source, or missing evidence only.
+    - Coordinator read-only checks contradict DONE → route FAIL with evidence, redispatch code-implementer. Coordinator does not patch directly.
 
     2. Route on STATUS:
        DONE → dispatch spec-reviewer
-       FAIL → diagnose root cause → remediate → redispatch (retry +1)
-       BLOCKED → diagnose root cause → remediate → redispatch (retry +1)
+       FAIL → apply failure diagnosis table below → redispatch (retry +1)
+       BLOCKED → apply failure diagnosis table below → redispatch (retry +1)
 
     3. Dispatch spec-reviewer
        Context: task spec (full text), implementer handoff summary.
@@ -281,9 +266,19 @@ For each work item (sequential by default; --parallel allows planner-approved pa
        fix. Every reviewer BLOCKED redispatch consumes 1 retry.
        Budget exhausted → stop, report failure and recommendations.
 
+    Failure diagnosis table (applies to all Phase 1 and Phase 2 routes):
+
+    | Trigger condition | First-line fix | Fallback |
+    |---|---|---|
+    | Harness/tool error (cancelled, timeout, interrupted) | Re-dispatch same agent with same context | Route BLOCKED if 2nd attempt also errors |
+    | Agent reports FAIL with specific findings | Supplement context with findings, redispatch code-implementer | Escalation rewalk if same reviewer FAILs twice |
+    | Agent reports BLOCKED (missing info/access) | Supplement missing context once, redispatch same agent | Report BLOCKED if supplement fails |
+    | Agent prose claims DONE/PASS but harness shows non-success | Route from harness status, ignore prose | N/A — harness wins |
+    | Missing role status or handoff evidence | Ask same agent to restate once without file changes | Implementer → FAIL; reviewer/tester → BLOCKED |
+
 ### Parallel Mode
 
---parallel is permission to parallelize safe slices, not a requirement unless the user explicitly says parallel is mandatory.
+--parallel: parallelize safe slices when plan-reviewer approves. Sequential execution when plan-reviewer rejects or when `--parallel` was not supplied. Parallel is mandatory only when the user explicitly states "parallel is required".
 
 Planner proposes:
 
@@ -346,7 +341,8 @@ Coordinator owns Phase 3 mechanical actions. `deployment-operator` is not part o
 3. Commit message references all completed issue numbers. Use `Refs #N` by default. Use `Closes #N` only when `--close-issues` was supplied.
 4. Include `Co-Authored-By: Claude <noreply@anthropic.com>`.
 5. Verify commit with `git show --stat --oneline HEAD` and `git status --short`.
-6. If `--push`: push current branch.
+   On commit failure (conflict, hook rejection, dirty tree): report BLOCKED with exact `git` error. Do not force commit or skip hooks.
+6. If `--push`: push current branch. On push rejection (non-fast-forward, remote conflict): report BLOCKED with exact error. Do not force push.
 7. If `--close-issues`: for each completed issue-source work item run:
    `gh issue close <number> --comment "Completed in <commit SHA>. <summary>"`
    then `gh issue view <number> --json state,url`.
