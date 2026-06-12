@@ -148,7 +148,7 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    - issue: `gh issue view <number> --json number,title,body,url,state`
    - plan-file: read the selected markdown file
    - task: preserve pasted task text exactly
-   On failure: report and halt.
+   On failure: report which work item failed and the command error, skip that work item, continue with remaining. If all work items fail → BLOCKED.
 3. For each work item, determine task breakdown routing:
 
    Structured breakdown = work item spec where every task has all six fields:
@@ -211,8 +211,8 @@ For each work item (sequential by default; --parallel allows planner-approved pa
 
     2. Route on STATUS:
        DONE → dispatch spec-reviewer
-       FAIL → diagnose root cause → remediate → redispatch (retry +1)
-       BLOCKED → diagnose root cause → remediate → redispatch (retry +1)
+       FAIL → apply failure diagnosis table below → redispatch (retry +1)
+       BLOCKED → apply failure diagnosis table below → redispatch (retry +1)
 
     3. Dispatch spec-reviewer
        Context: task spec (full text), implementer handoff summary.
@@ -265,6 +265,16 @@ For each work item (sequential by default; --parallel allows planner-approved pa
        implementer's own FAIL, or by a reviewer FAIL triggering implementer
        fix. Every reviewer BLOCKED redispatch consumes 1 retry.
        Budget exhausted → stop, report failure and recommendations.
+
+    Failure diagnosis table (applies to all Phase 1 and Phase 2 routes):
+
+    | Trigger condition | First-line fix | Fallback |
+    |---|---|---|
+    | Harness/tool error (cancelled, timeout, interrupted) | Re-dispatch same agent with same context | Route BLOCKED if 2nd attempt also errors |
+    | Agent reports FAIL with specific findings | Supplement context with findings, redispatch code-implementer | Escalation rewalk if same reviewer FAILs twice |
+    | Agent reports BLOCKED (missing info/access) | Supplement missing context once, redispatch same agent | Report BLOCKED if supplement fails |
+    | Agent prose claims DONE/PASS but harness shows non-success | Route from harness status, ignore prose | N/A — harness wins |
+    | Missing role status or handoff evidence | Ask same agent to restate once without file changes | Implementer → FAIL; reviewer/tester → BLOCKED |
 
 ### Parallel Mode
 
@@ -331,7 +341,8 @@ Coordinator owns Phase 3 mechanical actions. `deployment-operator` is not part o
 3. Commit message references all completed issue numbers. Use `Refs #N` by default. Use `Closes #N` only when `--close-issues` was supplied.
 4. Include `Co-Authored-By: Claude <noreply@anthropic.com>`.
 5. Verify commit with `git show --stat --oneline HEAD` and `git status --short`.
-6. If `--push`: push current branch.
+   On commit failure (conflict, hook rejection, dirty tree): report BLOCKED with exact `git` error. Do not force commit or skip hooks.
+6. If `--push`: push current branch. On push rejection (non-fast-forward, remote conflict): report BLOCKED with exact error. Do not force push.
 7. If `--close-issues`: for each completed issue-source work item run:
    `gh issue close <number> --comment "Completed in <commit SHA>. <summary>"`
    then `gh issue view <number> --json state,url`.
