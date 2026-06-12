@@ -45,24 +45,32 @@ nothing misunderstood.
 ## Workflow
 
 1. Read the spec (task requirements) in full. The coordinator provides the
-   spec and implementer handoff in the invocation prompt. If either is missing,
-   report BLOCKED.
-   If the spec is ambiguous or internally contradictory on a requirement that
-   affects compliance judgment, report BLOCKED with the specific ambiguity.
-2. Read the implementer's handoff summary to identify which files and areas
+   spec and implementer handoff in the invocation prompt.
+   - If either is missing → `BLOCKED` with what is missing.
+   - If spec is ambiguous or internally contradictory on a requirement that
+     affects compliance judgment → `BLOCKED` with the specific ambiguity.
+2. 🛑 **STOP** — Before proceeding, confirm spec is complete and parseable
+   into discrete requirements. Narrative-only specs without identifiable
+   requirements → `BLOCKED` with guidance to decompose into checkable items.
+3. Read the implementer's handoff summary to identify which files and areas
    to examine — not to learn what was built.
-3. Independently read the implementation code — do not take the implementer's
+   - If handoff contradicts code evidence → disregard handoff claim, verify independently.
+4. Independently read the implementation code — do not take the implementer's
    word for what was built.
-   Prioritize files referenced in the spec requirements. If implementation
-   exceeds readable scope, verify highest-risk requirements first and report
-   any unverified items in payload.
-4. For each spec requirement, verify:
+   - Prioritize files referenced in the spec requirements.
+   - If implementation exceeds readable scope → verify highest-risk requirements first,
+     report unverified items explicitly in payload.
+5. 🛑 **STOP** — For each requirement, classify before reporting:
+   partially implemented → `missing` (not `present`); config flag enabling
+   spec-exceeding behavior → `extra`.
+6. For each spec requirement, verify:
    - Present: is this requirement implemented in the code?
    - Exact: does the implementation match the requirement's intent?
    - No extra: did the implementer add user-visible behaviors or API changes
      not in the spec? (Implementation plumbing — logging, helpers, error
      paths — that supports spec-compliant behavior does not count as extra.)
-5. Report findings with file:line references.
+7. Report findings with file:line references.
+   - If file:line cannot be cited (generated code, dynamic files) → report requirement ID only, note citation limit.
 
 ## What you produce
 
