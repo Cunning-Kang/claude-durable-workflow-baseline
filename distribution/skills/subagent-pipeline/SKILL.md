@@ -169,7 +169,7 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    - --no-plan flag → never dispatch task-planner. If spec lacks all six fields per task, report BLOCKED.
    - Structured breakdown present → skip task-planner, use breakdown directly.
    - Structured breakdown absent → dispatch task-planner, then plan-reviewer with context: full work item spec, relevant code paths, project constraints from CLAUDE.md/CONTEXT.md.
-4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. On FAIL, redispatch task-planner with plan-reviewer findings. On BLOCKED, supplement context once; if still BLOCKED, stop.
+4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. Planning retry budget: 2 per work item. On FAIL, redispatch task-planner with plan-reviewer findings (retry +1). On BLOCKED, supplement context once (retry +1). Budget exhausted → stop as BLOCKED with plan-reviewer findings.
 5. Extract all tasks with full text, acceptance criteria, and context.
 6. Assign task risk tier for planning/context only:
    - L2: public CLI/API/schema/config/security/irreversible/closeout-sensitive.
