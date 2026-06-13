@@ -15,7 +15,7 @@ With no arguments: this command layer collects work items interactively (prompt 
 
 Examples:
 - `/subagent-pipeline-workflow #1`
-- `/subagent-pipeline-workflow docs/plans/auth-refactor.md`
+- `/subagent-pipeline-workflow docs/plans/foo.md`
 - `/subagent-pipeline-workflow "Fix auth token expiry"`
 - `/subagent-pipeline-workflow #1 docs/plans/foo.md "Fix X"`
 - `/subagent-pipeline-workflow --parallel #1,#2 #3`
@@ -24,6 +24,13 @@ Examples:
 - `/subagent-pipeline-workflow --no-commit #1`
 - `/subagent-pipeline-workflow --push #1`
 - `/subagent-pipeline-workflow --close-issues #1`
+
+Pipeline phases (aligned with SKILL.md):
+0. Setup — load work item specs, capture BASE_SHA, task-planner (retry budget 2) → plan-reviewer; cross-issue merge planner for --parallel multi-work-item
+0.5. Capability Preconditions — verify reviewer/tester can access required source before implementation
+1. Execute — code-implementer → spec-reviewer → test-engineer → code-reviewer per task; escalation rewalk on 2 consecutive code-reviewer FAILs
+2. Global Review — code-reviewer on BASE_SHA..HEAD_SHA (N/A when single task: Phase 1 code-reviewer satisfies this gate)
+3. Report and Atomic Commit — coordinator-owned commit by file-group; push and issue close only when --push / --close-issues supplied
 
 What it does:
 1. Uses `distribution/workflows/subagent-pipeline-dynamic.js` as the workflow script.
@@ -38,6 +45,11 @@ What it does:
 4. The workflow coordinates named subagents only:
    `task-planner`, `plan-reviewer`, `code-implementer`, `spec-reviewer`, `test-engineer`, `code-reviewer`.
 5. The workflow performs coordinator-owned mechanical report/commit after global review PASS. It does not push or close GitHub issues unless `--push` or `--close-issues` is supplied in the current request.
+
+Retry budgets:
+- Planning: 2 retries per work item (task-planner redispatch with plan-reviewer findings)
+- Execution: 3 retries per task across all stages
+- Escalation rewalk on 2 consecutive same-reviewer FAILs (does not consume budget; subsequent failures during rewalk do)
 
 Install/adoption model:
 - This command is source-only and opt-in.

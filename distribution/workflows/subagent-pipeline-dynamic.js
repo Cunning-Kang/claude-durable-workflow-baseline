@@ -3,13 +3,11 @@ export const meta = {
   description: 'Reusable dynamic workflow for issue, plan-file, and task work items via named subagents, independent gates, global review, and coordinator-owned commit closeout.',
   whenToUse: 'Use for repeatable work item execution from GitHub issues, plan files, or task text through task-planner, plan-reviewer, code-implementer, spec-reviewer, test-engineer, and code-reviewer.',
   phases: [
-    { title: 'Setup', detail: 'Validate workItems, read issue/plan/task specs, capture BASE_SHA, initialize dispatch ledger' },
-    { title: 'Planning', detail: 'Route work item specs through task-planner and plan-reviewer when task slicing is needed' },
-    { title: 'Execute', detail: 'Run code-implementer and independent per-task gates with retry budget' },
-    { title: 'Verify', detail: 'Preserve spec-reviewer, test-engineer, and code-reviewer evidence for each task' },
-    { title: 'Global Review', detail: 'Run final code-reviewer on BASE_SHA..HEAD_SHA before commit' },
-    { title: 'Closeout', detail: 'After global review PASS, coordinator plans commits, commits by file-group, optionally pushes, and optionally closes issues with state == "CLOSED" verification' },
-    { title: 'Report', detail: 'Return DONE, READY_FOR_COMMIT, BLOCKED, or FAIL with ledger, evidence, commit plan, phase3 state, and recovery commands' }
+    { title: 'Phase 0: Setup', detail: 'Validate workItems, read issue/plan/task specs, capture BASE_SHA, initialize dispatch ledger, task-planner (retry budget 2) and plan-reviewer, cross-issue merge planner for parallel multi-work-item' },
+    { title: 'Phase 0.5: Capability Preconditions', detail: 'Verify reviewer/tester can access required source before implementation starts' },
+    { title: 'Phase 1: Execute', detail: 'Run code-implementer, spec-reviewer, test-engineer, and code-reviewer per task with retry budget 3, escalation rewalk on 2 consecutive code-reviewer FAILs' },
+    { title: 'Phase 2: Global Review', detail: 'Run final code-reviewer on BASE_SHA..HEAD_SHA before commit (N/A when single task)' },
+    { title: 'Phase 3: Report and Atomic Commit', detail: 'Coordinator plans commits by file-group, commits, optionally pushes, optionally closes issues with state == "CLOSED" verification, returns DONE/READY_FOR_COMMIT/BLOCKED/FAIL with ledger, evidence, commit plan, and recovery commands' }
   ]
 }
 
@@ -33,6 +31,7 @@ const LEDGER_FIELDS = [
 ]
 
 const RETRY_BUDGET = 3
+const PLANNING_RETRY_BUDGET = 2
 const RESTATEMENT_BUDGET = 1
 const DONE = 'DONE'
 const PASS = 'PASS'
@@ -201,6 +200,14 @@ async function setupWorkItems(config, ledger) {
   return { status: DONE, baseSha, setup }
 }
 
+async function checkCapabilityPreconditions(setupText, ledger) {
+  phase('Capability Preconditions')
+  const check = await dispatchCoordinator('Capability Preconditions', `Phase 0.5 capability preconditions check. Before implementation, verify:\n1. Can planned reviewer/tester agents read required source files?\n2. Are there visible repository policy constraints (sandbox, path restrictions, tool access) that would block independent review?\n3. If required source inspection is blocked and no allowed alternative is visible, report BLOCKED.\n\nSetup context:\n${String(setupText).slice(0, 3000)}\n\nReturn STATUS: DONE if capability preconditions are met. Return STATUS: BLOCKED with specific constraint if review/test capability is blocked.`, [DONE, FAIL, BLOCKED], ledger, 'capability-preconditions')
+  if (check.status !== DONE) return blocked('Phase 0.5: capability preconditions not met. Required source inspection is blocked for planned reviewer/tester.', ledger, { check })
+  ledgerRow(ledger, 'Capability Preconditions', 'coordinator', 'success', DONE, ['capability preconditions verified'], 'proceed to implementation')
+  return { status: DONE }
+}
+
 function hasStructuredBreakdown(specText) {
   const text = String(specText || '')
   return /acceptance criteria|verification expectation|dependencies|blockers/i.test(text) && /task|T\d+|slice/i.test(text)
@@ -225,10 +232,30 @@ async function planWorkItem(config, workItem, setupText, ledger) {
     ledgerRow(ledger, 'Planning', 'work-item-spec', 'success', DONE, [`${workItem.label} structured breakdown`], 'skip task-planner')
     return { status: DONE, workItem, tasksText: `Use structured work item spec for ${workItem.label}.\n\nSafety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}\n\n${setupText}` }
   }
-  const plan = await dispatch('Planning', ROLE_AGENTS.planning, `Plan work item ${workItem.label} into independently verifiable task slices. Include behavior target, acceptance criteria, verification expectation, dependencies/blockers, likely files/context, risk tier, and safe parallel patch-proposal groups when --parallel is requested. Safety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}\n\nSource setup/spec context:\n${setupText}`, [DONE, FAIL, BLOCKED], ledger, `plan:${workItem.id}`)
-  if (plan.status !== DONE) return blocked(`task-planner did not produce executable plan for ${workItem.label}.`, ledger, { plan })
-  const review = await dispatch('Planning', ROLE_AGENTS.planReview, `Review this task breakdown for work item ${workItem.label}. PASS only if slices are independently verifiable, reviewer/tester scope is unambiguous, dependencies are ordered, and any proposed parallel groups are safe. If --parallel was requested but parallelization is unsafe, PASS the plan and reject parallelization rather than BLOCKED unless parallel was required. Source context and planner handoff:\n${plan.text}`, [PASS, FAIL, BLOCKED], ledger, `plan-review:${workItem.id}`)
-  if (review.status !== PASS) return blocked(`plan-reviewer did not PASS ${workItem.label}.`, ledger, { plan, review })
+  let planRetries = 0
+  let plan, review, supplementedContext = ''
+  while (planRetries <= PLANNING_RETRY_BUDGET) {
+    plan = await dispatch('Planning', ROLE_AGENTS.planning, `Plan work item ${workItem.label} into independently verifiable task slices. Include behavior target, acceptance criteria, verification expectation, dependencies/blockers, likely files/context, risk tier, and safe parallel patch-proposal groups when --parallel is requested. Safety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}${planRetries > 0 && review ? `\n\nPrevious plan-reviewer findings to address:\n${review.text}` : ''}${supplementedContext ? `\n\nSupplemented context:\n${supplementedContext}` : ''}\n\nSource setup/spec context:\n${setupText}`, [DONE, FAIL, BLOCKED], ledger, `plan:${workItem.id}`)
+    if (plan.status === BLOCKED && planRetries < PLANNING_RETRY_BUDGET) {
+      supplementedContext = `Previous planner BLOCKED reason:\n${plan.text}`
+      planRetries += 1
+      continue
+    }
+    if (plan.status !== DONE) return blocked(`task-planner did not produce executable plan for ${workItem.label}.`, ledger, { plan })
+    supplementedContext = ''
+    review = await dispatch('Planning', ROLE_AGENTS.planReview, `Review this task breakdown for work item ${workItem.label}. PASS only if slices are independently verifiable, reviewer/tester scope is unambiguous, dependencies are ordered, and any proposed parallel groups are safe. If --parallel was requested but parallelization is unsafe, PASS the plan and reject parallelization rather than BLOCKED unless parallel was required. Source context and planner handoff:\n${plan.text}`, [PASS, FAIL, BLOCKED], ledger, `plan-review:${workItem.id}`)
+    if (review.status === PASS) break
+    if (review.status === BLOCKED && planRetries < PLANNING_RETRY_BUDGET) {
+      supplementedContext = `Plan-reviewer BLOCKED reason:\n${review.text}`
+      planRetries += 1
+      continue
+    }
+    if (review.status === FAIL && planRetries < PLANNING_RETRY_BUDGET) {
+      planRetries += 1
+      continue
+    }
+    return blocked(`plan-reviewer did not PASS ${workItem.label} after ${planRetries} planning retries. PLANNING_RETRY_BUDGET = ${PLANNING_RETRY_BUDGET}.`, ledger, { plan, review })
+  }
   if (config.parallel) ledgerRow(ledger, 'Planning', ROLE_AGENTS.planReview, 'success', PASS, ['parallel groups reviewed by plan-reviewer'], 'parallel requested; use approved patch-proposal groups or execute sequentially')
   return { status: DONE, workItem, tasksText: plan.text, plan, review }
 }
@@ -243,7 +270,7 @@ async function runReviewerFixLoop(taskContext, reviewerResult, reviewerName, led
 
 async function executeTask(taskContext, baseSha, ledger, label) {
   phase('Execute')
-  const state = { retries: 0, specFails: 0, testFails: 0, reviewFails: 0, rewalks: 0 }
+  const state = { retries: 0, specFails: 0, testFails: 0, reviewFails: 0, consecutiveReviewFails: 0, rewalks: 0 }
   const implementPrompt = extra => `Implement this task only. Complete self-review for completeness, quality, YAGNI, and testing before STATUS: DONE. Safety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}\n\nIf running as a parallel patch-proposal worker, return a unified diff patch, changed files, focused verification notes, assumptions, and risks; coordinator applies patches sequentially on main and authoritative gates run there.\n\nIf the task is an explicit no-op smoke task, do not edit files or work item spec; return evidence-only STATUS: DONE when repository state and checks prove acceptance.${extra ? `\n\n${extra}` : ''}\n\nTask context:\n${taskContext}`
   let implementer = await dispatch('Execute', ROLE_AGENTS.implementation, implementPrompt(''), [DONE, FAIL, BLOCKED], ledger, `implement:${label}`)
   if (implementer.status !== DONE) return blocked(`code-implementer did not complete ${label}.`, ledger, { implementer })
@@ -291,8 +318,10 @@ async function executeTask(taskContext, baseSha, ledger, label) {
       continue
     }
     state.reviewFails += 1
-    if (state.reviewFails >= 2 && state.rewalks < 1) {
+    state.consecutiveReviewFails += 1
+    if (state.consecutiveReviewFails >= 2 && state.rewalks < 1) {
       state.rewalks += 1
+      state.consecutiveReviewFails = 0
       ledgerRow(ledger, 'Execute', ROLE_AGENTS.codeReview, 'success', FAIL, ['same reviewer FAIL twice'], 'full pipeline rewalk from implementer')
       const rewalk = await dispatch('Execute', ROLE_AGENTS.implementation, implementPrompt(`Escalation rewalk after two consecutive code-reviewer FAIL results. Do not broaden scope. Address the reviewer findings, then expect full spec-reviewer, test-engineer, and code-reviewer gates to rerun. Escalation rewalk implementer dispatch does NOT consume retry budget.\n\nLatest code-reviewer findings:\n${review.text}`), [DONE, FAIL, BLOCKED], ledger, `rewalk-implement:${label}`)
       if (rewalk.status !== DONE) return blocked('code-implementer escalation rewalk failed.', ledger, { rewalk })
@@ -346,16 +375,34 @@ function buildCommitPlan(config) {
   const summary = config.workItems.map(item => item.label).join(', ')
   const refs = issueRefs.map(ref => config.closeIssues ? `Closes ${ref}` : `Refs ${ref}`)
   const subject = config.workItems.length === 1 ? `feat(workflow): complete ${summary}` : `feat(workflow): complete ${config.workItems.length} work items`
-  return [{
-    subject,
-    refs,
-    files: ['<explicit changed files from git diff --name-only BASE_SHA>'],
-    commands: [
-      'git status --short',
-      'git add <explicit changed files>',
-      `git commit -m "${subject}"`,
-    ],
-  }]
+  if (config.workItems.length <= 1 || config.groups.length <= 1) {
+    return [{
+      subject,
+      refs,
+      files: ['<explicit changed files from git diff --name-only BASE_SHA>'],
+      commands: [
+        'git status --short',
+        'git add <explicit changed files>',
+        `git commit -m "${subject}"`,
+      ],
+    }]
+  }
+  const groups = config.groups.map((group, i) => {
+    const groupItems = group.map(gi => config.workItems.find(wi => wi.id === gi.id)).filter(Boolean)
+    const groupRefs = groupItems.filter(gi => gi.type === 'issue').map(gi => config.closeIssues ? `Closes #${gi.issue}` : `Refs #${gi.issue}`)
+    const groupLabel = groupItems.map(gi => gi.label).join(', ')
+    return {
+      subject: groupItems.length === 1 ? `feat(workflow): complete ${groupLabel}` : `feat(workflow): complete ${groupItems.length} work items (${groupLabel})`,
+      refs: groupRefs,
+      files: ['<explicit changed files per work item from git diff --name-only BASE_SHA>'],
+      commands: [
+        'git status --short',
+        'git add <explicit changed files for this group>',
+      ],
+    }
+  })
+  groups[groups.length - 1].commands.push(`git commit -m "${subject}"`)
+  return groups
 }
 
 async function closeout(config, global, ledger) {
@@ -365,7 +412,8 @@ async function closeout(config, global, ledger) {
     ledgerRow(ledger, 'Closeout', 'coordinator', 'skipped', READY_FOR_COMMIT, ['commit plan ready; --no-commit requested'], 'report READY_FOR_COMMIT')
     return { status: READY_FOR_COMMIT, phase3: { commit: 'skipped', push: 'skipped', closeIssues: 'skipped' }, commitPlan }
   }
-  const commit = await dispatchCoordinator('Closeout', `Coordinator-owned mechanical commit after global review PASS. Do not implement, test, or review code.\n\nRequired commands/evidence:\n- git status --short\n- Build file-level commit groups from changed files and work item ownership. If file ownership cannot be mapped safely, create one combined commit.\n- Stage explicit files only; do not use git add .\n- Create atomic commit(s) with issue refs. Use Closes #N only when closeIssues is true; otherwise use Refs #N.\n- Include Co-Authored-By: Claude <noreply@anthropic.com>.\n- Verify with git show --stat --oneline HEAD.\n\nCommit plan seed:\n${JSON.stringify(commitPlan)}\n\nGlobal review handoff:\n${global.review.text}\n\nReturn STATUS: DONE with commit SHA(s), staged files, and git status. Return STATUS: BLOCKED with exact command/error if commit fails.`, [DONE, FAIL, BLOCKED], ledger, 'commit')
+  const globalReviewHandoff = global.review ? global.review.text : 'Global review skipped (single task: Phase 1 code-reviewer satisfies this gate).'
+  const commit = await dispatchCoordinator('Closeout', `Coordinator-owned mechanical commit after global review PASS. Do not implement, test, or review code.\n\nRequired commands/evidence:\n- git status --short\n- Build file-level commit groups from changed files and work item ownership. If file ownership cannot be mapped safely, create one combined commit.\n- Stage explicit files only; do not use git add .\n- Create atomic commit(s) with issue refs. Use Closes #N only when closeIssues is true; otherwise use Refs #N.\n- Include Co-Authored-By: Claude <noreply@anthropic.com>.\n- Verify with git show --stat --oneline HEAD.\n\nCommit plan seed:\n${JSON.stringify(commitPlan)}\n\nGlobal review handoff:\n${globalReviewHandoff}\n\nReturn STATUS: DONE with commit SHA(s), staged files, and git status. Return STATUS: BLOCKED with exact command/error if commit fails.`, [DONE, FAIL, BLOCKED], ledger, 'commit')
   if (commit.status !== DONE) return blocked('Commit failed after global review PASS.', ledger, { commit, commitPlan })
 
   let push = { status: 'skipped' }
@@ -398,12 +446,34 @@ if (config.parallel) log('Parallel requested: task-planner must propose safe pat
 const setup = await setupWorkItems(config, ledger)
 if (setup.status !== DONE) return setup
 
+const capability = await checkCapabilityPreconditions(setup.setup.text, ledger)
+if (capability.status !== DONE) return capability
+
 const workItemPlans = []
 for (const group of config.groups) {
   const plannedGroup = await parallel(group.map(workItem => () => planWorkItem(config, workItem, setup.setup.text, ledger)))
   const blockedPlan = plannedGroup.find(result => !result || result.status !== DONE)
   if (blockedPlan) return blocked('Planning failed for at least one work item group member.', ledger, { blockedPlan })
   workItemPlans.push(...plannedGroup)
+}
+
+if (config.parallel && workItemPlans.length > 1 && config.groups.length > 1) {
+  phase('Planning')
+  const unifiedTasks = workItemPlans.map(p => p.tasksText).join('\n\n---\n\n')
+  const mergePlan = await dispatch('Planning', ROLE_AGENTS.planning, `Cross-issue merge planner. Propose safe parallel groups for tasks from ${workItemPlans.length} work items. Output: can_parallelize (true/false), safe_groups (each group listing task IDs and source work item), dependencies between groups, and file-level conflict risks.\n\nUnified task pool:\n${unifiedTasks}\n\nSafety rule: ${IMMUTABLE_WORK_ITEM_SPEC_RULE}`, [DONE, FAIL, BLOCKED], ledger, 'cross-issue-merge-plan')
+  if (mergePlan.status === DONE) {
+    const mergeReview = await dispatch('Planning', ROLE_AGENTS.planReview, `Audit cross-issue parallel proposal. Confirm: no file overlap within any group, dependency ordering between groups is acyclic, and each group scope is independently verifiable.\n\nPlanner handoff:\n${mergePlan.text}`, [PASS, FAIL, BLOCKED], ledger, 'cross-issue-merge-review')
+    if (mergeReview.status === PASS) {
+      ledgerRow(ledger, 'Planning', ROLE_AGENTS.planReview, 'success', PASS, ['cross-issue merge planner approved'], 'use approved parallel groups for execution')
+    } else {
+      log('Cross-issue merge planner rejected by plan-reviewer. Falling back to sequential execution.')
+      ledgerRow(ledger, 'Planning', ROLE_AGENTS.planReview, 'success', mergeReview.status, ['cross-issue merge rejected'], 'fall back to sequential')
+      config.parallel = false
+    }
+  } else {
+    log('Cross-issue merge planner failed. Falling back to sequential execution.')
+    config.parallel = false
+  }
 }
 
 const workItemResults = []
@@ -417,7 +487,13 @@ for (const group of config.groups) {
   workItemResults.push(...results)
 }
 
-const global = await globalReview(config, setup.baseSha, workItemResults, ledger)
+const totalTasks = workItemResults.length
+if (totalTasks <= 1) {
+  ledgerRow(ledger, 'Global Review', 'coordinator', 'skipped', 'N/A', ['single task: Phase 1 code-reviewer satisfies global review gate'], 'skip Phase 2')
+}
+const global = totalTasks <= 1
+  ? { status: PASS, head: null, review: null, skipped: true }
+  : await globalReview(config, setup.baseSha, workItemResults, ledger)
 if (global.status !== PASS) return global
 
 const closeoutResult = await closeout(config, global, ledger)
