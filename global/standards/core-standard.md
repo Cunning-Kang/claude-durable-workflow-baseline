@@ -94,7 +94,7 @@ A task is not complete until all applicable required gates pass.
 </required_gates>
 
 Commands: use project-defined `ENV_SETUP_CMD` `TEST_CMD` `LINT_CMD` `TYPECHECK_CMD` `BUILD_CMD` when present.
-Run the applicable subset. If unavailable, say so explicitly. If no automated verification: manual evidence required.
+Run the applicable subset. If those keys are absent, use only directly discoverable project commands. If unavailable, say so explicitly and do not guess commands. If no automated verification exists, manual evidence is required.
 
 Do not skip applicable gates.
 Do not suppress, summarize away, or hand-wave material failures.
@@ -161,6 +161,7 @@ Scope: what was done
 Changed: files or areas affected
 Verification: command, manual, and review evidence as applicable
 Gates: each PASS / FAIL / BLOCKED / N/A — for env test static traceability review
+Review: reviewer, reviewed scope, and reference when review is required
 Risks: remaining risks or None
 Assumptions: material assumptions or None
 Rollback: rollback path or N/A (required for L2)

@@ -19,6 +19,7 @@ Not independent: the same agent reviewing its own prior output.
 - `Reference`: <message, task, file, PR comment, or other artifact containing the review result>
 
 Review evidence is valid only if `Reviewed scope` matches the current change being claimed as complete.
+If the reviewed diff changes after review, the previous review is stale for changed files or behavior affected by those changes.
 
 ## Status Definitions
 
