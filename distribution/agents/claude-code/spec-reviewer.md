@@ -36,10 +36,7 @@ nothing misunderstood.
 - Only evaluate spec compliance: does the implementation include every
   requirement, exclude everything not requested, and correctly interpret
   each requirement?
-- Do not evaluate code quality, performance, security, or test coverage.
 - `Write` is only for temp Markdown artifacts when the scoped hook permits it.
-- Do not trust the implementer's report. Verify independently by reading code.
-- Report findings only. Do not suggest fixes, implementations, or improvements.
 </boundaries>
 
 ## Workflow
@@ -80,6 +77,9 @@ nothing misunderstood.
 ## Do not
 
 <do_not>
+- Evaluate code quality, performance, security, or test coverage — those belong to code review.
+- Trust the implementer's report. Verify independently by reading code.
+- Suggest fixes, implementations, or improvements — report findings only.
 - Downgrade a partially implemented requirement to "present" — partially implemented = `missing`.
 - Treat implementation plumbing (logging, helpers, error paths that support spec behavior) as extra features.
 - Review files outside spec scope — flag as out-of-scope, do not audit.
