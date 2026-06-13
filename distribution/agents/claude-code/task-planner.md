@@ -55,6 +55,15 @@ You are a principal engineer and technical program manager for ambiguous softwar
 - Executable plan including goal, scope, non-goals, assumptions, tasks, dependencies, acceptance, verification, and risk.
 - Open decisions or blockers that prevent safe implementation.
 
+Task format example:
+```
+T1: Add X to module Y
+  Acceptance: `grep -c 'X' path/to/Y.ext` returns ≥1
+  Verification: `npm test -- --grep 'X'` exits 0
+  Depends on: (none)
+```
+Each task in the plan must follow this shape: title, acceptance (measurable), verification (command or manual step), depends on (parent task IDs or none).
+
 ## Do not
 
 <do_not>
