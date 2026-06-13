@@ -134,7 +134,7 @@ After all tasks for all work items complete:
 These checkpoints are execution gates, not routine user pauses. Continue automatically when the gate PASSes. Stop only on BLOCKED/FAIL exhaustion, ambiguity that prevents progress, or an outward-facing action that requires authorization.
 
 - 🔴 CHECKPOINT · Task Gate: spec-reviewer, test-engineer, and code-reviewer must PASS before a task is complete.
-- 🔴 CHECKPOINT · Global Review Gate: final code-reviewer must PASS before Phase 3.
+- 🔴 CHECKPOINT · Global Review Gate: final code-reviewer must PASS before Phase 3. N/A when single task (Phase 1 code-reviewer satisfies this gate).
 - 🔴 CHECKPOINT · Commit/Push/Close Gate: commit requires all gates PASS; push and issue close run only when the original command included the matching flag.
 - 🛑 STOP · BLOCKED/FAIL Exhaustion: exhausted retry budget, missing required capability, or unsafe ambiguity stops the pipeline and reports recovery steps.
 
@@ -154,12 +154,22 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    Structured breakdown = work item spec where every task has all six fields:
    id or stable label, behavior target, acceptance criteria, verification expectation, dependencies/blockers, likely file/context references.
 
+   Structured example (skip task-planner):
+     id: AUTH-1, behavior: "Reject expired JWT tokens at middleware",
+     acceptance: "Expired tokens return 401 within 10ms",
+     verification: "Unit test with token 1s past expiry returns 401",
+     dependencies: none, files: src/auth/middleware.ts, src/auth/__tests__/middleware.test.ts
+
+   Unstructured examples (dispatch task-planner):
+     "Fix the login bug" — no acceptance criteria, no verification, no file references
+     "Add input validation to UserForm" — no acceptance criteria, no verification expectation, no dependencies
+
    Routing (first matching rule wins):
    - --plan flag → always dispatch task-planner, then plan-reviewer.
    - --no-plan flag → never dispatch task-planner. If spec lacks all six fields per task, report BLOCKED.
    - Structured breakdown present → skip task-planner, use breakdown directly.
    - Structured breakdown absent → dispatch task-planner, then plan-reviewer with context: full work item spec, relevant code paths, project constraints from CLAUDE.md/CONTEXT.md.
-4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. On FAIL, redispatch task-planner with plan-reviewer findings. On BLOCKED, supplement context once; if still BLOCKED, stop.
+4. When task-planner ran, dispatch named plan-reviewer with the planner handoff and source context. Continue only on PASS. Planning retry budget: 2 per work item. On FAIL, redispatch task-planner with plan-reviewer findings (retry +1). On BLOCKED, supplement context once (retry +1). Budget exhausted → stop as BLOCKED with plan-reviewer findings.
 5. Extract all tasks with full text, acceptance criteria, and context.
 6. Assign task risk tier for planning/context only:
    - L2: public CLI/API/schema/config/security/irreversible/closeout-sensitive.
@@ -167,7 +177,26 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    - L0: docs/tests/mechanical local change.
    Risk tiers do not remove mandatory stages.
 7. Create todo list tracking all tasks across all work items.
-8. Task-planner proposes safe parallel groups when --parallel is requested. Plan-reviewer audits those groups. If --parallel was requested but rejected by plan-reviewer, run sequentially and report the reason unless the user explicitly required parallel.
+8. Cross-work-item parallel grouping (--parallel only):
+   a. After all work items have completed step 4 (plan-reviewer PASS),
+      merge all extracted tasks into a unified task pool.
+   b. Dispatch one task-planner with the unified task pool as context,
+      plus instruction: "Propose safe parallel groups for these tasks
+      from N work items. Output can_parallelize, safe_groups (each group
+      listing task IDs and source work item), dependencies between groups,
+      and file-level conflict risks."
+   c. Dispatch plan-reviewer to audit the cross-issue parallel proposal.
+      Plan-reviewer must confirm: no file overlap within any group,
+      dependency ordering between groups is acyclic, and each group's
+      scope is independently verifiable.
+      Cross-issue merge planner retry budget: 1. On FAIL or BLOCKED →
+      fall back to sequential execution and report reason.
+   d. Plan-reviewer PASS → use approved groups for Phase 1 dispatch.
+   Skip steps a-d when only one work item is present (use that item's
+   own planner output for intra-issue parallelism as before).
+   If --parallel was requested but plan-reviewer rejects at any stage,
+   run sequentially and report the reason unless the user explicitly
+   required parallel.
 
 ### Phase 0.5: Capability Preconditions
 
@@ -175,12 +204,16 @@ Before implementation, note visible repository policy that constrains code disco
 
 ### Phase 1: Execute
 
-For each work item (sequential by default; --parallel allows planner-approved patch proposal groups):
+Sequential mode (--parallel not supplied, or plan-reviewer rejected parallelization):
+  For each work item, for each task in the work item:
+
+Parallel mode (--parallel supplied and plan-reviewer approved cross-issue groups):
+  For each approved parallel group (may contain tasks from multiple work items):
 
   If any work item is BLOCKED with exhausted retry budget: halt all subsequent
   work items and report.
 
-  For each task in the work item:
+  For each task (sequential) or group (parallel):
 
     If a planned task contains multiple independently verifiable changes:
     split before dispatch → each slice gets its own behavior target and focused verification expectation.
@@ -292,13 +325,25 @@ Plan-reviewer approves or rejects those groups.
 Approved parallel groups use patch proposal flow:
 
 1. Dispatch parallel code-implementer workers for safe slices.
+   Workers execute in isolation (worktree or separate context) against BASE_SHA
+   and produce unified diff patches without modifying the main worktree.
 2. Each worker returns STATUS plus unified diff patch, changed files, focused verification notes, assumptions, and risks.
 3. Coordinator mechanically runs `git apply --check` and `git apply` in declared slice order. Coordinator does not edit patches.
-4. On patch apply failure, redispatch affected code-implementer with current main context and patch failure output.
+4. Patch apply failure recovery:
+   a. If slice B fails after slice A applied:
+      - Revert slice A: `git checkout -- <slice-A changed files>` (files listed in implementer handoff).
+      - Redispatch both slices with current main context + conflict context.
+      - Re-apply in updated order.
+   b. If redispatch still fails (retry budget consumed):
+      Fall back to sequential execution for remaining tasks in this group.
 5. Authoritative gates run on the main worktree after apply:
    - spec-reviewer per slice
    - test-engineer per group
    - code-reviewer per group
+   Post-apply gate routing follows Phase 1 steps 3-8 (FAIL → implementer fix
+   → reviewer re-confirm; BLOCKED → diagnose → remediate → redispatch).
+   The Parallel Mode section defines dispatch and patch mechanics only;
+   Phase 1 routing rules govern all gate outcomes including parallel mode.
 
 If plan-reviewer rejects parallelization, execute sequentially and report:
 "Parallel requested but rejected by plan-reviewer: <reason>. Executed sequentially."
@@ -306,6 +351,13 @@ If plan-reviewer rejects parallelization, execute sequentially and report:
 ### Phase 2: Global Review
 
 After all work items complete and before any commit:
+
+Skip condition: when total task count across all work items is 1, Phase 1
+code-reviewer PASS satisfies the global review gate. Mark Phase 2 as N/A
+and proceed to Phase 3. Rationale: single-task diff is identical to Phase 1
+scope — no integration concerns exist.
+
+When Phase 2 runs (2+ tasks):
 
 1. Collect full diff: BASE_SHA (recorded in Phase 0) to HEAD_SHA
    ($(git rev-parse HEAD)).
@@ -390,18 +442,22 @@ phase3: {
     Rewalk spec-reviewer FAILs → implementer fix dispatched (retry 3).
     Budget exhausted. Any further FAIL → stop and report.
 
-## What You Never Do
+## Red Lights — Coordinator Must Stop
 
-- Implement code yourself
-- Skip any Phase 1 pipeline stage
-- Proceed past FAIL without remediation
-- Push before global review PASS
-- Make subagents read the plan file path only (provide full task text)
-- Ignore subagent BLOCKED or FAIL status
-- Commit before global review PASS
-- Close an issue with incomplete tasks or failed/blocked gates
-- Use deployment-operator in the default subagent-pipeline
-- Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.
+| # | Anti-pattern | Why | Do instead |
+|---|---|---|---|
+| 1 | Implement, test, or review code yourself | Violates independence; coordinator lacks subagent role context | Dispatch named subagent |
+| 2 | Skip any Phase 1 pipeline stage | Breaks quality gate chain; undetected defects propagate | Run all stages in order |
+| 3 | Proceed past FAIL without remediation | FAIL means verified defect exists | Diagnose → fix → re-verify |
+| 4 | Push before global review PASS | Untested code reaches remote | Global review PASS required first |
+| 5 | Commit before global review PASS | Bypasses final quality gate | Phase 2 PASS → Phase 3 commit |
+| 6 | Close issue with failed/blocked gates | Claims completion for incomplete work | All gates PASS + verified CLOSED |
+| 7 | Ignore subagent BLOCKED or FAIL | Harness status overrides prose; prose-DONE with harness-fail = FAIL | Route from harness/tool status |
+| 8 | Repair code/tests/docs directly after agent failure | Coordinator cannot judge quality of its own fix | Diagnose → split scope → redispatch agent or stop |
+| 9 | Pass only file paths to subagents (not full text) | Subagent may lack file access or context | Provide full task text in prompt |
+| 10 | Use deployment-operator in default pipeline | Not a pipeline stage; unauthorized deploy risk | Omit unless explicitly requested |
+| 11 | Impersonate named subagent via prompt text | Bypasses typed dispatch protocol; no identity evidence | Use runtime-recognized subagent name |
+| 12 | Override model for role agents | Violates "Models are fixed at design time" rule | Do not pass model parameter |
 
 ## Continuous Execution
 
