@@ -177,7 +177,26 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    - L0: docs/tests/mechanical local change.
    Risk tiers do not remove mandatory stages.
 7. Create todo list tracking all tasks across all work items.
-8. Task-planner proposes safe parallel groups when --parallel is requested. Plan-reviewer audits those groups. If --parallel was requested but rejected by plan-reviewer, run sequentially and report the reason unless the user explicitly required parallel.
+8. Cross-work-item parallel grouping (--parallel only):
+   a. After all work items have completed step 4 (plan-reviewer PASS),
+      merge all extracted tasks into a unified task pool.
+   b. Dispatch one task-planner with the unified task pool as context,
+      plus instruction: "Propose safe parallel groups for these tasks
+      from N work items. Output can_parallelize, safe_groups (each group
+      listing task IDs and source work item), dependencies between groups,
+      and file-level conflict risks."
+   c. Dispatch plan-reviewer to audit the cross-issue parallel proposal.
+      Plan-reviewer must confirm: no file overlap within any group,
+      dependency ordering between groups is acyclic, and each group's
+      scope is independently verifiable.
+      Cross-issue merge planner retry budget: 1. On FAIL or BLOCKED →
+      fall back to sequential execution and report reason.
+   d. Plan-reviewer PASS → use approved groups for Phase 1 dispatch.
+   Skip steps a-d when only one work item is present (use that item's
+   own planner output for intra-issue parallelism as before).
+   If --parallel was requested but plan-reviewer rejects at any stage,
+   run sequentially and report the reason unless the user explicitly
+   required parallel.
 
 ### Phase 0.5: Capability Preconditions
 
@@ -185,12 +204,16 @@ Before implementation, note visible repository policy that constrains code disco
 
 ### Phase 1: Execute
 
-For each work item (sequential by default; --parallel allows planner-approved patch proposal groups):
+Sequential mode (--parallel not supplied, or plan-reviewer rejected parallelization):
+  For each work item, for each task in the work item:
+
+Parallel mode (--parallel supplied and plan-reviewer approved cross-issue groups):
+  For each approved parallel group (may contain tasks from multiple work items):
 
   If any work item is BLOCKED with exhausted retry budget: halt all subsequent
   work items and report.
 
-  For each task in the work item:
+  For each task (sequential) or group (parallel):
 
     If a planned task contains multiple independently verifiable changes:
     split before dispatch → each slice gets its own behavior target and focused verification expectation.
@@ -304,7 +327,13 @@ Approved parallel groups use patch proposal flow:
 1. Dispatch parallel code-implementer workers for safe slices.
 2. Each worker returns STATUS plus unified diff patch, changed files, focused verification notes, assumptions, and risks.
 3. Coordinator mechanically runs `git apply --check` and `git apply` in declared slice order. Coordinator does not edit patches.
-4. On patch apply failure, redispatch affected code-implementer with current main context and patch failure output.
+4. Patch apply failure recovery:
+   a. If slice B fails after slice A applied:
+      - Revert slice A: `git checkout -- <slice-A changed files>` (files listed in implementer handoff).
+      - Redispatch both slices with current main context + conflict context.
+      - Re-apply in updated order.
+   b. If redispatch still fails (retry budget consumed):
+      Fall back to sequential execution for remaining tasks in this group.
 5. Authoritative gates run on the main worktree after apply:
    - spec-reviewer per slice
    - test-engineer per group
