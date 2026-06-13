@@ -154,6 +154,16 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
    Structured breakdown = work item spec where every task has all six fields:
    id or stable label, behavior target, acceptance criteria, verification expectation, dependencies/blockers, likely file/context references.
 
+   Structured example (skip task-planner):
+     id: AUTH-1, behavior: "Reject expired JWT tokens at middleware",
+     acceptance: "Expired tokens return 401 within 10ms",
+     verification: "Unit test with token 1s past expiry returns 401",
+     dependencies: none, files: src/auth/middleware.ts, src/auth/__tests__/middleware.test.ts
+
+   Unstructured examples (dispatch task-planner):
+     "Fix the login bug" — no acceptance criteria, no verification, no file references
+     "Add input validation to UserForm" — no acceptance criteria, no verification expectation, no dependencies
+
    Routing (first matching rule wins):
    - --plan flag → always dispatch task-planner, then plan-reviewer.
    - --no-plan flag → never dispatch task-planner. If spec lacks all six fields per task, report BLOCKED.
