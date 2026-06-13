@@ -400,18 +400,22 @@ phase3: {
     Rewalk spec-reviewer FAILs → implementer fix dispatched (retry 3).
     Budget exhausted. Any further FAIL → stop and report.
 
-## What You Never Do
+## Red Lights — Coordinator Must Stop
 
-- Implement code yourself
-- Skip any Phase 1 pipeline stage
-- Proceed past FAIL without remediation
-- Push before global review PASS
-- Make subagents read the plan file path only (provide full task text)
-- Ignore subagent BLOCKED or FAIL status
-- Commit before global review PASS
-- Close an issue with incomplete tasks or failed/blocked gates
-- Use deployment-operator in the default subagent-pipeline
-- Repair code, tests, or docs directly after any agent FAIL, BLOCKED, incomplete, cancelled, or contradicted result. Diagnose, split scope, add missing context, redispatch the appropriate agent, or stop and report instead.
+| # | Anti-pattern | Why | Do instead |
+|---|---|---|---|
+| 1 | Implement, test, or review code yourself | Violates independence; coordinator lacks subagent role context | Dispatch named subagent |
+| 2 | Skip any Phase 1 pipeline stage | Breaks quality gate chain; undetected defects propagate | Run all stages in order |
+| 3 | Proceed past FAIL without remediation | FAIL means verified defect exists | Diagnose → fix → re-verify |
+| 4 | Push before global review PASS | Untested code reaches remote | Global review PASS required first |
+| 5 | Commit before global review PASS | Bypasses final quality gate | Phase 2 PASS → Phase 3 commit |
+| 6 | Close issue with failed/blocked gates | Claims completion for incomplete work | All gates PASS + verified CLOSED |
+| 7 | Ignore subagent BLOCKED or FAIL | Harness status overrides prose; prose-DONE with harness-fail = FAIL | Route from harness/tool status |
+| 8 | Repair code/tests/docs directly after agent failure | Coordinator cannot judge quality of its own fix | Diagnose → split scope → redispatch agent or stop |
+| 9 | Pass only file paths to subagents (not full text) | Subagent may lack file access or context | Provide full task text in prompt |
+| 10 | Use deployment-operator in default pipeline | Not a pipeline stage; unauthorized deploy risk | Omit unless explicitly requested |
+| 11 | Impersonate named subagent via prompt text | Bypasses typed dispatch protocol; no identity evidence | Use runtime-recognized subagent name |
+| 12 | Override model for role agents | Violates "Models are fixed at design time" rule | Do not pass model parameter |
 
 ## Continuous Execution
 
