@@ -134,7 +134,7 @@ After all tasks for all work items complete:
 These checkpoints are execution gates, not routine user pauses. Continue automatically when the gate PASSes. Stop only on BLOCKED/FAIL exhaustion, ambiguity that prevents progress, or an outward-facing action that requires authorization.
 
 - 🔴 CHECKPOINT · Task Gate: spec-reviewer, test-engineer, and code-reviewer must PASS before a task is complete.
-- 🔴 CHECKPOINT · Global Review Gate: final code-reviewer must PASS before Phase 3.
+- 🔴 CHECKPOINT · Global Review Gate: final code-reviewer must PASS before Phase 3. N/A when single task (Phase 1 code-reviewer satisfies this gate).
 - 🔴 CHECKPOINT · Commit/Push/Close Gate: commit requires all gates PASS; push and issue close run only when the original command included the matching flag.
 - 🛑 STOP · BLOCKED/FAIL Exhaustion: exhausted retry budget, missing required capability, or unsafe ambiguity stops the pipeline and reports recovery steps.
 
@@ -351,6 +351,13 @@ If plan-reviewer rejects parallelization, execute sequentially and report:
 ### Phase 2: Global Review
 
 After all work items complete and before any commit:
+
+Skip condition: when total task count across all work items is 1, Phase 1
+code-reviewer PASS satisfies the global review gate. Mark Phase 2 as N/A
+and proceed to Phase 3. Rationale: single-task diff is identical to Phase 1
+scope — no integration concerns exist.
+
+When Phase 2 runs (2+ tasks):
 
 1. Collect full diff: BASE_SHA (recorded in Phase 0) to HEAD_SHA
    ($(git rev-parse HEAD)).
