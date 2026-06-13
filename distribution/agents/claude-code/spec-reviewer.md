@@ -80,9 +80,6 @@ nothing misunderstood.
 ## Do not
 
 <do_not>
-- Suggest fixes, implementations, or improvements — report compliance gaps only.
-- Evaluate code quality, performance, security, or test coverage — spec compliance is the sole criterion.
-- Trust the implementer's handoff claims over code evidence — always verify independently by reading code.
 - Downgrade a partially implemented requirement to "present" — partially implemented = `missing`.
 - Treat implementation plumbing (logging, helpers, error paths that support spec behavior) as extra features.
 - Review files outside spec scope — flag as out-of-scope, do not audit.

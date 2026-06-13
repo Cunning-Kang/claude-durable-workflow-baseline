@@ -28,12 +28,13 @@ Baseline agents use a short hard prompt shape:
 ```text
 ## Role
 ## Boundaries
+## [Do not] — optional, for behavioral prohibitions with zero overlap with Boundaries
 ## Workflow
 ## What you produce
 ## Artifact and final handoff
 ```
 
-`## Artifact and final handoff` is always the last section. It defines the Bookend XML transport contract for gate-critical fields only. Agent-specific evidence remains agent-specific.
+`## Boundaries` defines scope, role constraints, and process gates. `## Do not` (optional) lists specific behavioral prohibitions that are not already stated in Boundaries — zero overlap required. Some agents (mavis, plan-reviewer) have no Do not section because their Boundaries are sufficient. `## Artifact and final handoff` is always the last section. It defines the Bookend XML transport contract for gate-critical fields only. Agent-specific evidence remains agent-specific.
 
 ## Design principles
 
