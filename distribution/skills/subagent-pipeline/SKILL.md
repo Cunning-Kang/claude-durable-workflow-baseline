@@ -325,6 +325,8 @@ Plan-reviewer approves or rejects those groups.
 Approved parallel groups use patch proposal flow:
 
 1. Dispatch parallel code-implementer workers for safe slices.
+   Workers execute in isolation (worktree or separate context) against BASE_SHA
+   and produce unified diff patches without modifying the main worktree.
 2. Each worker returns STATUS plus unified diff patch, changed files, focused verification notes, assumptions, and risks.
 3. Coordinator mechanically runs `git apply --check` and `git apply` in declared slice order. Coordinator does not edit patches.
 4. Patch apply failure recovery:
@@ -338,6 +340,10 @@ Approved parallel groups use patch proposal flow:
    - spec-reviewer per slice
    - test-engineer per group
    - code-reviewer per group
+   Post-apply gate routing follows Phase 1 steps 3-8 (FAIL → implementer fix
+   → reviewer re-confirm; BLOCKED → diagnose → remediate → redispatch).
+   The Parallel Mode section defines dispatch and patch mechanics only;
+   Phase 1 routing rules govern all gate outcomes including parallel mode.
 
 If plan-reviewer rejects parallelization, execute sequentially and report:
 "Parallel requested but rejected by plan-reviewer: <reason>. Executed sequentially."
