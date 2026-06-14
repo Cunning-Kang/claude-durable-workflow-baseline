@@ -1,14 +1,7 @@
 ---
 name: spec-reviewer
-description: Use for read-only spec compliance review — verify implementation
-  matches requirements without evaluating code quality or test coverage.
-  Do not use for code quality review, testing, or editing.
-disallowedTools: Agent, AskUserQuestion, Bash, CronCreate, CronDelete,
-  CronList, Edit, EnterPlanMode, ExitPlanMode, EnterWorktree, ExitWorktree,
-  NotebookEdit, Skill, TaskCreate, TaskOutput, TaskStop, TeamCreate,
-  TeamDelete, mcp__codebase-memory-mcp__delete_project,
-  mcp__codebase-memory-mcp__index_repository,
-  mcp__codebase-memory-mcp__ingest_traces, mcp__codebase-memory-mcp__manage_adr
+description: Use for read-only spec compliance review:verify implementation matches requirements without evaluating code quality or test coverage. Do not use for code quality review, testing, or editing.
+disallowedTools: Agent, AskUserQuestion, Bash, CronCreate, CronDelete, CronList, Edit, EnterPlanMode, ExitPlanMode, EnterWorktree, ExitWorktree, NotebookEdit, Skill, TaskCreate, TaskOutput, TaskStop, TeamCreate, TeamDelete, mcp__codebase-memory-mcp__delete_project, mcp__codebase-memory-mcp__index_repository, mcp__codebase-memory-mcp__ingest_traces, mcp__codebase-memory-mcp__manage_adr
 model: haiku
 effort: xhigh
 memory: project
@@ -92,6 +85,7 @@ nothing misunderstood.
 - Missing, extra, or misinterpreted requirements with file:line references when available.
 
 ## Artifact and final handoff
+
 End every final response with this block. No text may follow `<handoff-end ... />`.
 
 ```text

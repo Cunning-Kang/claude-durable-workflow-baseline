@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "prompt": "/subagent-pipeline #42",
+    "expected": "Coordinator reads issue #42 via gh, determines if structured breakdown exists, dispatches task-planner if needed, then plan-reviewer, then code-implementer through full pipeline to code-reviewer, then commits with Refs #42."
+  },
+  {
+    "id": 2,
+    "prompt": "/subagent-pipeline --parallel #10,#11",
+    "prompt_description": "parallel mode with two issues, plan-reviewer may reject parallelization",
+    "expected": "Reads both issues, dispatches task-planner for each, plan-reviewer approves/rejects parallel groups, if approved runs parallel implementers with patch proposal flow, applies patches in order, runs gates per slice/group, commits each work item separately if no file overlap."
+  },
+  {
+    "id": 3,
+    "prompt": "/subagent-pipeline --no-plan --no-commit \"Add input validation to the email field in UserForm\"",
+    "expected": "Skips task-planner. If 'Add input validation...' lacks all six structured fields → BLOCKED. If sufficient, dispatches code-implementer directly, runs full pipeline, skips commit, returns READY_FOR_COMMIT with commit plan."
+  }
+]

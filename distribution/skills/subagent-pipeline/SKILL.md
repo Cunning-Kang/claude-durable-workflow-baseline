@@ -200,7 +200,15 @@ These checkpoints are execution gates, not routine user pauses. Continue automat
 
 ### Phase 0.5: Capability Preconditions
 
-Before implementation, note visible repository policy that constrains code discovery or file access. If required source inspection is blocked for the planned reviewer/tester and no allowed alternative is visible, stop as BLOCKED before implementation. Do not start work that cannot be independently reviewed under current tool policy.
+Before implementation, record a capability preflight table for each work item:
+
+- named subagent dispatch is available for every required role
+- code discovery works under the visible repository policy
+- exact edit anchoring or a safe patch mechanism is available for planned source changes
+- reviewer/tester independent read access is available
+- verification command is available, or explicitly unavailable with the consequence recorded
+
+If code discovery works but no safe edit path exists, stop as BLOCKED before dispatching code-implementer unless `ast_edit` or isolated patch proposal flow can safely complete the change. Do not start work that cannot be independently reviewed under current tool policy.
 
 ### Phase 1: Execute
 
@@ -215,8 +223,12 @@ Parallel mode (--parallel supplied and plan-reviewer approved cross-issue groups
 
   For each task (sequential) or group (parallel):
 
-    If a planned task contains multiple independently verifiable changes:
+    If a planned task contains multiple independently verifiable changes,
+    multiple verification seams, or ambiguous review scope:
     split before dispatch → each slice gets its own behavior target and focused verification expectation.
+    File count and LOC are risk signals, not automatic blockers.
+    Broad dispatch is allowed only when plan-reviewer explicitly confirms the work is one cohesive task that remains implementable, testable, and reviewable.
+    The reviewer prompt must ask for cohesion/reviewability judgment, not steer toward broad-scope approval.
     If splitting fails (task-planner cannot decompose) → report BLOCKED.
 
     Merge adjacent acceptance items into one dispatch only when all five conditions hold:
@@ -241,6 +253,7 @@ Parallel mode (--parallel supplied and plan-reviewer approved cross-issue groups
     - Missing role status or handoff → ask the same agent once to restate without file changes. Still incomplete → implementer: route FAIL; reviewer/tester: route BLOCKED.
     - Format issues are not blockers when status, scope, and evidence are semantically present. Block on missing capability, unknown scope, inaccessible source, or missing evidence only.
     - Coordinator read-only checks contradict DONE → route FAIL with evidence, redispatch code-implementer. Coordinator does not patch directly.
+    - Mid-turn side-channel replies are not authoritative handoffs. If only IRC/side-channel replies are available, ask once for final semantic handoff. If the reply is malformed, includes tool-call markup, lacks semantic status, or the agent continues work, cancel and redispatch fresh; do not repeatedly inject instructions into the same mid-turn agent.
 
     2. Route on STATUS:
        DONE → dispatch spec-reviewer
@@ -357,6 +370,12 @@ code-reviewer PASS satisfies the global review gate. Mark Phase 2 as N/A
 and proceed to Phase 3. Rationale: single-task diff is identical to Phase 1
 scope — no integration concerns exist.
 
+When Phase 2 is N/A, do not leave a global-review todo pending or dropped.
+Record a completed coordinator task such as:
+`Record global review N/A because total task count is 1`.
+The final report must cite total task count, Phase 1 code-reviewer identity,
+reviewed scope, and why Phase 1 scope already covers the entire final diff.
+
 When Phase 2 runs (2+ tasks):
 
 1. Collect full diff: BASE_SHA (recorded in Phase 0) to HEAD_SHA
@@ -374,7 +393,7 @@ When Phase 2 runs (2+ tasks):
 
 ### Phase 3: Report and Atomic Commit
 
-Phase 3 runs only after all task gates and global review PASS. Default behavior is report plus atomic commit. It does not push or close issues by default.
+Phase 3 runs only after all task gates and global review PASS or N/A(reason). Default behavior is report plus atomic commit. It does not push or close issues by default.
 
 Flags:
 
@@ -384,6 +403,11 @@ Flags:
 
 Coordinator owns Phase 3 mechanical actions. `deployment-operator` is not part of default subagent-pipeline.
 
+0. Run final gate audit before commit grouping:
+   - every required gate is PASS or N/A(reason)
+   - no pending, dropped, or failed todo remains unexplained
+   - final report matches ledger/todo state
+   - reviewer/tester evidence scopes match the current diff/task scope
 1. Build commit groups after global review PASS:
    - no file overlap → one commit per work item
    - overlapping changed files → one combined commit for those work items
